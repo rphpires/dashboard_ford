@@ -6,27 +6,24 @@
 import threading
 import pyodbc
 import configparser
+import os
+import pandas as pd
 
-class Parameters:
-    parser = configparser.ConfigParser()
-    parser.read("WxsDbConnection.cfg")
-
-    chtypes_list = parser.get("userFields", "CHType")
-    chstate_expired = parser.get("userFields", "CHStateExpiredDoc")
 
 class DatabaseReader:
     def __init__(self):
         parser = configparser.ConfigParser()
-        parser.read("WxsDbConnection.cfg")
+        config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config", "db_connection.cfg")
+        parser.read(config_path)
 
         self.server = parser.get("config", "WAccessBDServer")
         self.database = parser.get("config", "WAccessDB")
-        self.username = 'W-Access'
-        self.password = 'db_W-X-S@Wellcare924_'
+        self.username = 'sa'
+        self.password = '#w_access_Adm#'
 
         self.api_server = parser.get("config", "WAccessAPIServer")
         self.api_oper = parser.get("config", "WAccessAPIOper")
-        
+
         self.lock = threading.Lock()
 
     def _create_connection(self):
@@ -102,15 +99,62 @@ class DatabaseReader:
 
             try:
                 if params:
-                    cursor.execute(f"EXEC {procedure_name} {', '.join(params)}")
+                    sp_script = f"EXEC {procedure_name} {', '.join(['?'] * len(params))}"
+                    cursor.execute(sp_script, params)
                 else:
                     cursor.execute(f"EXEC {procedure_name}")
+
+                # Captura o valor retornado pela stored procedure
+                result = cursor.fetchall()
+
                 connection.commit()
-                return True
+
             except Exception as e:
                 print(f"Error executing procedure: {str(e)}")
                 connection.rollback()
-                return False
+                return None
             finally:
                 cursor.close()
                 connection.close()
+
+        return result
+
+    def execute_stored_procedure_df(self, procedure_name, params=None):
+        """
+        Executa uma stored procedure e retorna os resultados como DataFrame.
+
+        Parâmetros:
+        sp_name (str): Nome da stored procedure
+        *params: Parâmetros para a stored procedure
+
+        Retorno:
+        DataFrame: Resultado da consulta
+        """
+        with self.lock:
+            connection = self._create_connection()
+            cursor = connection.cursor()
+
+            try:
+                # Construir a string de chamada da stored procedure
+                if params:
+                    sp_script = f"EXEC {procedure_name} {', '.join(['?'] * len(params))}"
+                    cursor.execute(sp_script, params)
+                else:
+                    cursor.execute(f"EXEC {procedure_name}")
+
+                # Obter os resultados e nomes das colunas
+                columns = [column[0] for column in cursor.description]
+                results = cursor.fetchall()
+
+                # Converter para DataFrame
+                df = pd.DataFrame.from_records(results, columns=columns)
+
+            except Exception as e:
+                print(f"Error executing procedure: {str(e)}")
+                connection.rollback()
+                return None
+            finally:
+                cursor.close()
+                connection.close()
+
+        return df
