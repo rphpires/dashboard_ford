@@ -27,6 +27,49 @@ def create_left_column(dfs, ytd_utilization_percentage, ytd_availability_percent
     Returns:
         dash.html.Div: Layout da coluna esquerda
     """
+    # Calcular totais e percentuais para cada categoria
+    try:
+        # Extrair o valor numérico do total de horas (remover ':' se estiver no formato HH:MM)
+        if ':' in total_hours:
+            horas, minutos = map(int, total_hours.split(':'))
+            total_horas_decimal = horas + (minutos / 60.0)
+        else:
+            # Se já estiver como número, converter para float
+            total_horas_decimal = float(total_hours)
+
+        # Calcular somas para cada categoria
+        programas_horas = dfs['programs']['hours'].sum() if 'hours' in dfs['programs'].columns else 0
+        outras_equipes_horas = dfs['other_skills']['hours'].sum() if 'hours' in dfs['other_skills'].columns else 0
+        usuarios_internos_horas = dfs['internal_users']['hours'].sum() if 'hours' in dfs['internal_users'].columns else 0
+        vendas_externas_horas = dfs['external_sales']['hours'].sum() if 'hours' in dfs['external_sales'].columns else 0
+
+        # Calcular percentuais (evitar divisão por zero)
+        if total_horas_decimal > 0:
+            programas_perc = (programas_horas / total_horas_decimal) * 100
+            outras_equipes_perc = (outras_equipes_horas / total_horas_decimal) * 100
+            usuarios_internos_perc = (usuarios_internos_horas / total_horas_decimal) * 100
+            vendas_externas_perc = (vendas_externas_horas / total_horas_decimal) * 100
+        else:
+            programas_perc = outras_equipes_perc = usuarios_internos_perc = vendas_externas_perc = 0
+
+        # Formatação para exibição
+        programas_perc_fmt = f"{programas_perc:.1f}%"
+        outras_equipes_perc_fmt = f"{outras_equipes_perc:.1f}%"
+        usuarios_internos_perc_fmt = f"{usuarios_internos_perc:.1f}%"
+        vendas_externas_perc_fmt = f"{vendas_externas_perc:.1f}%"
+
+    except Exception as e:
+        print(f"Erro ao calcular percentuais: {e}")
+        # Valores padrão em caso de erro
+        programas_horas = 89
+        outras_equipes_horas = 130
+        usuarios_internos_horas = 778
+        vendas_externas_horas = 34
+        programas_perc_fmt = "9%"
+        outras_equipes_perc_fmt = "13%"
+        usuarios_internos_perc_fmt = "75%"
+        vendas_externas_perc_fmt = "3%"
+
     return html.Div(
         className='column',
         children=[
@@ -69,16 +112,20 @@ def create_left_column(dfs, ytd_utilization_percentage, ytd_availability_percent
                             className='flex-container',
                             style={'marginBottom': '16px'},
                             children=[
-                                create_info_card('Programas', '89 hr', '9% do total', color='#1E88E5'),
-                                create_info_card('Outras Equipes', '130 hr', '13% do total', color='#673AB7'),
-                                create_info_card('Uso Interno', '778 hr', '75% do total', color='#2E7D32'),
-                                create_info_card('Vendas Externas', '34 hr', '3% do total', color='#F57C00')
+                                create_info_card('Programas', f"{int(programas_horas)} hr",
+                                                 f"{programas_perc_fmt} do total", color='#1E88E5'),
+                                create_info_card('Outras Equipes', f"{int(outras_equipes_horas)} hr",
+                                                 f"{outras_equipes_perc_fmt} do total", color='#673AB7'),
+                                create_info_card('Uso Interno', f"{int(usuarios_internos_horas)} hr",
+                                                 f"{usuarios_internos_perc_fmt} do total", color='#2E7D32'),
+                                create_info_card('Vendas Externas', f"{int(vendas_externas_horas)} hr",
+                                                 f"{vendas_externas_perc_fmt} do total", color='#F57C00')
                             ]
                         ),
 
                         # Programas - Com gráfico moderno
                         create_bordered_container([
-                            create_metric_header('PROGRAMAS', '89', '9%'),
+                            create_metric_header('PROGRAMAS', f"{int(programas_horas)}", programas_perc_fmt),
                             create_graph_section(
                                 'programs-graph',
                                 create_programs_graph(dfs['programs'])
@@ -87,7 +134,7 @@ def create_left_column(dfs, ytd_utilization_percentage, ytd_availability_percent
 
                         # Other Skill Teams - Com gráfico moderno
                         create_bordered_container([
-                            create_metric_header('OUTRAS EQUIPES DE HABILIDADES', '130', '13%'),
+                            create_metric_header('OUTRAS EQUIPES DE HABILIDADES', f"{int(outras_equipes_horas)}", outras_equipes_perc_fmt),
                             create_graph_section(
                                 'other-skills-graph',
                                 create_other_skills_graph(dfs['other_skills'])
@@ -98,7 +145,7 @@ def create_left_column(dfs, ytd_utilization_percentage, ytd_availability_percent
                         create_side_by_side_container([
                             # Internal Users
                             create_flex_item([
-                                create_metric_header('USUÁRIOS INTERNOS', '778', '75%'),
+                                create_metric_header('USUÁRIOS INTERNOS', f"{int(usuarios_internos_horas)}", usuarios_internos_perc_fmt),
                                 create_graph_section(
                                     'internal-users-graph',
                                     create_internal_users_graph(dfs['internal_users'])
@@ -107,7 +154,7 @@ def create_left_column(dfs, ytd_utilization_percentage, ytd_availability_percent
 
                             # External Sales
                             create_flex_item([
-                                create_metric_header('VENDAS EXTERNAS', '34', '3%'),
+                                create_metric_header('VENDAS EXTERNAS', f"{int(vendas_externas_horas)}", vendas_externas_perc_fmt),
                                 create_graph_section(
                                     'external-sales-graph',
                                     create_external_sales_graph(dfs['external_sales'])

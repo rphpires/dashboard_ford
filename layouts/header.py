@@ -39,15 +39,40 @@ def create_header(current_month, current_day):
 def create_summary_metrics(utilization_rate, availability_rate, total_hours):
     """
     Cria métricas de resumo para exibir no topo do dashboard
-    
+
     Args:
         utilization_rate (str): Taxa de utilização
         availability_rate (str): Taxa de disponibilidade
         total_hours (str): Total de horas
-        
+
     Returns:
         dash.html.Div: Layout das métricas de resumo
     """
+    # Criar uma barra de progresso personalizada em vez de usar dcc.Progress
+    progress_bar = html.Div(
+        style={
+            'width': '100%',
+            'backgroundColor': 'rgba(255, 255, 255, 0.3)',
+            'marginTop': '10px',
+            'borderRadius': '5px',
+            'height': '8px',
+            'position': 'relative'
+        },
+        children=[
+            html.Div(
+                style={
+                    'width': '82%',  # Valor fixo para progresso
+                    'backgroundColor': 'rgba(255, 255, 255, 0.9)',
+                    'position': 'absolute',
+                    'height': '8px',
+                    'borderRadius': '5px',
+                    'top': '0',
+                    'left': '0'
+                }
+            )
+        ]
+    )
+
     return html.Div(
         className='flex-container',
         style={'marginBottom': '20px'},
@@ -62,7 +87,7 @@ def create_summary_metrics(utilization_rate, availability_rate, total_hours):
                     html.Div('Meta: 80%', className='summary-subtitle')
                 ]
             ),
-            
+
             # Métrica 2: Taxa de Disponibilidade
             html.Div(
                 className='summary-card',
@@ -73,7 +98,7 @@ def create_summary_metrics(utilization_rate, availability_rate, total_hours):
                     html.Div('Meta: 80%', className='summary-subtitle')
                 ]
             ),
-            
+
             # Métrica 3: Total de Horas
             html.Div(
                 className='summary-card',
@@ -84,7 +109,7 @@ def create_summary_metrics(utilization_rate, availability_rate, total_hours):
                     html.Div('Mês atual', className='summary-subtitle')
                 ]
             ),
-            
+
             # Métrica 4: Progresso do Mês
             html.Div(
                 className='summary-card',
@@ -93,17 +118,8 @@ def create_summary_metrics(utilization_rate, availability_rate, total_hours):
                     html.Div('Progresso YTD', className='summary-title'),
                     html.Div('82%', className='summary-value'),
                     html.Div('Em relação ao planejado', className='summary-subtitle'),
-                    dcc.Progress(
-                        id='ytd-progress',
-                        value=82,
-                        style={
-                            'background': 'rgba(255, 255, 255, 0.3)',
-                            'marginTop': '10px',
-                            'borderRadius': '5px',
-                            'height': '8px'
-                        },
-                        color='rgba(255, 255, 255, 0.9)'
-                    )
+                    # Substitui dcc.Progress por um div personalizado
+                    progress_bar
                 ]
             )
         ]

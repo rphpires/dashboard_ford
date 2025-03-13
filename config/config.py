@@ -15,6 +15,7 @@ colors = {
     # Texto e fundos
     'text': '#263238',
     'text_light': '#546E7A',
+    'light_text': '#546E7A',
     'text_lighter': '#78909C',
     'background': '#F5F7FA',
     'card_bg': '#FFFFFF',

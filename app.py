@@ -6,7 +6,7 @@ import datetime
 from layouts.header import create_header, create_summary_metrics
 from layouts.left_column import create_left_column
 from layouts.right_column import create_right_column
-from data.mock_data import get_mock_data
+from data.database import load_dashboard_data, get_current_period_info
 
 # Inicializar a aplicação Dash
 app = dash.Dash(
@@ -14,24 +14,22 @@ app = dash.Dash(
     meta_tags=[
         {"name": "viewport", "content": "width=device-width, initial-scale=1"},
     ],
-    title='zeentech VEV Dashboard',
+    title='Ford Dashboard',
     update_title='Carregando...',
     suppress_callback_exceptions=True
 )
 
-# Obter dados mockados
-dfs = get_mock_data()
+# Obter dados reais
+dfs = load_dashboard_data()
 
-# Obter data atual
-current_date = datetime.datetime.now()
-current_month = current_date.strftime("%B").upper()
-current_day = current_date.strftime("%d")
-
-# Definir métricas YTD
-ytd_utilization_percentage = "82.5%"
-ytd_availability_percentage = "88.2%"
-total_hours = "1031"
-total_hours_ytd = "8245"
+# Obter informações do período atual
+periodo_info = get_current_period_info()
+current_month = periodo_info['current_month']
+current_day = periodo_info['current_day']
+ytd_utilization_percentage = periodo_info['ytd_utilization_percentage']
+ytd_availability_percentage = periodo_info['ytd_availability_percentage']
+total_hours = periodo_info['total_hours']
+total_hours_ytd = periodo_info['total_hours_ytd']
 
 # Layout da aplicação
 app.layout = html.Div(
@@ -39,22 +37,22 @@ app.layout = html.Div(
     children=[
         # Cabeçalho
         create_header(current_month, current_day),
-        
+
         # Métricas de resumo
         create_summary_metrics(ytd_utilization_percentage, ytd_availability_percentage, total_hours),
-        
+
         # Conteúdo principal
         html.Div(
             className='dashboard-content',
             children=[
                 # Coluna Esquerda
                 create_left_column(
-                    dfs, 
-                    ytd_utilization_percentage, 
-                    ytd_availability_percentage, 
+                    dfs,
+                    ytd_utilization_percentage,
+                    ytd_availability_percentage,
                     total_hours
                 ),
-                
+
                 # Coluna Direita
                 create_right_column(
                     dfs,
@@ -63,7 +61,7 @@ app.layout = html.Div(
                 )
             ]
         ),
-        
+
         # Rodapé
         html.Div(
             className='footer',
@@ -75,7 +73,7 @@ app.layout = html.Div(
                 'color': '#546E7A'
             },
             children=[
-                f"zeentech VEV Dashboard • Atualizado em: {current_date.strftime('%d/%m/%Y %H:%M')}"
+                f"zeentech VEV Dashboard • Atualizado em: {datetime.datetime.now().strftime('%d/%m/%Y %H:%M')}"
             ]
         )
     ]

@@ -1,4 +1,4 @@
-from utils.db_connection import *
+from data.db_connection import *
 from utils.tracer import *
 import pandas as pd
 import json
