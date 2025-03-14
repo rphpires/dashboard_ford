@@ -25,7 +25,10 @@ app = dash.Dash(
     title='Ford Dashboard',
     update_title='Carregando...',
     suppress_callback_exceptions=True,
-    external_stylesheets=[dbc.themes.BOOTSTRAP],  # Adicionar Bootstrap
+    external_stylesheets=[
+        dbc.themes.BOOTSTRAP,
+        "https://use.fontawesome.com/releases/v5.15.4/css/all.css"  # Adicionar FontAwesome
+    ],
 )
 
 # Obter dados reais
@@ -108,6 +111,7 @@ app.layout = html.Div([
 # Callback para atualizar o conteúdo baseado na aba selecionada
 
 
+# Callback para atualizar o conteúdo baseado na aba selecionada
 @app.callback(
     Output('tab-content', 'children'),
     Input('tabs', 'active_tab')
@@ -116,38 +120,45 @@ def render_tab_content(active_tab):
     if active_tab == 'tab-dashboard':
         return main_layout
     elif active_tab == 'tab-eja-manager':
-        return create_eja_manager_layout()
+        # Ao renderizar o layout do EJA Manager, também carregamos os dados iniciais
+        layout = create_eja_manager_layout()
+
+        # Pré-carregar a tabela com todos os EJAs
+        eja_manager = EJAManager()
+        all_ejas = eja_manager.get_all_ejas()
+
+        # Encontrar o container da tabela no layout e atualizar seu conteúdo
+        for child in layout.children:
+            if isinstance(child, dbc.Card) and hasattr(child, 'children'):
+                for card_child in child.children:
+                    if isinstance(card_child, dbc.CardBody) and hasattr(card_child, 'children'):
+                        for body_child in card_child.children:
+                            if hasattr(body_child, 'id') and body_child.id == "eja-table-container":
+                                body_child.children = create_eja_table(all_ejas)
+
+        return layout
     return html.Div("Conteúdo não encontrado")
+
 
 # Callbacks para o gerenciador de EJAs
 
 # 1. Callback para busca de EJAs
 
-
-@app.callback(
-    Output('eja-table-container', 'children'),
-    Input('search-button', 'n_clicks'),
-    State('search-term', 'value'),
-    State('search-eja-code', 'value')
-)
-def search_ejas(n_clicks, search_term, eja_code):
-    if n_clicks is None:
-        # Mostrar todos os EJAs na carga inicial
-        eja_manager = EJAManager()
-        all_ejas = eja_manager.get_all_ejas()
-        return create_eja_table(all_ejas)
-
-    # Executar a busca
-    eja_manager = EJAManager()
-    results = eja_manager.search_ejas(search_term, eja_code)
-    return create_eja_table(results)
-
-# Função auxiliar para criar a tabela de EJAs
+# Modificação no callback search_ejas no arquivo app.py
 
 
-def create_eja_table(ejas):
+# Função auxiliar para criar a tabela de EJAs com paginação
+def create_eja_table(ejas, page_current=0, page_size=15):
     if not ejas:
         return html.Div("Nenhum EJA encontrado.", className="mt-3 text-center")
+
+    # Aplicar paginação
+    start_idx = page_current * page_size
+    end_idx = (page_current + 1) * page_size
+    paginated_ejas = ejas[start_idx:end_idx]
+
+    # Calcular total de páginas
+    total_pages = (len(ejas) - 1) // page_size + 1
 
     # Criar cabeçalho da tabela
     header = html.Thead(html.Tr([
@@ -155,23 +166,39 @@ def create_eja_table(ejas):
         html.Th("EJA CODE"),
         html.Th("TITLE"),
         html.Th("CLASSIFICATION"),
-        html.Th("Ações")
+        html.Th("Ações", style={"width": "120px", "text-align": "center"})
     ]))
 
     # Criar linhas da tabela
     rows = []
-    for eja in ejas:
+    for eja in paginated_ejas:
+        eja_id = eja.get('Nº', '')
+
+        # Criar menu dropdown para ações
+        action_menu = dbc.DropdownMenu(
+            label="Ações",
+            size="sm",
+            color="light",
+            children=[
+                # Botões dentro do dropdown
+                dbc.DropdownMenuItem(
+                    "Editar",
+                    id={"type": "edit-button", "index": eja_id}
+                ),
+                dbc.DropdownMenuItem(
+                    "Excluir",
+                    id={"type": "delete-button", "index": eja_id},
+                    style={"color": "red"}
+                ),
+            ],
+        )
+
         row = html.Tr([
-            html.Td(eja.get('Nº', '')),
+            html.Td(eja_id),
             html.Td(eja.get('EJA CODE', '')),
             html.Td(eja.get('TITLE', '')),
             html.Td(eja.get('NEW CLASSIFICATION', '')),
-            html.Td([
-                dbc.Button("Editar", id={"type": "edit-button", "index": eja.get('Nº', '')},
-                           color="primary", size="sm", className="me-2"),
-                dbc.Button("Excluir", id={"type": "delete-button", "index": eja.get('Nº', '')},
-                           color="danger", size="sm")
-            ])
+            html.Td(action_menu, style={"text-align": "center"})
         ])
         rows.append(row)
 
@@ -179,11 +206,29 @@ def create_eja_table(ejas):
 
     # Montar tabela completa
     table = dbc.Table([header, body], bordered=True, hover=True, responsive=True, striped=True)
-    return table
 
-# 2. Callback para abrir modal de adição de EJA
+    # Controles de paginação
+    pagination = dbc.Pagination(
+        id="eja-pagination",
+        max_value=total_pages,
+        first_last=True,
+        previous_next=True,
+        size="sm",
+        fully_expanded=False,
+        active_page=page_current + 1,  # Páginas na UI começam em 1
+        className="mt-3 d-flex justify-content-center"
+    )
+
+    # Informação sobre a paginação
+    pagination_info = html.Div(
+        f"Mostrando {min(start_idx + 1, len(ejas))} a {min(end_idx, len(ejas))} de {len(ejas)} registros",
+        className="text-muted text-center small mt-2"
+    )
+
+    return html.Div([table, pagination, pagination_info])
 
 
+# Callback corrigido para abrir modal de adição/edição
 @app.callback(
     Output('add-eja-modal', 'is_open'),
     Output('eja-form-title', 'children'),
@@ -206,11 +251,16 @@ def toggle_add_eja_modal(add_clicks, edit_clicks, cancel_clicks, submit_clicks, 
     if not ctx.triggered:
         return is_open, "Adicionar EJA", "Adicionar", "", "", "", "", ""
 
-    button_id = ctx.triggered[0]['prop_id'].split('.')[0]
+    # Pegar o ID do componente que triggou o callback
+    triggered_id = ctx.triggered[0]['prop_id'].split('.')[0]
+
+    # Se não houve clique (callback chamado por outra razão), não mudar estado
+    if ctx.triggered[0]['value'] is None:
+        return is_open, "Adicionar EJA", "Adicionar", "", "", "", "", ""
 
     # Verificar se é botão de edição
-    if '{' in button_id:
-        button_data = json.loads(button_id)
+    if '{' in triggered_id:
+        button_data = json.loads(triggered_id)
         if button_data.get('type') == 'edit-button':
             row_id = button_data.get('index')
             if row_id:
@@ -228,15 +278,33 @@ def toggle_add_eja_modal(add_clicks, edit_clicks, cancel_clicks, submit_clicks, 
                             eja.get('CLASSIFICATION', ''))
 
     # Caso seja o botão de adicionar, abrir modal vazio
-    if button_id == 'add-eja-button':
+    if triggered_id == 'add-eja-button':
         return not is_open, "Adicionar EJA", "Adicionar", "", "", "", "", ""
 
     # Caso de fechar o modal
-    if button_id == 'eja-form-cancel-button' or button_id == 'eja-form-submit-button':
+    if triggered_id == 'eja-form-cancel-button' or triggered_id == 'eja-form-submit-button':
         return False, "Adicionar EJA", "Adicionar", "", "", "", "", ""
 
     # Padrão: não alterar o estado
     return is_open, "Adicionar EJA", "Adicionar", "", "", "", "", ""
+
+
+# Callback para mostrar/ocultar botões de ação
+@app.callback(
+    Output({"type": "action-container", "index": dash.dependencies.MATCH}, "style"),
+    Input({"type": "action-button", "index": dash.dependencies.MATCH}, "n_clicks"),
+    State({"type": "action-container", "index": dash.dependencies.MATCH}, "style"),
+    prevent_initial_call=True
+)
+def toggle_action_buttons(n_clicks, current_style):
+    if n_clicks is None:
+        raise PreventUpdate
+
+    # Se o container estiver oculto, mostrar; caso contrário, ocultar
+    if current_style.get("display") == "none":
+        return {"display": "inline-block", "margin-top": "5px"}
+    else:
+        return {"display": "none"}
 
 # 3. Callback para salvar/atualizar EJA
 
@@ -283,9 +351,107 @@ def save_eja_form(n_clicks, row_id, eja_code, title, classification, subclassifi
     except Exception as e:
         return f"Erro ao processar o formulário: {str(e)}", True, dash.no_update
 
-# 4. Callback para excluir EJA
+
+# Callback unificado para gerenciar a tabela de EJAs
+# Este callback substitui os callbacks anteriores que atualizavam eja-table-container.children
+@app.callback(
+    Output('eja-table-container', 'children'),
+    Output('eja-data-store', 'data'),
+    
+    # Inputs para busca
+    Input('search-button', 'n_clicks'),
+    Input('eja-delete-refresh', 'n_clicks'),
+    Input('import-refresh', 'n_clicks'),
+    
+    # Input para paginação
+    Input('eja-pagination', 'active_page'),
+    
+    # States necessários
+    State('search-term', 'value'),
+    State('search-eja-code', 'value'),
+    State('eja-data-store', 'data'),
+    
+    # Prevenir chamada inicial
+    prevent_initial_call=True
+)
+def update_eja_table(search_clicks, delete_refresh, import_refresh, 
+                     active_page, search_term, eja_code, current_data):
+    """
+    Callback unificado para atualizar a tabela de EJAs.
+    Gerencia busca, paginação e refreshes após operações.
+    """
+    ctx = dash.callback_context
+    if not ctx.triggered:
+        raise dash.exceptions.PreventUpdate
+    
+    # Identificar qual input acionou o callback
+    triggered_id = ctx.triggered[0]['prop_id'].split('.')[0]
+    
+    # Inicializar variáveis
+    eja_manager = EJAManager()
+    
+    # Inicializar current_data se for None
+    if current_data is None:
+        all_ejas = eja_manager.get_all_ejas()
+        current_data = {
+            'all_ejas': all_ejas,
+            'filtered_ejas': all_ejas,
+            'page_current': 0
+        }
+    
+    # Ações baseadas no input que acionou o callback
+    if triggered_id in ['search-button', 'eja-delete-refresh', 'import-refresh']:
+        # Recarregar todos os EJAs para ter dados atualizados
+        all_ejas = eja_manager.get_all_ejas()
+        
+        # Caso de refresh ou busca sem termos
+        if triggered_id in ['eja-delete-refresh', 'import-refresh'] or (
+                triggered_id == 'search-button' and not search_term and not eja_code):
+            # Mostrar todos os EJAs
+            filtered_ejas = all_ejas
+            page_current = 0  # Voltar para a primeira página
+        
+        # Caso de busca com termos específicos
+        elif triggered_id == 'search-button' and (search_term or eja_code):
+            # Filtrar baseado nos termos de busca
+            filtered_ejas = eja_manager.search_ejas(search_term, eja_code)
+            page_current = 0  # Voltar para a primeira página após busca
+        
+        # Caso padrão (não deve ocorrer)
+        else:
+            filtered_ejas = current_data.get('filtered_ejas', all_ejas)
+            page_current = current_data.get('page_current', 0)
+        
+        # Atualizar o data store com os novos dados
+        updated_data = {
+            'all_ejas': all_ejas,
+            'filtered_ejas': filtered_ejas,
+            'page_current': page_current
+        }
+        
+        # Criar e retornar a tabela com a página atual
+        return create_eja_table(filtered_ejas, page_current=page_current), updated_data
+    
+    # Caso de mudança na paginação
+    elif triggered_id == 'eja-pagination':
+        # Ajustar para índice base 0 (UI mostra páginas a partir de 1)
+        page_current = (active_page or 1) - 1
+        
+        # Atualizar o page_current no data store
+        updated_data = current_data.copy()
+        updated_data['page_current'] = page_current
+        
+        # Usar os dados filtrados existentes
+        filtered_ejas = current_data.get('filtered_ejas', [])
+        
+        # Criar e retornar a tabela com a nova página
+        return create_eja_table(filtered_ejas, page_current=page_current), updated_data
+    
+    # Caso padrão - não fazer nada
+    raise dash.exceptions.PreventUpdate
 
 
+# Callback corrigido para modal de exclusão
 @app.callback(
     Output('delete-eja-modal', 'is_open'),
     Output('delete-eja-id', 'value'),
@@ -302,11 +468,16 @@ def toggle_delete_modal(delete_clicks, confirm_clicks, cancel_clicks, is_open, c
     if not ctx.triggered:
         return is_open, "", ""
 
-    button_id = ctx.triggered[0]['prop_id'].split('.')[0]
+    # Pegar o ID do componente que triggou o callback
+    triggered_id = ctx.triggered[0]['prop_id'].split('.')[0]
+
+    # Se não houve clique (callback chamado por outra razão), não mudar estado
+    if ctx.triggered[0]['value'] is None:
+        return is_open, current_id, ""
 
     # Verificar se é botão de exclusão
-    if '{' in button_id:
-        button_data = json.loads(button_id)
+    if '{' in triggered_id:
+        button_data = json.loads(triggered_id)
         if button_data.get('type') == 'delete-button':
             row_id = button_data.get('index')
             if row_id:
@@ -318,15 +489,14 @@ def toggle_delete_modal(delete_clicks, confirm_clicks, cancel_clicks, is_open, c
                     return True, row_id, f"Tem certeza que deseja excluir o EJA '{eja_name}' (CODE: {eja.get('EJA CODE', '')})"
 
     # Fechar modal
-    if button_id == 'cancel-delete-button':
+    if triggered_id == 'cancel-delete-button':
         return False, "", ""
 
     # Confirmar exclusão
-    if button_id == 'confirm-delete-button' and current_id:
+    if triggered_id == 'confirm-delete-button' and current_id:
         return False, "", ""
 
     return is_open, current_id, ""
-
 # 5. Callback para processar exclusão
 
 
@@ -346,6 +516,7 @@ def process_delete(n_clicks, row_id):
     success = eja_manager.delete_eja(row_id)
 
     if success:
+        # Incrementar n_clicks para acionar o refresh da tabela
         return "EJA excluído com sucesso!", True, 1
     else:
         return "Erro ao excluir o EJA.", True, dash.no_update
@@ -467,6 +638,48 @@ def get_classification_options(add_clicks, edit_clicks):
     eja_manager = EJAManager()
     classifications = eja_manager.get_all_classifications()
     return [{'label': c, 'value': c} for c in classifications]
+
+
+# Callbacks para lidar com cliques nos botões de edição e exclusão
+# Esses callbacks apenas atualizam um store de cliques
+# para garantir que o n_clicks só seja incrementado quando houver um clique real
+
+@app.callback(
+    Output('dummy-div-edit', 'children'),
+    Input({'type': 'edit-button', 'index': dash.dependencies.ALL}, 'n_clicks'),
+    prevent_initial_call=True
+)
+def handle_edit_click(n_clicks_list):
+    ctx = dash.callback_context
+    if not ctx.triggered:
+        raise PreventUpdate
+
+    # Se o valor é None, o clique não foi de um usuário
+    triggered_value = ctx.triggered[0]['value']
+    if triggered_value is None:
+        raise PreventUpdate
+
+    # Retornar algo apenas para satisfazer o callback
+    return ""
+
+
+@app.callback(
+    Output('dummy-div-delete', 'children'),
+    Input({'type': 'delete-button', 'index': dash.dependencies.ALL}, 'n_clicks'),
+    prevent_initial_call=True
+)
+def handle_delete_click(n_clicks_list):
+    ctx = dash.callback_context
+    if not ctx.triggered:
+        raise PreventUpdate
+
+    # Se o valor é None, o clique não foi de um usuário
+    triggered_value = ctx.triggered[0]['value']
+    if triggered_value is None:
+        raise PreventUpdate
+
+    # Retornar algo apenas para satisfazer o callback
+    return ""
 
 
 # Iniciar o servidor

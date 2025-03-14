@@ -7,11 +7,13 @@ from data.eja_manager import EJAManager
 
 def create_eja_manager_layout():
     """
-    Cria o layout para a página de gerenciamento de EJAs.
+    Cria o layout para a página de gerenciamento de EJAs com dados pré-carregados
+    e suporte a paginação.
 
     Returns:
         dash.html.Div: Layout da página de gerenciamento de EJAs
     """
+    from app import create_eja_table
     # Obter um gerenciador de EJAs para carregar dados iniciais
     eja_manager = EJAManager()
     all_ejas = eja_manager.get_all_ejas()
@@ -21,6 +23,20 @@ def create_eja_manager_layout():
     return html.Div(
         className='container-fluid py-4',
         children=[
+            # Elementos dummy para receber outputs dos callbacks de clique
+            html.Div(id='dummy-div-edit', style={'display': 'none'}),
+            html.Div(id='dummy-div-delete', style={'display': 'none'}),
+            
+            # Store para paginação e filtragem - inicializado com todos os EJAs
+            dcc.Store(
+                id='eja-data-store', 
+                data={
+                    'all_ejas': all_ejas,
+                    'filtered_ejas': all_ejas,
+                    'page_current': 0
+                }
+            ),
+            
             # Título da página
             html.H2("Gerenciador de EJAs", className="mb-4 text-primary"),
 
@@ -94,7 +110,11 @@ def create_eja_manager_layout():
             dbc.Card([
                 dbc.CardHeader("Lista de EJAs"),
                 dbc.CardBody([
-                    html.Div(id="eja-table-container"),
+                    # Inicialmente carregamos a tabela com a primeira página
+                    html.Div(
+                        id="eja-table-container",
+                        children=create_eja_table(all_ejas, page_current=0)
+                    ),
 
                     # Elemento escondido para refreshes
                     html.Div(id="eja-delete-refresh", style={"display": "none"}),
@@ -102,70 +122,6 @@ def create_eja_manager_layout():
                 ])
             ]),
 
-            # Modal para adicionar/editar EJA
-            dbc.Modal([
-                dbc.ModalHeader(dbc.ModalTitle(id="eja-form-title")),
-                dbc.ModalBody([
-                    dbc.Form([
-                        # Campo oculto para ID
-                        dbc.Input(id="eja-form-id", type="hidden"),
-
-                        # EJA CODE
-                        dbc.Row([
-                            dbc.Label("EJA CODE *", html_for="eja-form-code", width=2),
-                            dbc.Col([
-                                dbc.Input(
-                                    id="eja-form-code",
-                                    type="number",
-                                    placeholder="Digite o código EJA...",
-                                    required=True,
-                                ),
-                            ]),
-                        ], className="mb-3"),
-
-                        # Título
-                        dbc.Row([
-                            dbc.Label("Título *", html_for="eja-form-title-input", width=2),
-                            dbc.Col([
-                                dbc.Input(
-                                    id="eja-form-title-input",
-                                    type="text",
-                                    placeholder="Digite o título do EJA...",
-                                    required=True,
-                                ),
-                            ]),
-                        ], className="mb-3"),
-
-                        # Classificação
-                        dbc.Row([
-                            dbc.Label("Classificação *", html_for="eja-form-classification", width=2),
-                            dbc.Col([
-                                dcc.Dropdown(
-                                    id="eja-form-classification",
-                                    options=[{'label': c, 'value': c} for c in classifications],
-                                    placeholder="Selecione a classificação...",
-                                ),
-                            ]),
-                        ], className="mb-3"),
-
-                        # Sub-classificação
-                        dbc.Row([
-                            dbc.Label("Sub-classificação", html_for="eja-form-subclassification", width=2),
-                            dbc.Col([
-                                dbc.Input(
-                                    id="eja-form-subclassification",
-                                    type="text",
-                                    placeholder="Digite a sub-classificação (opcional)...",
-                                ),
-                            ]),
-                        ], className="mb-3"),
-                    ]),
-                ]),
-                dbc.ModalFooter([
-                    dbc.Button("Cancelar", id="eja-form-cancel-button", color="secondary", className="me-2"),
-                    dbc.Button(id="eja-form-submit-button", color="primary"),
-                ]),
-            ], id="add-eja-modal", is_open=False, size="lg"),
 
             # Modal para confirmar exclusão
             dbc.Modal([
