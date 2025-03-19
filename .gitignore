@@ -2,5 +2,6 @@
 *.pyc
 *.pyo
 venv/
+aux_files/
 Exemplo Dashboard completo.png
 exemplo.html

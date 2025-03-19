@@ -4,7 +4,7 @@
 from components.graphs import (
     create_utilization_graph, create_availability_graph, create_programs_graph,
     create_other_skills_graph, create_internal_users_graph, create_external_sales_graph,
-    create_tracks_graph, create_areas_graph, create_customers_graph
+    create_tracks_graph, create_areas_graph
 )
 
 from components.sections import (

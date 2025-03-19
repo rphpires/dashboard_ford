@@ -56,7 +56,7 @@ body {
 /* ==================== Layout do Dashboard ==================== */
 
 /* Container principal - layout de tela cheia sem rolagem */
-.dashboard-container {
+/* .dashboard-container {
     max-width: none;
     width: 100vw;
     height: 100vh;
@@ -66,7 +66,7 @@ body {
     display: flex;
     flex-direction: column;
     overflow: hidden;
-}
+} */
 
 /* Header Styling - Moderno e compacto */
 .header {
@@ -133,12 +133,12 @@ body {
 /* ==================== Layout de 3 Colunas ==================== */
 
 /* Layout de conteúdo principal - 3 colunas */
-.dashboard-content {
+/* .dashboard-content {
     display: flex;
     flex: 1;
     gap: 10px;
     overflow: hidden;
-}
+} */
 
 /* Definições para layout de três colunas */
 .three-column-layout {
@@ -164,35 +164,18 @@ body {
     min-width: 400px;
 }
 
-/* Propriedades comuns para todas as colunas */
+/* Propriedades comuns para todas as colunas
 .column {
     min-width: 0;
     display: flex;
     flex-direction: column;
     gap: 10px;
     overflow-y: auto;
-    height: 100%;
-    padding-right: 5px;
-    scrollbar-width: thin;
-    scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
-}
-
-.column::-webkit-scrollbar {
-    width: 6px;
-}
-
-.column::-webkit-scrollbar-thumb {
-    background-color: rgba(0, 0, 0, 0.2);
-    border-radius: 3px;
-}
-
-.column::-webkit-scrollbar-track {
-    background-color: transparent;
-}
+} */
 
 /* ==================== Componentes de UI ==================== */
 
-/* Painéis e Cartões */
+/* Painéis e Cartões
 .panel {
     background-color: var(--card-bg);
     border-radius: 12px;
@@ -202,8 +185,7 @@ body {
     transition: transform 0.2s ease, box-shadow 0.2s ease;
     display: flex;
     flex-direction: column;
-    margin-bottom: 15px;
-}
+} */
 
 .panel:hover {
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
@@ -223,7 +205,6 @@ body {
     text-transform: uppercase;
     position: relative;
     overflow: hidden;
-    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
 }
 
 .section-title::after {
@@ -252,15 +233,15 @@ body {
     font-size: 11px; /* Reduzido de 12px */
 }
 
-.panel-content {
+/* .panel-content {
     padding: 10px;
     flex: 1;
     overflow: hidden;
     display: flex;
     flex-direction: column;
-}
+} */
 
-/* Caixas de métricas */
+/* Caixas de métricas
 .metric-box {
     display: flex;
     justify-content: space-between;
@@ -271,10 +252,7 @@ body {
     margin-bottom: 10px;
     border-radius: 8px;
     transition: all 0.2s ease;
-    flex-direction: column;
-    align-items: flex-start;
-    background: #f8f9fa;
-}
+} */
 
 .metric-box:hover {
     transform: translateY(-2px);
@@ -296,6 +274,16 @@ body {
     color: var(--primary-color);
     display: flex;
     align-items: center;
+}
+
+.metric-value::before {
+    content: '';
+    display: inline-block;
+    width: 6px; /* Reduzido de 8px */
+    height: 6px; /* Reduzido de 8px */
+    background-color: var(--primary-color);
+    border-radius: 50%;
+    margin-right: 6px; /* Reduzido de 8px */
 }
 
 /* Versão compacta para caixas de métricas */
@@ -333,21 +321,16 @@ body {
 }
 
 /* Layouts Flexíveis */
-.flex-container {
+/* .flex-container {
     display: flex;
     gap: 10px;
     margin-bottom: 10px;
-    flex-wrap: wrap;
-    justify-content: space-between;
-    width: 100%;
-}
+} */
 
-.flex-item {
+/* .flex-item {
     flex: 1;
     min-width: 0;
-    min-width: 48%;
-    margin-bottom: 10px;
-}
+} */
 
 /* Tamanhos específicos de gráficos */
 .chart-sm {
@@ -458,75 +441,6 @@ body {
     color: var(--text-light);
 }
 
-/* ==================== Novos Estilos para o Layout Modificado ==================== */
-
-/* Estilos específicos para os cards dentro da utilização */
-.utilization-cards {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    margin-bottom: 15px;
-    justify-content: space-between;
-}
-
-.utilization-cards .info-card {
-    flex: 1;
-    min-width: 120px;
-    background-color: white;
-    border-radius: 8px;
-    padding: 12px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-}
-
-/* Estilos para os gráficos expandidos */
-.expanded-chart {
-    height: 280px !important;
-}
-
-.expanded-chart-medium {
-    height: 240px !important;
-}
-
-/* Estilos para o gráfico de clientes com barras e indicadores */
-.customer-stacked-chart {
-    position: relative;
-}
-
-.customer-stacked-chart .gauge-indicators {
-    position: absolute;
-    right: 15px;
-    top: 50%;
-    transform: translateY(-50%);
-}
-
-.customer-stacked-chart .gauge-indicator {
-    display: flex;
-    align-items: center;
-    margin-bottom: 8px;
-}
-
-.customer-stacked-chart .gauge-value {
-    width: 30px;
-    height: 30px;
-    border-radius: 50%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    color: white;
-    font-weight: bold;
-    font-size: 11px;
-    margin-left: 10px;
-}
-
-/* Estilos para o treemap de tracks com 8 itens */
-.tracks-treemap {
-    height: 320px !important;
-}
-
-.tracks-treemap-limited .trace {
-    max-height: 300px !important;
-}
-
 /* ==================== Responsividade ==================== */
 
 /* Media queries para telas menores */
@@ -539,20 +453,15 @@ body {
         flex-basis: 100%;
         margin-bottom: 10px;
     }
-    
-    .dashboard-content {
-        flex-direction: column;
-    }
-    
-    .column {
-        width: 100% !important;
-        margin-bottom: 15px;
-    }
 }
 
 @media (max-width: 992px) {
     .flex-container {
         flex-direction: column;
+    }
+    
+    .column {
+        min-width: 100%;
     }
     
     .header {
@@ -604,7 +513,73 @@ body {
     /* Garantir que os gradientes sejam exibidos na impressão */
     .header, .section-title, .summary-card {
         -webkit-print-color-adjust: exact;
-        print-color-adjust: exact;
-        forced-color-adjust: none; /* Nova propriedade padronizada */
+        print-color-adjust: exact; /* Substitui color-adjust */
+    }
+}
+
+.dashboard-container {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.dashboard-content {
+    display: flex;
+    flex: 1;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    overflow: hidden;
+}
+
+.column {
+    height: 100%;
+    overflow-y: auto;
+    padding-right: 5px;
+}
+
+.panel {
+    margin-bottom: 15px;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+}
+
+.panel-content {
+    padding: 10px;
+}
+
+.metric-box {
+    background: #f8f9fa;
+    border-radius: 6px;
+    padding: 12px;
+    margin-bottom: 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.flex-container {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    width: 100%;
+}
+
+.flex-item {
+    flex: 1;
+    min-width: 48%;
+    margin-bottom: 10px;
+}
+
+/* Ajustes para evitar problemas de overflow em telas menores */
+@media (max-width: 1200px) {
+    .dashboard-content {
+        flex-direction: column;
+    }
+    
+    .column {
+        width: 100% !important;
+        margin-bottom: 15px;
     }
 }

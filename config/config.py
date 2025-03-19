@@ -11,7 +11,7 @@ colors = {
     'secondary_dark': '#388E3C',
     'accent': '#FF5722',
     'warning': '#FFC107',
-    
+
     # Texto e fundos
     'text': '#263238',
     'text_light': '#546E7A',
@@ -22,7 +22,7 @@ colors = {
     'grid_bg': '#FFFFFF',
     'card_border': 'rgba(0, 0, 0, 0.05)',
     'grid_line': '#ECEFF1',
-    
+
     # Componentes específicos
     'header_bg': '#1976D2',
     'header_text': '#FFFFFF',
@@ -30,7 +30,7 @@ colors = {
     'bar_color': '#2196F3',
     'bar_hover': '#1976D2',
     'target_line': '#FF5722',
-    
+
     # Paletas para gráficos
     'blue_palette': ['#E3F2FD', '#90CAF9', '#42A5F5', '#1E88E5', '#1565C0'],
     'green_palette': ['#E8F5E9', '#A5D6A7', '#66BB6A', '#43A047', '#2E7D32'],
@@ -46,7 +46,7 @@ chart_config = {
     'staticPlot': False,
     'displaylogo': False,
     'modeBarButtonsToRemove': [
-        'zoom2d', 'pan2d', 'select2d', 'lasso2d', 'zoomIn2d', 'zoomOut2d', 
+        'zoom2d', 'pan2d', 'select2d', 'lasso2d', 'zoomIn2d', 'zoomOut2d',
         'autoScale2d', 'resetScale2d', 'hoverClosestCartesian', 'hoverCompareCartesian',
         'toggleSpikelines'
     ],
@@ -58,12 +58,12 @@ layout_config = {
     'margin_default': {'l': 40, 'r': 20, 't': 20, 'b': 40},
     'margin_with_labels': {'l': 40, 'r': 20, 't': 20, 'b': 80},
     'margin_minimal': {'l': 10, 'r': 10, 't': 10, 'b': 10},
-    
+
     # Alturas padrão para gráficos
     'chart_sm_height': 150,
     'chart_md_height': 200,
     'chart_lg_height': 250,
-    
+
     # Espaçamento e larguras
     'bar_gap': 0.2,
     'group_gap': 0.1,
@@ -94,7 +94,7 @@ chart_style = {
         'paper_bgcolor': 'rgba(0,0,0,0)',
         'font': {'color': colors['text'], 'family': 'Inter, sans-serif'},
     },
-    
+
     # Estilo para barras
     'bar': {
         'marker': {
@@ -103,14 +103,14 @@ chart_style = {
         },
         'hoverinfo': 'text',
     },
-    
+
     # Estilo para linhas de meta
     'target_line': {
         'line': {'color': colors['target_line'], 'width': 2, 'dash': 'dash'},
         'mode': 'lines',
         'hoverinfo': 'none',
     },
-    
+
     # Estilo para rótulos dos gráficos
     'annotation': {
         'font': {'size': 10, 'color': colors['text_light']},
@@ -120,7 +120,7 @@ chart_style = {
         'borderwidth': 1,
         'borderpad': 4,
     },
-    
+
     # Estilo para hover labels
     'hoverlabel': {
         'bgcolor': 'white',

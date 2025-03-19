@@ -1,35 +1,39 @@
 # components/graphs.py
-# Funções para criação de gráficos do dashboard com visual moderno
+# Funções para criação de gráficos do dashboard
 import plotly.graph_objs as go
 import plotly.express as px
 from plotly.subplots import make_subplots
 import numpy as np
-from config.config import colors, layout_config, dashboard_constants
+from config.config import colors, layout_config, dashboard_constants  # Importar configurações de cores do projeto
 
 
-def create_utilization_graph(df):
+def create_utilization_graph(df, height=None):
     """Cria o gráfico de utilização mensal com design moderno e gradiente"""
+    # Usar altura padrão se não for fornecida
+    if height is None:
+        height = layout_config['chart_sm_height']
+
     # Definir paleta de cores para gradiente baseado nos valores
     max_value = max(df['utilization'])
     min_value = min(df['utilization'])
-    
+
     # Criar gradiente de cores
     color_scale = [[0, '#64B5F6'], [0.5, '#1E88E5'], [1, '#0D47A1']]
-    
+
     # Normalizar valores para coloração
-    norm_values = [(val - min_value) / (max_value - min_value) if max_value != min_value else 0.5 
-                  for val in df['utilization']]
-    
+    norm_values = [(val - min_value) / (max_value - min_value) if max_value != min_value else 0.5
+                   for val in df['utilization']]
+
     # Calcular cores com base na escala
     bar_colors = [px.colors.sample_colorscale(color_scale, v)[0] for v in norm_values]
-    
+
     # Adicionar brilho e profundidade
     fig = go.Figure()
-    
+
     # Adicionar linha de tendência suave
-    x_smooth = np.linspace(0, len(df['month'])-1, 100)
+    x_smooth = np.linspace(0, len(df['month']) - 1, 100)
     y_smooth = np.interp(x_smooth, np.arange(len(df['utilization'])), df['utilization'])
-    
+
     fig.add_trace(go.Scatter(
         x=[df['month'][int(i)] if i.is_integer() and int(i) < len(df['month']) else df['month'][int(i)] for i in x_smooth],
         y=y_smooth,
@@ -38,7 +42,7 @@ def create_utilization_graph(df):
         hoverinfo='skip',
         showlegend=False
     ))
-    
+
     # Adicionar barras com gradiente
     for i, (month, util, color) in enumerate(zip(df['month'], df['utilization'], bar_colors)):
         fig.add_trace(go.Bar(
@@ -53,7 +57,7 @@ def create_utilization_graph(df):
             hovertext=f"<b>{month}</b><br>Utilização: {util:.1f}%",
             showlegend=False
         ))
-    
+
     # Adicionar média como linha horizontal
     avg_util = df['utilization'].mean()
     fig.add_shape(
@@ -69,7 +73,7 @@ def create_utilization_graph(df):
             dash="dot",
         ),
     )
-    
+
     # Adicionar anotação para a média
     fig.add_annotation(
         x=1,
@@ -85,10 +89,10 @@ def create_utilization_graph(df):
         borderwidth=1,
         borderpad=4,
     )
-    
-    # Atualizar o layout
+
+    # Atualizar o layout com a altura personalizada
     fig.update_layout(
-        height=layout_config['chart_sm_height'],
+        height=height,  # Usar o valor de altura personalizado
         margin={'l': 40, 'r': 20, 't': 20, 'b': 40},
         plot_bgcolor='rgba(0,0,0,0)',
         paper_bgcolor='rgba(0,0,0,0)',
@@ -120,17 +124,21 @@ def create_utilization_graph(df):
             bordercolor="#DDD"
         ),
     )
-    
+
     return fig
 
 
-def create_availability_graph(df):
+def create_availability_graph(df, height=None):
     """Cria o gráfico de disponibilidade com design moderno usando áreas sombreadas"""
+    # Usar altura padrão se não for fornecida
+    if height is None:
+        height = layout_config['chart_sm_height']
+
     target = dashboard_constants['target_availability']
-    
+
     # Criar figura
     fig = go.Figure()
-    
+
     # Adicionar área sombreada para a meta
     fig.add_trace(go.Scatter(
         x=df['month'],
@@ -141,11 +149,11 @@ def create_availability_graph(df):
         showlegend=False,
         hoverinfo='skip'
     ))
-    
+
     # Adicionar barras para disponibilidade, com cores condicionais
     for i, (month, avail) in enumerate(zip(df['month'], df['availability'])):
         color = colors['accent'] if avail < target else '#2E7D32'  # Vermelho se abaixo da meta, verde se acima
-        
+
         fig.add_trace(go.Bar(
             x=[month],
             y=[avail],
@@ -158,7 +166,7 @@ def create_availability_graph(df):
             hovertext=f"<b>{month}</b><br>Disponibilidade: {avail:.1f}%<br>{'Abaixo da meta' if avail < target else 'Acima da meta'}",
             showlegend=False
         ))
-    
+
     # Adicionar linha de meta
     fig.add_trace(go.Scatter(
         x=df['month'],
@@ -168,10 +176,10 @@ def create_availability_graph(df):
         name=f'Meta ({target}%)',
         hoverinfo='skip'
     ))
-    
-    # Atualizar layout
+
+    # Atualizar layout com a altura personalizada
     fig.update_layout(
-        height=layout_config['chart_sm_height'],
+        height=height,  # Usar o valor de altura personalizado
         margin={'l': 40, 'r': 20, 't': 20, 'b': 40},
         plot_bgcolor='rgba(0,0,0,0)',
         paper_bgcolor='rgba(0,0,0,0)',
@@ -225,32 +233,36 @@ def create_availability_graph(df):
             bordercolor="#DDD"
         ),
     )
-    
+
     return fig
 
 
-def create_programs_graph(df):
+def create_programs_graph(df, height=None):
     """Cria o gráfico de utilização por programas com barras horizontais e estilo moderno"""
+    # Usar altura padrão se não for fornecida
+    if height is None:
+        height = layout_config['chart_sm_height']
+
     # Ordenar os dados por horas (decrescente)
     df_sorted = df.sort_values('hours', ascending=False)
-    
+
     # Criar figura
     fig = go.Figure()
-    
+
     # Definir paleta de cores para gradiente baseado nos valores
     max_value = max(df_sorted['hours'])
     min_value = min(df_sorted['hours'])
-    
+
     # Criar gradiente de cores
     color_scale = [[0, '#64B5F6'], [0.5, '#1E88E5'], [1, '#0D47A1']]
-    
+
     # Normalizar valores para coloração
-    norm_values = [(val - min_value) / (max_value - min_value) if max_value != min_value else 0.5 
-                  for val in df_sorted['hours']]
-    
+    norm_values = [(val - min_value) / (max_value - min_value) if max_value != min_value else 0.5
+                   for val in df_sorted['hours']]
+
     # Calcular cores com base na escala
     bar_colors = [px.colors.sample_colorscale(color_scale, v)[0] for v in norm_values]
-    
+
     # Adicionar barras horizontais
     fig.add_trace(go.Bar(
         y=df_sorted['program'],
@@ -263,10 +275,10 @@ def create_programs_graph(df):
         textfont=dict(size=10),
         hovertemplate='<b>%{y}</b><br>Horas: %{x}<extra></extra>',
     ))
-    
-    # Atualizar layout
+
+    # Atualizar layout com a altura personalizada
     fig.update_layout(
-        height=layout_config['chart_sm_height'],
+        height=height,  # Usar o valor de altura personalizado
         margin={'l': 100, 'r': 20, 't': 10, 'b': 40},
         plot_bgcolor='rgba(0,0,0,0)',
         paper_bgcolor='rgba(0,0,0,0)',
@@ -296,25 +308,29 @@ def create_programs_graph(df):
             bordercolor="#DDD"
         ),
     )
-    
+
     return fig
 
 
-def create_other_skills_graph(df):
+def create_other_skills_graph(df, height=None):
     """Cria o gráfico de outras equipes de habilidades com barras horizontais e estilo moderno"""
+    # Usar altura padrão se não for fornecida
+    if height is None:
+        height = layout_config['chart_sm_height']
+
     # Ordenar os dados por horas (decrescente)
     df_sorted = df.sort_values('hours', ascending=False)
-    
+
     # Criar figura com subplots
     fig = make_subplots(specs=[[{"secondary_y": True}]])
-    
+
     # Definir paleta de cores
     colors_list = ['#1E88E5', '#42A5F5', '#64B5F6', '#90CAF9']
-    
+
     # Calcular percentual
     total = df_sorted['hours'].sum()
     percentages = df_sorted['hours'] / total * 100
-    
+
     # Adicionar barras
     fig.add_trace(
         go.Bar(
@@ -329,10 +345,10 @@ def create_other_skills_graph(df):
             hovertemplate='<b>%{y}</b><br>Horas: %{x}<br>Percentual: %{text}<extra></extra>',
         )
     )
-    
-    # Atualizar layout
+
+    # Atualizar layout com a altura personalizada
     fig.update_layout(
-        height=layout_config['chart_sm_height'],
+        height=height,  # Usar o valor de altura personalizado
         margin={'l': 100, 'r': 20, 't': 10, 'b': 30},
         plot_bgcolor='rgba(0,0,0,0)',
         paper_bgcolor='rgba(0,0,0,0)',
@@ -363,23 +379,27 @@ def create_other_skills_graph(df):
         ),
         showlegend=False,
     )
-    
+
     return fig
 
 
-def create_internal_users_graph(df):
+def create_internal_users_graph(df, height=None):
     """Cria o gráfico de usuários internos com design moderno usando gráfico de pizza"""
+    # Usar altura padrão se não for fornecida
+    if height is None:
+        height = layout_config['chart_md_height']
+
     # Ordenar os dados por horas (decrescente)
     df_sorted = df.sort_values('hours', ascending=False)
-    
+
     # Calcular percentuais
     total = df_sorted['hours'].sum()
     percentages = [f"{(val/total*100):.1f}%" for val in df_sorted['hours']]
-    
+
     # Definir cores mais atraentes
-    colors_list = ['#1E88E5', '#42A5F5', '#64B5F6', '#90CAF9', '#BBDEFB', 
-                  '#0D47A1', '#1565C0', '#1976D2', '#1E88E5', '#2196F3']
-    
+    colors_list = ['#1E88E5', '#42A5F5', '#64B5F6', '#90CAF9', '#BBDEFB',
+                   '#0D47A1', '#1565C0', '#1976D2', '#1E88E5', '#2196F3']
+
     # Criar figura com subplots
     fig = make_subplots(
         rows=1, cols=2,
@@ -387,7 +407,7 @@ def create_internal_users_graph(df):
         column_widths=[0.4, 0.6],
         horizontal_spacing=0.01
     )
-    
+
     # Adicionar gráfico de pizza
     fig.add_trace(
         go.Pie(
@@ -400,10 +420,13 @@ def create_internal_users_graph(df):
             hovertemplate='<b>%{label}</b><br>Horas: %{value}<br>Percentual: %{percent}<extra></extra>',
             marker=dict(colors=colors_list[:len(df_sorted)], line=dict(color='white', width=1)),
             showlegend=False,
+            # Opcionalmente usar os percentuais calculados:
+            text=percentages,
+            # textinfo='text+label'
         ),
         row=1, col=1
     )
-    
+
     # Adicionar barras horizontais
     fig.add_trace(
         go.Bar(
@@ -419,7 +442,7 @@ def create_internal_users_graph(df):
         ),
         row=1, col=2
     )
-    
+
     # Adicionar anotação no centro do donut
     fig.add_annotation(
         text=f"{total}<br>Total",
@@ -429,10 +452,10 @@ def create_internal_users_graph(df):
         xref="paper",
         yref="paper"
     )
-    
-    # Atualizar layout
+
+    # Atualizar layout com a altura personalizada
     fig.update_layout(
-        height=layout_config['chart_md_height'],
+        height=height,  # Usar o valor de altura personalizado
         margin={'l': 10, 'r': 10, 't': 10, 'b': 10},
         plot_bgcolor='rgba(0,0,0,0)',
         paper_bgcolor='rgba(0,0,0,0)',
@@ -460,25 +483,29 @@ def create_internal_users_graph(df):
             bordercolor="#DDD"
         ),
     )
-    
+
     return fig
 
 
-def create_external_sales_graph(df):
+def create_external_sales_graph(df, height=None):
     """Cria o gráfico de vendas externas com design moderno usando gráfico de rosca"""
+    # Usar altura padrão se não for fornecida
+    if height is None:
+        height = layout_config['chart_md_height']
+
     # Ordenar dados
     df_sorted = df.sort_values('hours', ascending=False)
-    
+
     # Calcular percentuais
     total = df_sorted['hours'].sum()
     percentages = [f"{(val/total*100):.1f}%" for val in df_sorted['hours']]
-    
+
     # Definir cores
     colors_list = ['#00897B', '#26A69A', '#4DB6AC', '#80CBC4', '#B2DFDB']
-    
+
     # Criar figura
     fig = go.Figure()
-    
+
     # Adicionar gráfico de rosca
     fig.add_trace(
         go.Pie(
@@ -491,9 +518,12 @@ def create_external_sales_graph(df):
             hoverinfo='label+value+percent',
             hovertemplate='<b>%{label}</b><br>Horas: %{value}<br>Percentual: %{percent}<extra></extra>',
             marker=dict(colors=colors_list[:len(df_sorted)], line=dict(color='white', width=1)),
+            # Opcionalmente usar os percentuais calculados:
+            text=percentages,
+            # textinfo='text+label',
         )
     )
-    
+
     # Adicionar anotação no centro
     fig.add_annotation(
         text=f"{total}<br>Total",
@@ -501,10 +531,10 @@ def create_external_sales_graph(df):
         font=dict(size=14, color='#333', family="Segoe UI, sans-serif"),
         showarrow=False
     )
-    
-    # Atualizar layout
+
+    # Atualizar layout com a altura personalizada
     fig.update_layout(
-        height=layout_config['chart_md_height'],
+        height=height,  # Usar a altura passada como parâmetro
         margin={'l': 10, 'r': 10, 't': 10, 'b': 10},
         plot_bgcolor='rgba(0,0,0,0)',
         paper_bgcolor='rgba(0,0,0,0)',
@@ -524,18 +554,22 @@ def create_external_sales_graph(df):
             bordercolor="#DDD"
         ),
     )
-    
+
     return fig
 
 
-def create_tracks_graph(df, height=None, bottom_margin=None):
+def create_tracks_graph(df, height=None, bottom_margin=None, max_items=None):
     """Cria o gráfico de utilização por tracks com design moderno usando treemap"""
     if height is None:
         height = layout_config['chart_md_height']
-    
-    # Ordenar dados
-    df_sorted = df.sort_values('hours', ascending=False)
-    
+
+    # Limitar para os top N itens, se solicitado
+    if max_items is not None:
+        df_sorted = df.sort_values('hours', ascending=False).head(max_items)
+    else:
+        # Ordenar dados
+        df_sorted = df.sort_values('hours', ascending=False)
+
     # Criar treemap usando plotly express
     fig = px.treemap(
         df_sorted,
@@ -546,16 +580,16 @@ def create_tracks_graph(df, height=None, bottom_margin=None):
         hover_data={'hours': True, 'percentage': True},
         custom_data=['percentage']
     )
-    
+
     # Atualizar texto e layout do treemap
     fig.update_traces(
         textinfo='label+value',
         hovertemplate='<b>%{label}</b><br>Horas: %{value}<br>Percentual: %{customdata[0]}<extra></extra>'
     )
-    
-    # Atualizar layout
+
+    # Atualizar layout com a altura personalizada
     fig.update_layout(
-        height=height,
+        height=height,  # Usar a altura passada como parâmetro
         margin={'l': 10, 'r': 10, 't': 10, 'b': bottom_margin or 10},
         coloraxis_showscale=False,
         plot_bgcolor='rgba(0,0,0,0)',
@@ -567,7 +601,7 @@ def create_tracks_graph(df, height=None, bottom_margin=None):
             bordercolor="#DDD"
         ),
     )
-    
+
     return fig
 
 
@@ -575,10 +609,10 @@ def create_areas_graph(df, height=None):
     """Cria o gráfico de utilização por áreas com design moderno usando gráfico de pizza"""
     if height is None:
         height = layout_config['chart_md_height']
-    
+
     # Ordenar dados
     df_sorted = df.sort_values('hours', ascending=False)
-    
+
     # Criar figura com subplots
     fig = make_subplots(
         rows=1, cols=2,
@@ -586,11 +620,11 @@ def create_areas_graph(df, height=None):
         column_widths=[0.4, 0.6],
         horizontal_spacing=0.01
     )
-    
+
     # Definir cores mais atraentes
-    colors_list = ['#388E3C', '#43A047', '#4CAF50', '#66BB6A', '#81C784', 
-                  '#A5D6A7', '#C8E6C9', '#1B5E20', '#2E7D32', '#388E3C']
-    
+    colors_list = ['#388E3C', '#43A047', '#4CAF50', '#66BB6A', '#81C784',
+                   '#A5D6A7', '#C8E6C9', '#1B5E20', '#2E7D32', '#388E3C']
+
     # Adicionar gráfico de pizza
     fig.add_trace(
         go.Pie(
@@ -606,7 +640,7 @@ def create_areas_graph(df, height=None):
         ),
         row=1, col=1
     )
-    
+
     # Adicionar barras horizontais
     fig.add_trace(
         go.Bar(
@@ -622,7 +656,7 @@ def create_areas_graph(df, height=None):
         ),
         row=1, col=2
     )
-    
+
     # Adicionar anotação no centro do donut
     total = df_sorted['hours'].sum()
     fig.add_annotation(
@@ -633,10 +667,10 @@ def create_areas_graph(df, height=None):
         xref="paper",
         yref="paper"
     )
-    
-    # Atualizar layout
+
+    # Atualizar layout com a altura personalizada
     fig.update_layout(
-        height=height,
+        height=height,  # Usar a altura passada como parâmetro
         margin={'l': 10, 'r': 10, 't': 10, 'b': 10},
         plot_bgcolor='rgba(0,0,0,0)',
         paper_bgcolor='rgba(0,0,0,0)',
@@ -664,45 +698,125 @@ def create_areas_graph(df, height=None):
             bordercolor="#DDD"
         ),
     )
-    
+
     return fig
 
 
-def create_customers_graph(df):
-    """Cria o gráfico de utilização por clientes com design moderno usando sunburst"""
+def create_customers_stacked_graph(df, height=None):
+    """Cria um gráfico de barras empilhadas para visualização de clientes"""
+    if height is None:
+        height = layout_config['chart_md_height']
+
     # Ordenar dados
     df_sorted = df.sort_values('hours', ascending=False)
-    
-    # Criar sunburst usando plotly express
-    fig = px.sunburst(
-        df_sorted,
-        values='hours',
-        path=[px.Constant('Clientes'), 'customer_type'],
-        color='hours',
-        color_continuous_scale=['#FFECB3', '#FFE082', '#FFD54F', '#FFCA28', '#FFC107', '#FFB300', '#FFA000'],
-        hover_data={'hours': True, 'percentage': True},
-        custom_data=['percentage']
-    )
-    
-    # Atualizar texto e layout do sunburst
-    fig.update_traces(
-        textinfo='label+value',
-        hovertemplate='<b>%{label}</b><br>Horas: %{value}<br>Percentual: %{customdata[0]}<extra></extra>'
-    )
-    
-    # Atualizar layout
+
+    # Preparar dados para barras empilhadas - simulando subclassificações
+    # Em um caso real, você usaria subclassificações reais dos dados
+
+    # Criar figura
+    fig = go.Figure()
+
+    # Paleta de cores
+    colors_list = ['#FF6D00', '#FF9100', '#FFAB00', '#FFD600', '#AEEA00', '#64DD17', '#00C853', '#00BFA5']
+
+    # Adicionar primeira categoria como barra principal
+    fig.add_trace(go.Bar(
+        y=df_sorted['customer_type'],
+        x=df_sorted['hours'],
+        text=df_sorted['hours'],
+        textposition='auto',
+        orientation='h',
+        marker=dict(color=colors_list[:len(df_sorted)]),
+        name='Total',
+        hovertemplate='<b>%{y}</b><br>Horas: %{x}<br>Percentual: %{text}<extra></extra>',
+    ))
+
+    # Adicionar um indicador visual na forma de marcadores
+    fig.add_trace(go.Scatter(
+        y=df_sorted['customer_type'],
+        x=[max(df_sorted['hours']) * 1.05] * len(df_sorted),
+        mode='markers+text',
+        text=df_sorted['percentage'],
+        textposition='middle right',
+        marker=dict(
+            symbol='circle',
+            size=16,
+            color=colors_list[:len(df_sorted)],
+            line=dict(color='white', width=2)
+        ),
+        hoverinfo='none',
+        showlegend=False
+    ))
+
+    # Atualizar layout para ser mais moderno
     fig.update_layout(
-        height=layout_config['chart_md_height'],
-        margin={'l': 10, 'r': 10, 't': 10, 'b': 10},
-        coloraxis_showscale=False,
+        height=height,
+        margin={'l': 10, 'r': 70, 't': 10, 'b': 10},
         plot_bgcolor='rgba(0,0,0,0)',
         paper_bgcolor='rgba(0,0,0,0)',
+        barmode='stack',
+        bargap=0.3,
+        xaxis=dict(
+            showgrid=True,
+            gridcolor='rgba(224, 224, 224, 0.5)',
+            zeroline=False,
+            showline=True,
+            linecolor='#E0E0E0',
+        ),
+        yaxis=dict(
+            showgrid=False,
+            zeroline=False,
+            showline=True,
+            linecolor='#E0E0E0',
+            automargin=True,
+        ),
         hoverlabel=dict(
             bgcolor="white",
             font_size=12,
             font_family="Segoe UI",
             bordercolor="#DDD"
         ),
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            xanchor="right",
+            x=1
+        ),
+        annotations=[
+            dict(
+                x=max(df_sorted['hours']) * 1.15,
+                y=df_sorted['customer_type'].iloc[i],
+                text=f"{int(df_sorted['hours'].iloc[i])} hr",
+                showarrow=False,
+                font=dict(size=11, color="#333"),
+                xanchor="left",
+                yanchor="middle",
+            ) for i in range(len(df_sorted))
+        ]
     )
-    
+
+    # Adicionar gráfico de pizza pequeno para resumo visual
+    fig.add_trace(go.Pie(
+        labels=df_sorted['customer_type'],
+        values=df_sorted['hours'],
+        domain=dict(x=[0.85, 1], y=[0.1, 0.5]),
+        textinfo='none',
+        hole=0.7,
+        marker=dict(colors=colors_list[:len(df_sorted)]),
+        showlegend=False,
+        hoverinfo='none'
+    ))
+
+    # Adicionar título para o gráfico de pizza
+    fig.add_annotation(
+        x=0.925,
+        y=0.3,
+        xref="paper",
+        yref="paper",
+        text="Visão<br>Geral",
+        showarrow=False,
+        font=dict(size=10, color="#333"),
+    )
+
     return fig

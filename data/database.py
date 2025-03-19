@@ -98,7 +98,8 @@ class EJAReportGenerator:
         eja_codes_da_classificacao = set(eja_filtrado['EJA CODE'].tolist())
 
         # Filtrar registros do dashboard que têm EJA correspondente na classificação
-        dashboard_filtrado = self.dashboard_df[self.dashboard_df['EJA'].isin(eja_codes_da_classificacao)]
+        # dashboard_filtrado = self.dashboard_df[self.dashboard_df['EJA'].isin(eja_codes_da_classificacao)]
+        dashboard_filtrado = self.dashboard_df[self.dashboard_df['EJA'].isin(eja_codes_da_classificacao)].copy()
 
         if len(dashboard_filtrado) == 0:
             return {"error": f"Nenhum registro no dashboard corresponde à classificação '{classificacao}'"}
