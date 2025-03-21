@@ -263,7 +263,7 @@ def create_left_column(dfs, ytd_utilization_percentage, ytd_availability_percent
                         # Gráfico expandido verticalmente
                         create_graph_section(
                             'utilization-graph',
-                            create_utilization_graph(dfs['utilization'], height=300)
+                            create_utilization_graph(dfs['utilization'], height=240)
                         )
                     ]
                 )

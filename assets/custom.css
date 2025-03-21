@@ -57,17 +57,15 @@ body {
 
 /* Container principal - layout de tela cheia sem rolagem */
 .dashboard-container {
-    max-width: none;
-    width: 100vw;
-    height: 110vh !important;
+    max-width: 100%;
+    width: 100%;
+    height: 100vh;
     margin: 0;
-    padding: 15px;
+    padding: 10px;
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    /* transform: scale(0.9);
-    transform-origin: top left; */
 }
 
 /* Header Styling - Moderno e compacto */
@@ -83,6 +81,9 @@ body {
     box-shadow: var(--card-shadow);
     position: relative;
     overflow: hidden;
+    flex-shrink: 0;
+    min-height: 50px;
+    max-height: 50px;
 }
 
 .header::after {
@@ -104,30 +105,30 @@ body {
 }
 
 .logo {
-    height: 28px; /* Reduzido de 32px */
-    margin-right: 15px; /* Reduzido de 18px */
+    height: 28px;
+    margin-right: 15px;
     filter: brightness(0) invert(1);
 }
 
 .header-title {
-    font-size: 18px; /* Reduzido de 24px */
+    font-size: 18px;
     font-weight: 600;
     letter-spacing: 0.02em;
 }
 
 .header-subtitle {
-    font-size: 14px; /* Reduzido de 18px */
+    font-size: 14px;
     font-weight: 500;
-    margin-left: 20px; /* Reduzido de 24px */
+    margin-left: 20px;
     letter-spacing: 0.01em;
     opacity: 0.9;
 }
 
 .header-date {
-    font-size: 16px; /* Reduzido de 18px */
+    font-size: 16px;
     font-weight: 500;
     background-color: rgba(255, 255, 255, 0.2);
-    padding: 5px 10px; /* Reduzido de 6px 12px */
+    padding: 5px 10px;
     border-radius: 16px;
     z-index: 1;
 }
@@ -140,6 +141,7 @@ body {
     flex: 1;
     gap: 10px;
     overflow: hidden;
+    height: calc(100vh - 100px);
 }
 
 /* Definições para layout de três colunas */
@@ -152,18 +154,18 @@ body {
 
 /* Tamanhos específicos para as 3 colunas */
 .column-small {
-    flex: 0.8;
-    min-width: 180;
+    flex: 0.75;
+    min-width: 180px;
 }
 
 .column-medium {
-    flex: 1;
-    min-width: 200;
+    flex: 1.25;
+    min-width: 250px;
 }
 
 .column-large {
     flex: 1.25;
-    min-width: 300;
+    min-width: 250px;
 }
 
 /* Propriedades comuns para todas as colunas */
@@ -171,8 +173,9 @@ body {
     min-width: 0;
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 8px;
     overflow-y: auto;
+    overflow-x: hidden;
     height: 100%;
     padding-right: 5px;
     scrollbar-width: thin;
@@ -204,7 +207,9 @@ body {
     transition: transform 0.2s ease, box-shadow 0.2s ease;
     display: flex;
     flex-direction: column;
-    margin-bottom: 15px;
+    margin-bottom: 10px;
+    flex-shrink: 0;
+    min-height: 0;
 }
 
 .panel:hover {
@@ -226,6 +231,7 @@ body {
     position: relative;
     overflow: hidden;
     border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    flex-shrink: 0;
 }
 
 .section-title::after {
@@ -253,16 +259,17 @@ body {
     background-color: rgba(255, 255, 255, 0.2);
     padding: 3px 8px;
     border-radius: 14px;
-    font-size: 13px !important; /* Sobrescreveu a primeira */
-    letter-spacing: 0.2px; /* Nova propriedade adicionada */
+    font-size: 13px !important;
+    letter-spacing: 0.2px;
 }
 
 .panel-content {
     padding: 8px;
-    flex: 1;
-    overflow: hidden;
     display: flex;
     flex-direction: column;
+    overflow: hidden;
+    flex: 1;
+    min-height: 0;
 }
 
 /* Caixas de métricas */
@@ -279,6 +286,7 @@ body {
     flex-direction: column;
     align-items: flex-start;
     background: #f8f9fa;
+    flex-shrink: 0;
 }
 
 .metric-box:hover {
@@ -297,7 +305,7 @@ body {
 
 .metric-value {
     font-weight: 700;
-    font-size: 14px; /* Reduzido de 16px */
+    font-size: 14px;
     color: var(--primary-color);
     display: flex;
     align-items: center;
@@ -318,19 +326,27 @@ body {
 /* Containers de gráficos */
 .chart-container {
     background-color: var(--card-bg);
-    border-radius: 8px; /* Reduzido de 10px */
+    border-radius: 8px;
     padding: 8px;
     margin-bottom: 8px;
     box-shadow: 0 1px 3px rgba(0,0,0,0.05);
     border: 1px solid var(--card-border);
-    flex: 1;
     display: flex;
     flex-direction: column;
+    flex: 1;
+    position: relative;
+    min-height: 0;
+    overflow: hidden;
 }
 
 /* Plotly personalização */
+.js-plotly-plot {
+    width: 100% !important;
+    height: 100% !important;
+}
+
 .js-plotly-plot .plotly .main-svg {
-    border-radius: 6px; /* Reduzido de 8px */
+    border-radius: 6px;
 }
 
 .js-plotly-plot .plotly .bars .points path {
@@ -339,7 +355,7 @@ body {
 
 .js-plotly-plot .ytick text, 
 .js-plotly-plot .xtick text {
-    font-size: 10px !important;  /* Manter tamanho dos ticks legível */
+    font-size: 10px !important;
 }
 
 /* Layouts Flexíveis */
@@ -354,30 +370,32 @@ body {
 
 .flex-item {
     flex: 1;
-    min-width: 0;
     min-width: 48%;
     margin-bottom: 10px;
 }
 
 /* Tamanhos específicos de gráficos */
 .chart-sm {
-    height: 120px; /* Reduzido de 150px */
+    height: 120px;
+    min-height: 120px;
 }
 
 .chart-md {
-    height: 160px; /* Reduzido de 200px */
+    height: 150px;
+    min-height: 150px;
 }
 
 .chart-lg {
-    height: 200px; /* Reduzido de 250px */
+    height: 180px;
+    min-height: 180px;
 }
 
 /* Cards de resumo para números importantes */
 .summary-card {
     background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
     color: white;
-    border-radius: 8px; /* Reduzido de 10px */
-    padding: 12px; /* Reduzido de 16px */
+    border-radius: 8px;
+    padding: 12px;
     display: flex;
     flex-direction: column;
     text-align: center;
@@ -391,29 +409,29 @@ body {
     position: absolute;
     bottom: -20px;
     right: -20px;
-    width: 80px; /* Reduzido de 100px */
-    height: 80px; /* Reduzido de 100px */
+    width: 80px;
+    height: 80px;
     background-color: rgba(255, 255, 255, 0.1);
     border-radius: 50%;
 }
 
 .summary-title {
-    font-size: 11px; /* Reduzido de 12px */
+    font-size: 11px;
     font-weight: 500;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    margin-bottom: 8px; /* Reduzido de 10px */
+    margin-bottom: 8px;
     opacity: 0.9;
 }
 
 .summary-value {
-    font-size: 24px; /* Reduzido de 28px */
+    font-size: 24px;
     font-weight: 700;
-    margin-bottom: 3px; /* Reduzido de 5px */
+    margin-bottom: 3px;
 }
 
 .summary-subtitle {
-    font-size: 10px; /* Reduzido de 12px */
+    font-size: 10px;
     opacity: 0.8;
 }
 
@@ -432,12 +450,12 @@ body {
 }
 
 .compact-info-cards .summary-value {
-    font-size: 20px;
+    font-size: 18px;
     margin-bottom: 2px;
 }
 
 .compact-info-cards .summary-subtitle {
-    font-size: 10px;
+    font-size: 9px;
 }
 
 /* Containers com bordas */
@@ -466,6 +484,46 @@ body {
     text-align: center;
     font-size: 11px;
     color: var(--text-light);
+    flex-shrink: 0;
+    max-height: 30px;
+}
+
+/* ==================== Estilos específicos para gráficos ==================== */
+
+/* Utilização % */
+.utilization-graph .js-plotly-plot,
+.availability-graph .js-plotly-plot {
+    min-height: 190px;
+    height: 190px !important;
+}
+
+/* Detalhamento de utilização */
+.programs-graph .js-plotly-plot,
+.other-skills-graph .js-plotly-plot {
+    min-height: 170px;
+    height: 170px !important;
+}
+
+.internal-users-graph .js-plotly-plot,
+.external-sales-graph .js-plotly-plot {
+    min-height: 170px;
+    height: 170px !important;
+}
+
+/* Tracks, áreas e clientes */
+.monthly-tracks-graph .js-plotly-plot {
+    min-height: 210px;
+    height: 210px !important;
+}
+
+.monthly-areas-graph .js-plotly-plot {
+    min-height: 210px;
+    height: 210px !important;
+}
+
+.ytd-customers-graph .js-plotly-plot {
+    min-height: 210px;
+    height: 210px !important;
 }
 
 /* ==================== Novos Estilos para o Layout Modificado ==================== */
@@ -475,7 +533,7 @@ body {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
-    margin-bottom: 15px;
+    margin-bottom: 10px;
     justify-content: space-between;
 }
 
@@ -484,17 +542,8 @@ body {
     min-width: 120px;
     background-color: white;
     border-radius: 8px;
-    padding: 12px;
+    padding: 8px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-}
-
-/* Estilos para os gráficos expandidos */
-.expanded-chart {
-    height: 280px !important;
-}
-
-.expanded-chart-medium {
-    height: 240px !important;
 }
 
 /* Estilos para o gráfico de clientes com barras e indicadores */
@@ -528,35 +577,53 @@ body {
     margin-left: 10px;
 }
 
-/* Estilos para o treemap de tracks com 8 itens */
-.tracks-treemap {
-    height: 320px !important;
-}
-
-.tracks-treemap-limited .trace {
-    max-height: 300px !important;
-}
-
 /* ==================== Responsividade ==================== */
 
-/* Media queries para telas menores */
-@media (max-width: 1200px) {
-    .three-column-layout {
-        flex-wrap: wrap;
+@media (min-width: 1201px) {
+    /* Ajustes para telas grandes */
+    .utilization-graph .js-plotly-plot,
+    .availability-graph .js-plotly-plot {
+        min-height: 210px;
+        height: 210px !important;
     }
     
+    .programs-graph .js-plotly-plot,
+    .other-skills-graph .js-plotly-plot {
+        min-height: 200px;
+        height: 200px !important;
+    }
+    
+    .monthly-tracks-graph .js-plotly-plot,
+    .monthly-areas-graph .js-plotly-plot,
+    .ytd-customers-graph .js-plotly-plot {
+        min-height: 230px;
+        height: 230px !important;
+    }
+}
+
+@media (max-width: 1200px) {
     .column-small, .column-medium, .column-large {
-        flex-basis: 100%;
-        margin-bottom: 10px;
+        width: 100% !important;
+        min-height: 400px;
+        margin-bottom: 15px;
     }
     
     .dashboard-content {
         flex-direction: column;
+        height: auto;
+        overflow-y: auto;
     }
     
     .column {
-        width: 100% !important;
-        margin-bottom: 15px;
+        overflow-y: visible;
+        height: auto;
+    }
+    
+    /* Ajustar alturas de gráficos para telas médias */
+    .utilization-graph .js-plotly-plot,
+    .availability-graph .js-plotly-plot {
+        min-height: 180px;
+        height: 180px !important;
     }
 }
 
@@ -568,11 +635,52 @@ body {
     .header {
         flex-direction: column;
         align-items: flex-start;
-        padding: 8px 15px;
     }
     
     .header-date {
         margin-top: 10px;
+    }
+    
+    /* Reduzir ainda mais para telas pequenas */
+    .utilization-graph .js-plotly-plot,
+    .availability-graph .js-plotly-plot,
+    .programs-graph .js-plotly-plot,
+    .other-skills-graph .js-plotly-plot,
+    .internal-users-graph .js-plotly-plot,
+    .external-sales-graph .js-plotly-plot,
+    .monthly-tracks-graph .js-plotly-plot,
+    .monthly-areas-graph .js-plotly-plot,
+    .ytd-customers-graph .js-plotly-plot {
+        min-height: 160px;
+        height: 160px !important;
+    }
+}
+
+@media (max-height: 768px) {
+    /* Escalar para baixo em telas com altura menor */
+    .utilization-graph .js-plotly-plot,
+    .availability-graph .js-plotly-plot {
+        min-height: 150px;
+        height: 150px !important;
+    }
+    
+    .programs-graph .js-plotly-plot,
+    .other-skills-graph .js-plotly-plot {
+        min-height: 140px;
+        height: 140px !important;
+    }
+    
+    .internal-users-graph .js-plotly-plot,
+    .external-sales-graph .js-plotly-plot {
+        min-height: 140px;
+        height: 140px !important;
+    }
+    
+    .monthly-tracks-graph .js-plotly-plot,
+    .monthly-areas-graph .js-plotly-plot,
+    .ytd-customers-graph .js-plotly-plot {
+        min-height: 160px;
+        height: 160px !important;
     }
 }
 
@@ -604,7 +712,6 @@ body {
         background: var(--primary-color) !important;
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
-        padding: 8px 15px;
     }
     
     .section-title {
@@ -617,7 +724,6 @@ body {
     .header, .section-title, .summary-card {
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;
-        forced-color-adjust: none; /* Nova propriedade padronizada */
-        padding: 8px 15px;
+        forced-color-adjust: none;
     }
 }

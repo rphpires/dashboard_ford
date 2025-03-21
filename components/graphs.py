@@ -93,6 +93,7 @@ def create_utilization_graph(df, height=None):
     # Atualizar o layout com a altura personalizada
     fig.update_layout(
         height=height,  # Usar o valor de altura personalizado
+        autosize=True,
         margin={'l': 40, 'r': 20, 't': 20, 'b': 40},
         plot_bgcolor='rgba(0,0,0,0)',
         paper_bgcolor='rgba(0,0,0,0)',
@@ -180,6 +181,7 @@ def create_availability_graph(df, height=None):
     # Atualizar layout com a altura personalizada
     fig.update_layout(
         height=height,  # Usar o valor de altura personalizado
+        autosize=True,
         margin={'l': 40, 'r': 20, 't': 20, 'b': 40},
         plot_bgcolor='rgba(0,0,0,0)',
         paper_bgcolor='rgba(0,0,0,0)',
@@ -279,6 +281,7 @@ def create_programs_graph(df, height=None):
     # Atualizar layout com a altura personalizada
     fig.update_layout(
         height=height,  # Usar o valor de altura personalizado
+        autosize=True,
         margin={'l': 100, 'r': 20, 't': 10, 'b': 40},
         plot_bgcolor='rgba(0,0,0,0)',
         paper_bgcolor='rgba(0,0,0,0)',
@@ -349,6 +352,7 @@ def create_other_skills_graph(df, height=None):
     # Atualizar layout com a altura personalizada
     fig.update_layout(
         height=height,  # Usar o valor de altura personalizado
+        autosize=True,
         margin={'l': 100, 'r': 20, 't': 10, 'b': 30},
         plot_bgcolor='rgba(0,0,0,0)',
         paper_bgcolor='rgba(0,0,0,0)',
@@ -456,6 +460,7 @@ def create_internal_users_graph(df, height=None):
     # Atualizar layout com a altura personalizada
     fig.update_layout(
         height=height,  # Usar o valor de altura personalizado
+        autosize=True,
         margin={'l': 10, 'r': 10, 't': 10, 'b': 10},
         plot_bgcolor='rgba(0,0,0,0)',
         paper_bgcolor='rgba(0,0,0,0)',
@@ -535,6 +540,7 @@ def create_external_sales_graph(df, height=None):
     # Atualizar layout com a altura personalizada
     fig.update_layout(
         height=height,  # Usar a altura passada como parâmetro
+        autosize=True,
         margin={'l': 10, 'r': 10, 't': 10, 'b': 10},
         plot_bgcolor='rgba(0,0,0,0)',
         paper_bgcolor='rgba(0,0,0,0)',
@@ -590,6 +596,7 @@ def create_tracks_graph(df, height=None, bottom_margin=None, max_items=None):
     # Atualizar layout com a altura personalizada
     fig.update_layout(
         height=height,  # Usar a altura passada como parâmetro
+        autosize=True,
         margin={'l': 10, 'r': 10, 't': 10, 'b': bottom_margin or 10},
         coloraxis_showscale=False,
         plot_bgcolor='rgba(0,0,0,0)',
@@ -671,6 +678,7 @@ def create_areas_graph(df, height=None):
     # Atualizar layout com a altura personalizada
     fig.update_layout(
         height=height,  # Usar a altura passada como parâmetro
+        autosize=True,
         margin={'l': 10, 'r': 10, 't': 10, 'b': 10},
         plot_bgcolor='rgba(0,0,0,0)',
         paper_bgcolor='rgba(0,0,0,0)',
@@ -763,6 +771,7 @@ def create_customers_stacked_graph(df, height=None):
     # Atualizar layout para ser mais moderno
     fig.update_layout(
         height=height,
+        autosize=True,
         margin={'l': 10, 'r': 40, 't': 10, 'b': 10},
         plot_bgcolor='rgba(0,0,0,0)',
         paper_bgcolor='rgba(0,0,0,0)',
