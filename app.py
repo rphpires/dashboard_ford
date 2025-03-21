@@ -131,7 +131,7 @@ def create_utilization_availability_column(dfs, ytd_utilization_percentage, ytd_
                     # Gráfico expandido verticalmente
                     create_graph_section(
                         'utilization-graph',
-                        create_utilization_graph(dfs['utilization'], height=280)  # Aumentando altura
+                        create_utilization_graph(dfs['utilization'], height=240)  # Aumentando altura
                     )
                 ]
             )
@@ -145,7 +145,7 @@ def create_utilization_availability_column(dfs, ytd_utilization_percentage, ytd_
                 children=[
                     create_graph_section(
                         'availability-graph',
-                        create_availability_graph(dfs['availability'], height=280)  # Aumentando altura
+                        create_availability_graph(dfs['availability'], height=240)  # Aumentando altura
                     )
                 ]
             )
@@ -229,7 +229,7 @@ def create_optimized_utilization_breakdown(dfs, total_hours):
                     create_metric_header('PROGRAMAS', f"{int(programas_horas)}", programas_perc_fmt),
                     create_graph_section(
                         'programs-graph',
-                        create_programs_graph(dfs['programs'], height=240)  # MODIFICADO: Aumentando altura
+                        create_programs_graph(dfs['programs'], height=200)  # MODIFICADO: Aumentando altura
                     )
                 ]),
 
@@ -238,7 +238,7 @@ def create_optimized_utilization_breakdown(dfs, total_hours):
                     create_metric_header('OUTRAS EQUIPES DE HABILIDADES', f"{int(outras_equipes_horas)}", outras_equipes_perc_fmt),
                     create_graph_section(
                         'other-skills-graph',
-                        create_other_skills_graph(dfs['other_skills'], height=240)  # MODIFICADO: Aumentando altura
+                        create_other_skills_graph(dfs['other_skills'], height=200)  # MODIFICADO: Aumentando altura
                     )
                 ]),
 
@@ -249,7 +249,7 @@ def create_optimized_utilization_breakdown(dfs, total_hours):
                         create_metric_header('USUÁRIOS INTERNOS', f"{int(usuarios_internos_horas)}", usuarios_internos_perc_fmt),
                         create_graph_section(
                             'internal-users-graph',
-                            create_internal_users_graph(dfs['internal_users'], height=240)  # MODIFICADO: Aumentando altura
+                            create_internal_users_graph(dfs['internal_users'], height=200)  # MODIFICADO: Aumentando altura
                         )
                     ], margin_right='10px', min_width='38%'),
 
@@ -258,7 +258,7 @@ def create_optimized_utilization_breakdown(dfs, total_hours):
                         create_metric_header('VENDAS EXTERNAS', f"{int(vendas_externas_horas)}", vendas_externas_perc_fmt),
                         create_graph_section(
                             'external-sales-graph',
-                            create_external_sales_graph(dfs['external_sales'], height=240)  # MODIFICADO: Aumentando altura
+                            create_external_sales_graph(dfs['external_sales'], height=200)  # MODIFICADO: Aumentando altura
                         )
                     ], min_width='38%')
                 ])
@@ -283,7 +283,7 @@ def create_tracks_areas_column(dfs, total_hours, total_hours_ytd):
                 children=[
                     create_graph_section(
                         'monthly-tracks-graph',
-                        create_tracks_graph(dfs['tracks'], height=320, max_items=8)  # MODIFICADO: Limitando a 8 itens e aumentando altura
+                        create_tracks_graph(dfs['tracks'], height=260, max_items=8)  # MODIFICADO: Limitando a 8 itens e aumentando altura
                     )
                 ]
             )
@@ -297,7 +297,7 @@ def create_tracks_areas_column(dfs, total_hours, total_hours_ytd):
                 children=[
                     create_graph_section(
                         'monthly-areas-graph',
-                        create_areas_graph(dfs['areas'], height=320)  # MODIFICADO: Aumentando altura
+                        create_areas_graph(dfs['areas'], height=260)  # MODIFICADO: Aumentando altura
                     )
                 ]
             )
@@ -311,7 +311,7 @@ def create_tracks_areas_column(dfs, total_hours, total_hours_ytd):
                 children=[
                     create_graph_section(
                         'ytd-customers-graph',
-                        create_customers_stacked_graph(dfs['customers_ytd'], height=320)  # NOVO: Usando o novo tipo de gráfico
+                        create_customers_stacked_graph(dfs['customers_ytd'], height=260)  # NOVO: Usando o novo tipo de gráfico
                     )
                 ]
             )
@@ -351,7 +351,7 @@ main_layout = html.Div(
                 html.Div(
                     className='column column-small',
                     style={
-                        'width': '28%',
+                        'width': '25%',
                         'overflow': 'auto',
                         'paddingRight': '8px'
                     },
@@ -366,7 +366,7 @@ main_layout = html.Div(
                 html.Div(
                     className='column column-medium',
                     style={
-                        'width': '40%',
+                        'width': '36%',
                         'overflow': 'auto'
                     },
                     children=create_tracks_areas_column(
@@ -380,7 +380,7 @@ main_layout = html.Div(
                 html.Div(
                     className='column column-large',
                     style={
-                        'width': '32%',
+                        'width': '36%',
                         'overflow': 'auto',
                         'paddingRight': '8px'
                     },

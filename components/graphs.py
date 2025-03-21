@@ -443,15 +443,15 @@ def create_internal_users_graph(df, height=None):
         row=1, col=2
     )
 
-    # Adicionar anotação no centro do donut
-    fig.add_annotation(
-        text=f"{total}<br>Total",
-        x=0.2, y=0.5,
-        font=dict(size=14, color='#333', family="Segoe UI, sans-serif"),
-        showarrow=False,
-        xref="paper",
-        yref="paper"
-    )
+    # # Adicionar anotação no centro do donut
+    # fig.add_annotation(
+    #     text=f"{total}<br>Total",
+    #     x=0.2, y=0.5,
+    #     font=dict(size=14, color='#333', family="Segoe UI, sans-serif"),
+    #     showarrow=False,
+    #     xref="paper",
+    #     yref="paper"
+    # )
 
     # Atualizar layout com a altura personalizada
     fig.update_layout(
@@ -731,27 +731,39 @@ def create_customers_stacked_graph(df, height=None):
         hovertemplate='<b>%{y}</b><br>Horas: %{x}<br>Percentual: %{text}<extra></extra>',
     ))
 
-    # Adicionar um indicador visual na forma de marcadores
-    fig.add_trace(go.Scatter(
-        y=df_sorted['customer_type'],
-        x=[max(df_sorted['hours']) * 1.05] * len(df_sorted),
-        mode='markers+text',
-        text=df_sorted['percentage'],
-        textposition='middle right',
-        marker=dict(
-            symbol='circle',
-            size=16,
-            color=colors_list[:len(df_sorted)],
-            line=dict(color='white', width=2)
-        ),
-        hoverinfo='none',
-        showlegend=False
-    ))
+    # Vamos colocar os percentuais como anotações em vez de um trace de scatter
+    for i, (customer_type, percentage) in enumerate(zip(df_sorted['customer_type'], df_sorted['percentage'])):
+        fig.add_annotation(
+            x=max(df_sorted['hours']) * 1.05,
+            y=customer_type,
+            text=percentage,
+            showarrow=False,
+            font=dict(size=14, color="#333"),
+            xanchor="left",
+            yanchor="middle",
+            bgcolor="#fff",  # Fundo branco para evitar sobreposição
+            bordercolor=colors_list[i % len(colors_list)],
+            borderwidth=2,
+            borderpad=4,  # Adiciona um padding interno
+            xshift=25  # Move o texto para a direita
+        )
+
+        # Adicionar círculos coloridos como marcadores usando annotations em vez de shapes
+        fig.add_annotation(
+            x=max(df_sorted['hours']) * 1.03,
+            y=customer_type,
+            text="●",  # Usando um caractere de círculo
+            showarrow=False,
+            font=dict(size=26, color=colors_list[i % len(colors_list)]),
+            xanchor="left",
+            yanchor="middle",
+            xshift=5  # Move o círculo para a direita
+        )
 
     # Atualizar layout para ser mais moderno
     fig.update_layout(
         height=height,
-        margin={'l': 10, 'r': 70, 't': 10, 'b': 10},
+        margin={'l': 10, 'r': 40, 't': 10, 'b': 10},
         plot_bgcolor='rgba(0,0,0,0)',
         paper_bgcolor='rgba(0,0,0,0)',
         barmode='stack',
@@ -762,6 +774,11 @@ def create_customers_stacked_graph(df, height=None):
             zeroline=False,
             showline=True,
             linecolor='#E0E0E0',
+            domain=[0, 1],
+            # tickfont=dict(size=14),  # Aumentado de ~10 para 14
+            # title=dict(
+            #     font=dict(size=14)  # Tamanho da fonte do título do eixo X
+            # )
         ),
         yaxis=dict(
             showgrid=False,
@@ -769,6 +786,10 @@ def create_customers_stacked_graph(df, height=None):
             showline=True,
             linecolor='#E0E0E0',
             automargin=True,
+            # tickfont=dict(size=14),  # Aumentado de ~10 para 14
+            # title=dict(
+            #     font=dict(size=14)  # Tamanho da fonte do título do eixo Y
+            # )
         ),
         hoverlabel=dict(
             bgcolor="white",
@@ -781,42 +802,9 @@ def create_customers_stacked_graph(df, height=None):
             yanchor="bottom",
             y=1.02,
             xanchor="right",
-            x=1
-        ),
-        annotations=[
-            dict(
-                x=max(df_sorted['hours']) * 1.15,
-                y=df_sorted['customer_type'].iloc[i],
-                text=f"{int(df_sorted['hours'].iloc[i])} hr",
-                showarrow=False,
-                font=dict(size=11, color="#333"),
-                xanchor="left",
-                yanchor="middle",
-            ) for i in range(len(df_sorted))
-        ]
-    )
-
-    # Adicionar gráfico de pizza pequeno para resumo visual
-    fig.add_trace(go.Pie(
-        labels=df_sorted['customer_type'],
-        values=df_sorted['hours'],
-        domain=dict(x=[0.85, 1], y=[0.1, 0.5]),
-        textinfo='none',
-        hole=0.7,
-        marker=dict(colors=colors_list[:len(df_sorted)]),
-        showlegend=False,
-        hoverinfo='none'
-    ))
-
-    # Adicionar título para o gráfico de pizza
-    fig.add_annotation(
-        x=0.925,
-        y=0.3,
-        xref="paper",
-        yref="paper",
-        text="Visão<br>Geral",
-        showarrow=False,
-        font=dict(size=10, color="#333"),
+            x=1,
+            # font=dict(size=14)
+        )
     )
 
     return fig

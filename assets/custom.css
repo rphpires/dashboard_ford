@@ -59,13 +59,15 @@ body {
 .dashboard-container {
     max-width: none;
     width: 100vw;
-    height: 100vh;
+    height: 110vh !important;
     margin: 0;
     padding: 15px;
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    /* transform: scale(0.9);
+    transform-origin: top left; */
 }
 
 /* Header Styling - Moderno e compacto */
@@ -73,7 +75,7 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 10px 20px;
+    padding: 8px 15px;
     background: linear-gradient(90deg, var(--primary-dark), var(--primary-color));
     color: white;
     border-radius: 12px;
@@ -108,13 +110,13 @@ body {
 }
 
 .header-title {
-    font-size: 20px; /* Reduzido de 24px */
+    font-size: 18px; /* Reduzido de 24px */
     font-weight: 600;
     letter-spacing: 0.02em;
 }
 
 .header-subtitle {
-    font-size: 16px; /* Reduzido de 18px */
+    font-size: 14px; /* Reduzido de 18px */
     font-weight: 500;
     margin-left: 20px; /* Reduzido de 24px */
     letter-spacing: 0.01em;
@@ -151,17 +153,17 @@ body {
 /* Tamanhos específicos para as 3 colunas */
 .column-small {
     flex: 0.8;
-    min-width: 250px;
+    min-width: 180;
 }
 
 .column-medium {
     flex: 1;
-    min-width: 300px;
+    min-width: 200;
 }
 
 .column-large {
-    flex: 1.5;
-    min-width: 400px;
+    flex: 1.25;
+    min-width: 300;
 }
 
 /* Propriedades comuns para todas as colunas */
@@ -238,6 +240,8 @@ body {
 }
 
 .card-title {
+    font-size: 13px !important;
+    letter-spacing: 0.2px;
     position: relative;
     z-index: 1;
 }
@@ -247,13 +251,14 @@ body {
     z-index: 1;
     font-weight: 600;
     background-color: rgba(255, 255, 255, 0.2);
-    padding: 3px 8px; /* Reduzido de 4px 10px */
-    border-radius: 14px; /* Reduzido de 16px */
-    font-size: 11px; /* Reduzido de 12px */
+    padding: 3px 8px;
+    border-radius: 14px;
+    font-size: 13px !important; /* Sobrescreveu a primeira */
+    letter-spacing: 0.2px; /* Nova propriedade adicionada */
 }
 
 .panel-content {
-    padding: 10px;
+    padding: 8px;
     flex: 1;
     overflow: hidden;
     display: flex;
@@ -267,8 +272,8 @@ body {
     align-items: center;
     background-color: var(--background-color);
     border: 1px solid var(--card-border);
-    padding: 10px 12px;
-    margin-bottom: 10px;
+    padding: 8px;
+    margin-bottom: 8px;
     border-radius: 8px;
     transition: all 0.2s ease;
     flex-direction: column;
@@ -284,7 +289,7 @@ body {
 
 .metric-title {
     font-weight: 600;
-    font-size: 12px; /* Reduzido de 13px */
+    font-size: 12px !important;
     color: var(--text-light);
     text-transform: uppercase;
     letter-spacing: 0.5px;
@@ -330,6 +335,11 @@ body {
 
 .js-plotly-plot .plotly .bars .points path {
     shape-rendering: crispEdges;
+}
+
+.js-plotly-plot .ytick text, 
+.js-plotly-plot .xtick text {
+    font-size: 10px !important;  /* Manter tamanho dos ticks legível */
 }
 
 /* Layouts Flexíveis */
@@ -558,6 +568,7 @@ body {
     .header {
         flex-direction: column;
         align-items: flex-start;
+        padding: 8px 15px;
     }
     
     .header-date {
@@ -593,6 +604,7 @@ body {
         background: var(--primary-color) !important;
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
+        padding: 8px 15px;
     }
     
     .section-title {
@@ -606,5 +618,6 @@ body {
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;
         forced-color-adjust: none; /* Nova propriedade padronizada */
+        padding: 8px 15px;
     }
 }
