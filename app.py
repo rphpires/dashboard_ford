@@ -1,7 +1,7 @@
 # app.py
 # Aplicação principal do dashboard zeentech VEV (versão otimizada sem rolagem)
 import dash
-from dash import html, dcc, Input, Output, State, callback
+from dash import html, dcc, Input, Output, State, callback, no_update, callback_context
 import dash_bootstrap_components as dbc
 import datetime
 from layouts.header import create_header
@@ -24,7 +24,8 @@ from layouts.left_column import create_left_column
 from layouts.right_column import create_right_column
 
 from data.database import load_dashboard_data, get_current_period_info
-from data.eja_manager import EJAManager
+from data.eja_manager import EJAManager, get_eja_manager
+from layouts.eja_manager import create_eja_table
 import os
 import base64
 import json
@@ -444,87 +445,722 @@ def render_tab_content(active_tab):
         return layout
     return html.Div("Conteúdo não encontrado")
 
-# Função auxiliar para criar a tabela de EJAs com paginação
+
+# Callback for handling file upload and import
+@callback(
+    Input("upload-csv", "contents"),
+    Input("import-button", "n_clicks"),
+    Input("cancel-import-button", "n_clicks"),
+    State("upload-csv", "filename"),
+    State("overwrite-checkbox", "value"),
+    State("import-modal", "is_open"),
+    prevent_initial_call=True
+)
+def handle_csv_import(contents, import_click, cancel_click, filename, overwrite, is_open):
+    ctx = dash.callback_context
+    if not ctx.triggered:
+        raise PreventUpdate
+
+    trigger_id = ctx.triggered[0]['prop_id'].split('.')[0]
+
+    # Cancel button - close modal
+    if trigger_id == "cancel-import-button":
+        return False, "", "", "", False, no_update
+
+    # Upload file - store content
+    if trigger_id == "upload-csv" and contents is not None:
+        # Store content in hidden div for later use
+        return False, "", "", "", is_open, json.dumps({"filename": filename, "content": contents})
+
+    # Import button - process file
+    if trigger_id == "import-button" and import_click:
+        # Get stored content
+        if not dash.callback_context.states['import-refresh.children']:
+            return True, "Nenhum arquivo selecionado", "Erro", "danger", False, no_update
+
+        try:
+            # Parse stored content
+            stored_data = json.loads(dash.callback_context.states['import-refresh.children'])
+            content_string = stored_data['content'].split(',')[1]
+            decoded = base64.b64decode(content_string)
+
+            # Save to temp file
+            with tempfile.NamedTemporaryFile(delete=False, suffix='.csv') as tmp:
+                tmp.write(decoded)
+                temp_path = tmp.name
+
+            # Import CSV using the EJA manager
+            eja_manager = get_eja_manager()
+            overwrite_flag = overwrite and "overwrite" in overwrite
+            result = eja_manager.import_csv(temp_path, overwrite=overwrite_flag)
+
+            # Remove temp file
+            os.unlink(temp_path)
+
+            # Handle result
+            if 'error' in result:
+                return True, result['error'], "Erro na Importação", "danger", False, ""
+
+            # Success message
+            if overwrite_flag:
+                message = f"Importação concluída com sucesso! {result.get('imported', 0)} registros importados."
+            else:
+                message = f"Importação concluída! Adicionados: {result.get('imported', 0)}, Atualizados: {result.get('updated', 0)}, Ignorados: {result.get('skipped', 0)}."
+
+            # Generate unique timestamp for refreshing the table
+            import time
+            refresh_time = str(time.time())
+
+            return True, message, "Importação Concluída", "success", False, refresh_time
+
+        except Exception as e:
+            return True, f"Erro ao processar arquivo: {str(e)}", "Erro", "danger", False, ""
+
+    # Open/close modal on button click
+    if trigger_id == "import-csv-button":
+        return False, "", "", "", not is_open, no_update
+
+    # Default - no change
+    return False, "", "", "", is_open, no_update
 
 
-def create_eja_table(ejas, page_current=0, page_size=15):
-    if not ejas:
-        return html.Div("Nenhum EJA encontrado.", className="mt-3 text-center")
+# Callback para atualizar a tabela após mudanças
+@callback(
+    Input("eja-delete-refresh", "children"),
+    Input("import-refresh", "children"),
+    prevent_initial_call=True
+)
+def refresh_eja_table(delete_refresh, import_refresh):
+    if delete_refresh or import_refresh:
+        # Carregar todos os EJAs novamente
+        eja_manager = get_eja_manager()
+        all_ejas = eja_manager.get_all_ejas()
+        return create_eja_table(all_ejas, page_current=0)
+    raise PreventUpdate
 
-    # Aplicar paginação
-    start_idx = page_current * page_size
-    end_idx = (page_current + 1) * page_size
-    paginated_ejas = ejas[start_idx:end_idx]
 
-    # Calcular total de páginas
-    total_pages = (len(ejas) - 1) // page_size + 1
+# Callback for handling EJA deletion
+@callback(
+    Input({"type": "delete-button", "index": dash.ALL}, "n_clicks"),
+    Input("confirm-delete-button", "n_clicks"),
+    Input("cancel-delete-button", "n_clicks"),
+    State("delete-eja-id", "value"),
+    prevent_initial_call=True
+)
+def handle_eja_deletion(delete_clicks, confirm_click, cancel_click, eja_id):
+    ctx = dash.callback_context
+    if not ctx.triggered:
+        raise PreventUpdate
 
-    # Criar cabeçalho da tabela
-    header = html.Thead(html.Tr([
-        html.Th("Nº"),
-        html.Th("EJA CODE"),
-        html.Th("TITLE"),
-        html.Th("CLASSIFICATION"),
-        html.Th("Ações", style={"width": "120px", "text-align": "center"})
-    ]))
+    trigger_id = ctx.triggered[0]['prop_id'].split('.')[0]
 
-    # Criar linhas da tabela
-    rows = []
-    for eja in paginated_ejas:
-        eja_id = eja.get('Nº', '')
+    # Delete button clicked - show confirmation modal
+    if isinstance(trigger_id, dict) and trigger_id.get('type') == 'delete-button':
+        clicked_id = trigger_id.get('index')
+        if clicked_id:
+            # Get the EJA information for confirmation message
+            eja_manager = get_eja_manager()
+            eja = eja_manager.get_eja_by_id(clicked_id)
 
-        # Criar menu dropdown para ações
-        action_menu = dbc.DropdownMenu(
-            label="Ações",
-            size="sm",
-            color="light",
-            children=[
-                # Botões dentro do dropdown
-                dbc.DropdownMenuItem(
-                    "Editar",
-                    id={"type": "edit-button", "index": eja_id}
-                ),
-                dbc.DropdownMenuItem(
-                    "Excluir",
-                    id={"type": "delete-button", "index": eja_id},
-                    style={"color": "red"}
-                ),
-            ],
-        )
+            if eja:
+                # Get information (supporting both formats - SQLite and CSV)
+                eja_code = eja.get('EJA CODE', eja.get('eja_code', ''))
+                title = eja.get('TITLE', eja.get('title', ''))
+                message = f"Tem certeza que deseja excluir o EJA #{clicked_id} ({eja_code} - {title})?"
+                return True, message, clicked_id, False, "", "", "", no_update
 
-        row = html.Tr([
-            html.Td(eja_id),
-            html.Td(eja.get('EJA CODE', '')),
-            html.Td(eja.get('TITLE', '')),
-            html.Td(eja.get('NEW CLASSIFICATION', '')),
-            html.Td(action_menu, style={"text-align": "center"})
-        ])
-        rows.append(row)
+    # Cancel button clicked - close modal
+    if trigger_id == "cancel-delete-button":
+        return False, "", "", False, "", "", "", no_update
 
-    body = html.Tbody(rows)
+    # Confirm deletion button clicked
+    if trigger_id == "confirm-delete-button" and eja_id:
+        # Perform deletion
+        eja_manager = get_eja_manager()
+        success = eja_manager.delete_eja(eja_id)
 
-    # Montar tabela completa
-    table = dbc.Table([header, body], bordered=True, hover=True, responsive=True, striped=True)
+        if success:
+            # Generate unique timestamp for refreshing the table
+            import time
+            refresh_time = str(time.time())
+            return False, "", "", True, "EJA excluído com sucesso!", "Exclusão Concluída", "success", refresh_time
+        else:
+            return False, "", "", True, "Não foi possível excluir o EJA.", "Erro", "danger", no_update
 
-    # Controles de paginação
-    pagination = dbc.Pagination(
-        id="eja-pagination",
-        max_value=total_pages,
-        first_last=True,
-        previous_next=True,
-        size="sm",
-        fully_expanded=False,
-        active_page=page_current + 1,  # Páginas na UI começam em 1
-        className="mt-3 d-flex justify-content-center"
-    )
+    # Default - no change
+    return no_update, no_update, no_update, no_update, no_update, no_update, no_update, no_update
 
-    # Informação sobre a paginação
-    pagination_info = html.Div(
-        f"Mostrando {min(start_idx + 1, len(ejas))} a {min(end_idx, len(ejas))} de {len(ejas)} registros",
-        className="text-muted text-center small mt-2"
-    )
 
-    return html.Div([table, pagination, pagination_info])
+# Callback for handling CSV export
+@callback(
+    Input("export-button", "n_clicks"),
+    prevent_initial_call=True
+)
+def handle_csv_export(n_clicks):
+    if not n_clicks:
+        raise PreventUpdate
+
+    try:
+        # Export the EJA data using the manager
+        eja_manager = get_eja_manager()
+        export_path = eja_manager.export_csv()
+
+        if export_path and os.path.exists(export_path):
+            return True, f"Dados exportados com sucesso para: {export_path}", "Exportação Concluída", "success"
+        else:
+            return True, f"Erro ao exportar: {export_path}", "Erro", "danger"
+    except Exception as e:
+        return True, f"Erro ao exportar: {str(e)}", "Erro", "danger"
+
+
+# Callback unificado para gerenciar todas as atualizações da tabela EJA
+@callback(
+    Output("eja-table-container", "children"),
+    [
+        Input("search-button", "n_clicks"),
+        Input("eja-delete-refresh", "children"),
+        Input("import-refresh", "children"),
+        Input("eja-pagination", "active_page")
+    ],
+    [
+        State("search-term", "value"),
+        State("search-eja-code", "value"),
+        State("eja-table-container", "children")
+    ],
+    prevent_initial_call=True
+)
+def update_eja_table(
+    search_clicks, delete_refresh, import_refresh, active_page,
+    search_term, eja_code, current_table
+):
+    # Determinar qual input disparou o callback
+    ctx = callback_context
+
+    if not ctx.triggered:
+        raise PreventUpdate
+
+    # Identificar o acionador
+    trigger_id = ctx.triggered[0]['prop_id'].split('.')[0]
+
+    # Carregar o gerenciador de EJAs
+    eja_manager = get_eja_manager()
+
+    # Processar de acordo com o acionador
+    if trigger_id == "search-button" and search_clicks:
+        # Busca de EJAs
+        filtered_ejas = eja_manager.search_ejas(search_term=search_term, eja_code=eja_code)
+        return create_eja_table(filtered_ejas, page_current=0)
+
+    elif trigger_id in ["eja-delete-refresh", "import-refresh"]:
+        # Atualização após exclusão ou importação
+        all_ejas = eja_manager.get_all_ejas()
+        return create_eja_table(all_ejas, page_current=0)
+
+    elif trigger_id == "eja-pagination":
+        # Atualização de paginação
+        if not active_page:
+            raise PreventUpdate
+
+        # Ajustar página (UI é base 1, código é base 0)
+        page_current = active_page - 1
+
+        # Buscar todos os EJAs novamente para garantir dados atualizados
+        all_ejas = eja_manager.get_all_ejas()
+        return create_eja_table(all_ejas, page_current=page_current)
+
+    # Caso padrão - não atualizar
+    raise PreventUpdate
+
+
+def search_ejas(n_clicks, search_term, eja_code):
+    if not n_clicks:
+        raise PreventUpdate
+
+    # Realizar a busca
+    eja_manager = get_eja_manager()
+    filtered_ejas = eja_manager.search_ejas(search_term=search_term, eja_code=eja_code)
+
+    # Atualizar a tabela
+    return create_eja_table(filtered_ejas, page_current=0)
+
+
+# Callback for pagination
+@callback(
+    Output("eja-table-container", "children", allow_duplicate=True),
+    Output("eja-data-store", "data", allow_duplicate=True),
+    Input("eja-pagination", "active_page"),
+    State("eja-data-store", "data"),
+    prevent_initial_call=True
+)
+def handle_pagination(active_page, data_store):
+    if not active_page:
+        raise PreventUpdate
+
+    # Pages are 1-indexed in the UI but 0-indexed in our code
+    new_page = active_page - 1
+    data_store["page_current"] = new_page
+
+    # Get the current filtered data
+    ejas = data_store.get("filtered_ejas", [])
+
+    # Return the paginated table
+    return create_eja_table(ejas, page_current=new_page), data_store
+
+
+# Callback para abrir o modal de importação
+@callback(
+    Output("import-modal", "is_open"),
+    Input("import-csv-button", "n_clicks"),
+    Input("cancel-import-button", "n_clicks"),
+    State("import-modal", "is_open"),
+    prevent_initial_call=True
+)
+def toggle_import_modal(import_click, cancel_click, is_open):
+    if import_click or cancel_click:
+        return not is_open
+    return is_open
+
+
+# Callback para exibir o modal de confirmação de exclusão
+@callback(
+    [Input({"type": "delete-button", "index": dash.ALL}, "n_clicks"),
+     Input("cancel-delete-button", "n_clicks")],
+    prevent_initial_call=True
+)
+def show_delete_confirmation(delete_clicks, cancel_click):
+    ctx_triggered = callback_context.triggered_id
+
+    # Se o botão de cancelar foi clicado, fechar o modal
+    if ctx_triggered == "cancel-delete-button":
+        return False, "", ""
+
+    # Se um botão de deletar foi clicado
+    if isinstance(ctx_triggered, dict) and ctx_triggered.get("type") == "delete-button":
+        row_id = ctx_triggered.get("index")
+        if row_id:
+            # Buscar informações do EJA
+            eja_manager = get_eja_manager()
+            eja = eja_manager.get_eja_by_id(row_id)
+
+            if eja:
+                # Obter código e título
+                eja_code = eja.get('EJA CODE', eja.get('eja_code', ''))
+                title = eja.get('TITLE', eja.get('title', ''))
+                # Criar mensagem de confirmação
+                message = f"Tem certeza que deseja excluir o EJA #{row_id} ({eja_code} - {title})?"
+                return True, message, row_id
+
+    # Caso padrão
+    raise PreventUpdate
+
+# Callback para processar a exclusão de EJA
+
+
+@callback(
+    Input("confirm-delete-button", "n_clicks"),
+    State("delete-eja-id", "value"),
+    prevent_initial_call=True
+)
+def delete_eja(confirm_click, eja_id):
+    if not confirm_click or not eja_id:
+        raise PreventUpdate
+
+    # Realizar a exclusão
+    eja_manager = get_eja_manager()
+    success = eja_manager.delete_eja(eja_id)
+
+    if success:
+        # Gerar timestamp único para atualização da tabela
+        import time
+        refresh_time = str(time.time())
+        return True, "EJA excluído com sucesso!", "Exclusão Concluída", "success", refresh_time, False
+    else:
+        return True, "Erro ao excluir o EJA.", "Erro", "danger", no_update, False
+
+
+# Callback para processar a importação de CSV
+@callback(
+    Input("import-button", "n_clicks"),
+    State("upload-csv", "contents"),
+    State("upload-csv", "filename"),
+    State("overwrite-checkbox", "value"),
+    prevent_initial_call=True
+)
+def process_csv_import(n_clicks, contents, filename, overwrite):
+    if not n_clicks or not contents:
+        raise PreventUpdate
+
+    try:
+        # Decodificar o conteúdo do arquivo
+        content_type, content_string = contents.split(',')
+        decoded = base64.b64decode(content_string)
+
+        # Salvar em arquivo temporário
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.csv') as temp:
+            temp.write(decoded)
+            temp_path = temp.name
+
+        # Importar usando o gerenciador de EJAs
+        eja_manager = get_eja_manager()
+        overwrite_flag = overwrite and "overwrite" in overwrite
+        result = eja_manager.import_csv(temp_path, overwrite=overwrite_flag)
+
+        # Remover o arquivo temporário
+        os.unlink(temp_path)
+
+        # Verificar resultado
+        if 'error' in result:
+            return True, result['error'], "Erro na Importação", "danger", no_update, False
+
+        # Mensagem de sucesso
+        if overwrite_flag:
+            message = f"Importação concluída com sucesso! {result.get('imported', 0)} registros importados."
+        else:
+            message = f"Importação concluída! Adicionados: {result.get('imported', 0)}, Atualizados: {result.get('updated', 0)}, Ignorados: {result.get('skipped', 0)}."
+
+        # Gerar timestamp único para atualização da tabela
+        import time
+        refresh_time = str(time.time())
+
+        return True, message, "Importação Concluída", "success", refresh_time, False
+
+    except Exception as e:
+        return True, f"Erro ao processar arquivo: {str(e)}", "Erro", "danger", no_update, False
+
+
+# Callback para exportar CSV
+@callback(
+    Input("export-button", "n_clicks"),
+    prevent_initial_call=True
+)
+def export_to_csv(n_clicks):
+    if not n_clicks:
+        raise PreventUpdate
+
+    try:
+        # Exportar usando o gerenciador de EJAs
+        eja_manager = get_eja_manager()
+        export_path = eja_manager.export_csv()
+
+        if export_path and os.path.exists(export_path):
+            return True, f"Dados exportados com sucesso para: {export_path}", "Exportação Concluída", "success"
+        else:
+            return True, f"Erro ao exportar: {export_path}", "Erro", "danger"
+    except Exception as e:
+        return True, f"Erro ao exportar: {str(e)}", "Erro", "danger"
+
+
+# Callback unificado para gerenciar todas as mensagens de status
+@callback(
+    [
+        Output("export-status", "is_open"),
+        Output("export-status", "children"),
+        Output("export-status", "header"),
+        Output("export-status", "color"),
+        Output("import-status", "is_open"),
+        Output("import-status", "children"),
+        Output("import-status", "header"),
+        Output("import-status", "color"),
+        Output("import-refresh", "children"),
+        Output("eja-delete-status", "is_open"),
+        Output("eja-delete-status", "children"),
+        Output("eja-delete-status", "header"),
+        Output("eja-delete-status", "color"),
+        Output("eja-delete-refresh", "children"),
+    ],
+    [
+        Input("export-button", "n_clicks"),
+        Input("import-button", "n_clicks"),
+        Input("confirm-delete-button", "n_clicks")
+    ],
+    [
+        State("upload-csv", "contents"),
+        State("upload-csv", "filename"),
+        State("overwrite-checkbox", "value"),
+        State("delete-eja-id", "value")
+    ],
+    prevent_initial_call=True
+)
+def handle_all_status_messages(
+    export_clicks, import_clicks, confirm_delete_clicks,
+    csv_contents, csv_filename, overwrite, eja_id
+):
+    # Valores padrão para todos os outputs (para não alterar componentes não afetados)
+    defaults = [
+        False, "", "", "",  # export-status
+        False, "", "", "", None,  # import-status e refresh
+        False, "", "", "", None   # delete-status e refresh
+    ]
+
+    # Determinar qual input disparou o callback
+    ctx = callback_context
+
+    if not ctx.triggered:
+        return defaults
+
+    # Identificar o acionador
+    trigger_id = ctx.triggered[0]['prop_id'].split('.')[0]
+
+    # Gerar timestamp para atualização quando necessário
+    import time
+    refresh_time = str(time.time())
+
+    # Processar exportação CSV
+    if trigger_id == "export-button" and export_clicks:
+        try:
+            # Exportar usando o gerenciador de EJAs
+            eja_manager = get_eja_manager()
+            export_path = eja_manager.export_csv()
+
+            if export_path and os.path.exists(export_path):
+                # Atualizar apenas os outputs do export-status
+                results = defaults.copy()
+                results[0] = True  # is_open
+                results[1] = f"Dados exportados com sucesso para: {export_path}"  # children
+                results[2] = "Exportação Concluída"  # header
+                results[3] = "success"  # color
+                return results
+            else:
+                results = defaults.copy()
+                results[0] = True
+                results[1] = f"Erro ao exportar: {export_path}"
+                results[2] = "Erro"
+                results[3] = "danger"
+                return results
+        except Exception as e:
+            results = defaults.copy()
+            results[0] = True
+            results[1] = f"Erro ao exportar: {str(e)}"
+            results[2] = "Erro"
+            results[3] = "danger"
+            return results
+
+    # Processar importação CSV
+    elif trigger_id == "import-button" and import_clicks:
+        if not csv_contents:
+            results = defaults.copy()
+            results[4] = True
+            results[5] = "Nenhum arquivo selecionado"
+            results[6] = "Erro"
+            results[7] = "danger"
+            return results
+
+        try:
+            # Decodificar o conteúdo do arquivo
+            content_type, content_string = csv_contents.split(',')
+            decoded = base64.b64decode(content_string)
+
+            # Salvar em arquivo temporário
+            with tempfile.NamedTemporaryFile(delete=False, suffix='.csv') as temp:
+                temp.write(decoded)
+                temp_path = temp.name
+
+            # Importar usando o gerenciador de EJAs
+            eja_manager = get_eja_manager()
+            overwrite_flag = overwrite and "overwrite" in overwrite
+            result = eja_manager.import_csv(temp_path, overwrite=overwrite_flag)
+
+            # Remover o arquivo temporário
+            os.unlink(temp_path)
+
+            # Verificar resultado
+            if 'error' in result:
+                results = defaults.copy()
+                results[4] = True
+                results[5] = result['error']
+                results[6] = "Erro na Importação"
+                results[7] = "danger"
+                return results
+
+            # Mensagem de sucesso
+            if overwrite_flag:
+                message = f"Importação concluída com sucesso! {result.get('imported', 0)} registros importados."
+            else:
+                message = f"Importação concluída! Adicionados: {result.get('imported', 0)}, Atualizados: {result.get('updated', 0)}, Ignorados: {result.get('skipped', 0)}."
+
+            results = defaults.copy()
+            results[4] = True  # import-status.is_open
+            results[5] = message  # import-status.children
+            results[6] = "Importação Concluída"  # import-status.header
+            results[7] = "success"  # import-status.color
+            results[8] = refresh_time  # import-refresh.children
+            return results
+
+        except Exception as e:
+            results = defaults.copy()
+            results[4] = True
+            results[5] = f"Erro ao processar arquivo: {str(e)}"
+            results[6] = "Erro"
+            results[7] = "danger"
+            return results
+
+    # Processar exclusão de EJA
+    elif trigger_id == "confirm-delete-button" and confirm_delete_clicks and eja_id:
+        # Realizar a exclusão
+        eja_manager = get_eja_manager()
+        success = eja_manager.delete_eja(eja_id)
+
+        if success:
+            results = defaults.copy()
+            results[9] = True  # eja-delete-status.is_open
+            results[10] = "EJA excluído com sucesso!"  # eja-delete-status.children
+            results[11] = "Exclusão Concluída"  # eja-delete-status.header
+            results[12] = "success"  # eja-delete-status.color
+            results[13] = refresh_time  # eja-delete-refresh.children
+            return results
+        else:
+            results = defaults.copy()
+            results[9] = True
+            results[10] = "Erro ao excluir o EJA."
+            results[11] = "Erro"
+            results[12] = "danger"
+            return results
+
+    # Caso padrão
+    return defaults
+
+
+# Callback para abrir o modal de adição de EJA
+@app.callback(
+    [
+        Output("eja-form-modal", "is_open"),
+        Output("eja-form-title", "children"),
+        Output("form-mode", "value"),
+        Output("eja-code-input", "value"),
+        Output("eja-title-input", "value"),
+        Output("eja-classification-input", "value"),
+        Output("edit-eja-id", "value")
+    ],
+    [
+        Input("add-eja-button", "n_clicks"),
+        Input("cancel-eja-form-button", "n_clicks"),
+        Input({"type": "edit-button", "index": dash.ALL}, "n_clicks"),
+    ],
+    [
+        State("eja-form-modal", "is_open"),
+    ],
+    prevent_initial_call=True
+)
+def toggle_eja_form_modal(add_clicks, cancel_clicks, edit_clicks, is_open):
+    ctx = dash.callback_context
+
+    if not ctx.triggered:
+        raise PreventUpdate
+
+    trigger_id = ctx.triggered[0]['prop_id'].split('.')[0]
+
+    # Adicionar novo EJA - abrir modal vazio
+    if trigger_id == "add-eja-button":
+        return True, "Adicionar Novo EJA", "add", "", "", "", ""
+
+    # Cancelar - fechar modal
+    if trigger_id == "cancel-eja-form-button":
+        return False, "", "", "", "", "", ""
+
+    # Editar EJA existente
+    if isinstance(trigger_id, dict) and trigger_id.get("type") == "edit-button":
+        eja_id = trigger_id.get("index")
+        if eja_id:
+            # Obter os dados do EJA para edição
+            eja_manager = get_eja_manager()
+            eja = eja_manager.get_eja_by_id(eja_id)
+
+            if eja:
+                # Obter os valores para os campos do formulário
+                eja_code = eja.get('EJA CODE', eja.get('eja_code', ''))
+                title = eja.get('TITLE', eja.get('title', ''))
+                classification = eja.get('NEW CLASSIFICATION', eja.get('new_classification', ''))
+
+                return True, f"Editar EJA #{eja_id}", "edit", eja_code, title, classification, eja_id
+
+    # Caso padrão - não altera o estado atual
+    return is_open, "", "", "", "", "", ""
+
+
+# Callback para salvar o EJA (novo ou editado)
+@app.callback(
+    [
+        Output("eja-form-status", "is_open"),
+        Output("eja-form-status", "children"),
+        Output("eja-form-status", "header"),
+        Output("eja-form-status", "color"),
+        Output("eja-form-modal", "is_open", allow_duplicate=True),
+        Output("eja-delete-refresh", "children", allow_duplicate=True)
+    ],
+    Input("save-eja-form-button", "n_clicks"),
+    [
+        State("form-mode", "value"),
+        State("edit-eja-id", "value"),
+        State("eja-code-input", "value"),
+        State("eja-title-input", "value"),
+        State("eja-classification-input", "value"),
+    ],
+    prevent_initial_call=True
+)
+def save_eja_form(n_clicks, form_mode, edit_eja_id, eja_code, title, classification):
+    if not n_clicks:
+        raise PreventUpdate
+
+    # Validar campos obrigatórios
+    if not eja_code or not title:
+        return True, "Preencha todos os campos obrigatórios.", "Erro", "danger", True, no_update
+
+    try:
+        # Preparar os dados do EJA
+        eja_data = {
+            "eja_code": eja_code,
+            "title": title,
+            "new_classification": classification or ""  # Garantir que nunca seja None
+        }
+
+        # Obter gerenciador de EJAs
+        eja_manager = get_eja_manager()
+
+        # Adicionar ou atualizar o EJA dependendo do modo
+        if form_mode == "add":
+            result = eja_manager.add_eja(eja_data)
+            success_message = "EJA adicionado com sucesso!"
+            error_prefix = "Erro ao adicionar EJA:"
+        else:  # mode == "edit"
+            result = eja_manager.update_eja(edit_eja_id, eja_data)
+            success_message = "EJA atualizado com sucesso!"
+            error_prefix = "Erro ao atualizar EJA:"
+
+        # Verificar resultado
+        if isinstance(result, dict) and result.get('error'):
+            return True, f"{error_prefix} {result['error']}", "Erro", "danger", True, no_update
+
+        # Gerar timestamp para atualizar a tabela
+        import time
+        refresh_time = str(time.time())
+
+        # Sucesso - fechar modal e mostrar mensagem
+        return True, success_message, "Sucesso", "success", False, refresh_time
+
+    except Exception as e:
+        # Erro - mostrar mensagem mas manter modal aberto
+        return True, f"Erro: {str(e)}", "Erro", "danger", True, no_update
+
+
+# Callback para paginação
+@callback(
+    Input("eja-pagination", "active_page"),
+    State("eja-table-container", "children"),
+    prevent_initial_call=True
+)
+def paginate_table(active_page, current_table):
+    if not active_page:
+        raise PreventUpdate
+
+    # Carregar todos os EJAs
+    eja_manager = get_eja_manager()
+    all_ejas = eja_manager.get_all_ejas()
+
+    # Atualizar a página atual (ajustar para base 0)
+    page_current = active_page - 1 if active_page else 0
+
+    # Retornar a tabela paginada
+    return create_eja_table(all_ejas, page_current=page_current)
 
 
 # Iniciar o servidor

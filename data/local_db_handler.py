@@ -373,6 +373,7 @@ class LocalDatabaseHandler:
             trace(f"Erro ao obter classificações: {str(e)}", color="red")
             return []
 
+    # Replace the import_ejas_from_csv method with this corrected version
     def import_ejas_from_csv(self, file_path, overwrite=True):
         """
         Importa EJAs de um arquivo CSV.
@@ -384,10 +385,10 @@ class LocalDatabaseHandler:
         Returns:
             dict: Resultado da importação com contadores
         """
-        try:
-            if not os.path.exists(file_path):
-                return {"error": f"Arquivo {file_path} não encontrado"}
+        if not os.path.exists(file_path):
+            return {"error": f"Arquivo {file_path} não encontrado"}
 
+        try:
             # Ler o CSV
             df = pd.read_csv(file_path, encoding='utf-8')
 
@@ -401,89 +402,107 @@ class LocalDatabaseHandler:
             # Garantir que os números são numéricos
             df['EJA CODE'] = pd.to_numeric(df['EJA CODE'], errors='coerce')
 
-            # Iniciar transação
-            self.conn.begin()
+            # Iniciar transação - SQLite uses auto-commit by default, so we use explicit transactions
+            self.cursor.execute("BEGIN TRANSACTION")
 
-            if overwrite:
-                # Limpar a tabela se estiver substituindo todos os registros
-                self.cursor.execute("DELETE FROM eja")
+            try:
+                if overwrite:
+                    # Limpar a tabela se estiver substituindo todos os registros
+                    self.cursor.execute("DELETE FROM eja")
 
-                # Inserir todos os registros
-                for _, row in df.iterrows():
-                    self.cursor.execute("""
-                        INSERT INTO eja (eja_code, title, new_classification, classification)
-                        VALUES (?, ?, ?, ?)
-                    """, (
-                        int(row['EJA CODE']),
-                        row['TITLE'],
-                        row['NEW CLASSIFICATION'] if 'NEW CLASSIFICATION' in df.columns else '',
-                        row['CLASSIFICATION'] if 'CLASSIFICATION' in df.columns else ''
-                    ))
-
-                result = {
-                    "status": "success",
-                    "message": f"Importação concluída: {len(df)} registros importados",
-                    "imported": len(df),
-                    "updated": 0,
-                    "skipped": 0
-                }
-            else:
-                # Atualizar apenas os existentes ou adicionar novos
-                updated = 0
-                added = 0
-                skipped = 0
-
-                for _, row in df.iterrows():
-                    eja_code = int(row['EJA CODE'])
-
-                    # Verificar se já existe
-                    self.cursor.execute("SELECT id FROM eja WHERE eja_code = ?", (eja_code,))
-                    existing = self.cursor.fetchone()
-
-                    if existing:
-                        # Atualizar existente
-                        self.cursor.execute("""
-                            UPDATE eja SET
-                                title = ?,
-                                new_classification = ?,
-                                classification = ?,
-                                updated_at = CURRENT_TIMESTAMP
-                            WHERE eja_code = ?
-                        """, (
-                            row['TITLE'],
-                            row['NEW CLASSIFICATION'] if 'NEW CLASSIFICATION' in df.columns else '',
-                            row['CLASSIFICATION'] if 'CLASSIFICATION' in df.columns else '',
-                            eja_code
-                        ))
-                        updated += 1
-                    else:
-                        # Adicionar novo
+                    # Inserir todos os registros
+                    for _, row in df.iterrows():
                         self.cursor.execute("""
                             INSERT INTO eja (eja_code, title, new_classification, classification)
                             VALUES (?, ?, ?, ?)
                         """, (
-                            eja_code,
+                            int(row['EJA CODE']),
                             row['TITLE'],
                             row['NEW CLASSIFICATION'] if 'NEW CLASSIFICATION' in df.columns else '',
                             row['CLASSIFICATION'] if 'CLASSIFICATION' in df.columns else ''
                         ))
-                        added += 1
 
-                result = {
-                    "status": "success",
-                    "message": f"Importação parcial: {added} adicionados, {updated} atualizados, {skipped} ignorados",
-                    "imported": added,
-                    "updated": updated,
-                    "skipped": skipped
-                }
+                    result = {
+                        "status": "success",
+                        "message": f"Importação concluída: {len(df)} registros importados",
+                        "imported": len(df),
+                        "updated": 0,
+                        "skipped": 0
+                    }
+                else:
+                    # Atualizar apenas os existentes ou adicionar novos
+                    updated = 0
+                    added = 0
+                    skipped = 0
 
-            # Commit para salvar as alterações
-            self.conn.commit()
-            return result
+                    for _, row in df.iterrows():
+                        eja_code = int(row['EJA CODE'])
+
+                        # Verificar se já existe
+                        self.cursor.execute("SELECT id FROM eja WHERE eja_code = ?", (eja_code,))
+                        existing = self.cursor.fetchone()
+
+                        if existing:
+                            # Atualizar existente
+                            self.cursor.execute("""
+                                UPDATE eja SET
+                                    title = ?,
+                                    new_classification = ?,
+                                    classification = ?,
+                                    updated_at = CURRENT_TIMESTAMP
+                                WHERE eja_code = ?
+                            """, (
+                                row['TITLE'],
+                                row['NEW CLASSIFICATION'] if 'NEW CLASSIFICATION' in df.columns else '',
+                                row['CLASSIFICATION'] if 'CLASSIFICATION' in df.columns else '',
+                                eja_code
+                            ))
+                            updated += 1
+                        else:
+                            # Adicionar novo
+                            self.cursor.execute("""
+                                INSERT INTO eja (eja_code, title, new_classification, classification)
+                                VALUES (?, ?, ?, ?)
+                            """, (
+                                eja_code,
+                                row['TITLE'],
+                                row['NEW CLASSIFICATION'] if 'NEW CLASSIFICATION' in df.columns else '',
+                                row['CLASSIFICATION'] if 'CLASSIFICATION' in df.columns else ''
+                            ))
+                            added += 1
+
+                    result = {
+                        "status": "success",
+                        "message": f"Importação parcial: {added} adicionados, {updated} atualizados, {skipped} ignorados",
+                        "imported": added,
+                        "updated": updated,
+                        "skipped": skipped
+                    }
+
+                # Commit para salvar as alterações
+                self.conn.commit()
+                return result
+
+            except Exception:
+                # Rollback em caso de erro dentro da transação
+                self.conn.rollback()
+                raise  # Re-raise the exception after rollback
+
+        except pd.errors.EmptyDataError:
+            return {"error": "O arquivo CSV está vazio"}
+        except pd.errors.ParserError:
+            return {"error": "Erro ao analisar o arquivo CSV. Verifique o formato."}
+        except ValueError as e:
+            report_exception(e)
+            trace(f"Erro de valor ao importar EJAs: {str(e)}", color="red")
+            return {"error": f"Erro de valor: {str(e)}"}
+        except sqlite3.Error as e:
+            report_exception(e)
+            trace(f"Erro de banco de dados ao importar EJAs: {str(e)}", color="red")
+            return {"error": f"Erro de banco de dados: {str(e)}"}
         except Exception as e:
             report_exception(e)
             trace(f"Erro ao importar EJAs: {str(e)}", color="red")
-            self.conn.rollback()
             return {"error": str(e)}
 
     def export_ejas_to_csv(self, file_path=None):
@@ -492,7 +511,7 @@ class LocalDatabaseHandler:
 
         Args:
             file_path (str, opcional): Caminho para salvar o arquivo CSV.
-                                      Se None, gera um nome baseado na data atual.
+                                    Se None, gera um nome baseado na data atual.
 
         Returns:
             str: Caminho do arquivo exportado ou mensagem de erro

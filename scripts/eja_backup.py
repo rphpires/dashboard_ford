@@ -1,113 +1,197 @@
 # scripts/eja_backup.py
-# Script para backup e restauração de dados EJA
+# Script for backup and restoration of EJA data with SQLite support
 from utils.tracer import trace, report_exception
 from data.eja_manager import EJAManager
 import os
 import sys
 import argparse
 import datetime
+import shutil
 
 # Adicionar o diretório raiz ao path para importações
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+# Import SQLite database handler if available
+try:
+    from data.local_db_handler import LocalDatabaseHandler
+    _HAS_SQLITE = True
+except ImportError:
+    _HAS_SQLITE = False
+
 
 def create_backup():
-    """Cria um backup dos EJAs atuais"""
+    """Creates a backup of current EJA data"""
     try:
-        eja_manager = EJAManager()
+        # Create backup directory
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         backup_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "backups")
         os.makedirs(backup_dir, exist_ok=True)
 
-        backup_file = os.path.join(backup_dir, f"eja_backup_{timestamp}.csv")
-        file_path = eja_manager.export_csv(backup_file)
+        # CSV backup
+        eja_manager = EJAManager()
+        csv_backup_file = os.path.join(backup_dir, f"eja_backup_{timestamp}.csv")
+        csv_path = eja_manager.export_csv(csv_backup_file)
 
-        print(f"Backup criado com sucesso: {file_path}")
-        return file_path
+        # SQLite backup (if available)
+        db_backup_file = None
+        if _HAS_SQLITE:
+            db_handler = LocalDatabaseHandler()
+            db_backup_file = os.path.join(backup_dir, f"db_backup_{timestamp}.sqlite")
+            db_backup_result = db_handler.backup_database(db_backup_file)
+
+            # If the backup failed, report it but continue
+            if db_backup_file != db_backup_result:
+                print(f"Warning: SQLite backup failed - {db_backup_result}")
+                db_backup_file = None
+
+        # Report results
+        backup_files = []
+        if csv_path and os.path.exists(csv_path):
+            backup_files.append(csv_path)
+        if db_backup_file and os.path.exists(db_backup_file):
+            backup_files.append(db_backup_file)
+
+        if backup_files:
+            print("Backup(s) created successfully:")
+            for file in backup_files:
+                print(f"- {file}")
+            return backup_files
+        else:
+            print("No backups were created successfully.")
+            return None
     except Exception as e:
         report_exception(e)
-        print(f"Erro ao criar backup: {str(e)}")
+        print(f"Error creating backup: {str(e)}")
         return None
 
 
 def restore_from_backup(backup_file, overwrite=True):
-    """Restaura os EJAs a partir de um arquivo de backup"""
+    """Restores EJA data from a backup file"""
     try:
         if not os.path.exists(backup_file):
-            print(f"Arquivo de backup não encontrado: {backup_file}")
+            print(f"Backup file not found: {backup_file}")
             return False
 
-        eja_manager = EJAManager()
-        result = eja_manager.import_csv(backup_file, overwrite=overwrite)
+        file_ext = os.path.splitext(backup_file)[1].lower()
 
-        if 'error' in result:
-            print(f"Erro ao restaurar backup: {result['error']}")
-            return False
+        # Restore from CSV
+        if file_ext == '.csv':
+            eja_manager = EJAManager()
+            result = eja_manager.import_csv(backup_file, overwrite=overwrite)
 
-        print(f"Backup restaurado com sucesso!")
-        if overwrite:
-            print(f"- {result.get('imported', 0)} registros importados.")
+            if 'error' in result:
+                print(f"Error restoring from CSV: {result['error']}")
+                return False
+
+            print("Restored successfully from CSV!")
+            if overwrite:
+                print(f"- {result.get('imported', 0)} records imported.")
+            else:
+                print(f"- {result.get('imported', 0)} added.")
+                print(f"- {result.get('updated', 0)} updated.")
+                print(f"- {result.get('skipped', 0)} skipped.")
+
+            return True
+
+        # Restore from SQLite backup
+        elif file_ext == '.sqlite':
+            if not _HAS_SQLITE:
+                print("SQLite support is not available. Cannot restore from database backup.")
+                return False
+
+            db_handler = LocalDatabaseHandler()
+            result = db_handler.restore_database(backup_file)
+
+            if result:
+                print(f"Database restored successfully from {backup_file}")
+                return True
+            else:
+                print(f"Failed to restore database from {backup_file}")
+                return False
+
         else:
-            print(f"- {result.get('imported', 0)} adicionados.")
-            print(f"- {result.get('updated', 0)} atualizados.")
-            print(f"- {result.get('skipped', 0)} ignorados.")
+            print(f"Unsupported backup file format: {file_ext}")
+            print("Expected .csv or .sqlite file")
+            return False
 
-        return True
     except Exception as e:
         report_exception(e)
-        print(f"Erro ao restaurar backup: {str(e)}")
+        print(f"Error restoring backup: {str(e)}")
         return False
 
 
 def list_backups():
-    """Lista todos os backups disponíveis"""
+    """Lists all available backups"""
     try:
         backup_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "backups")
         if not os.path.exists(backup_dir):
-            print("Nenhum backup encontrado.")
+            print("No backups found.")
             return []
 
-        backups = [f for f in os.listdir(backup_dir) if f.startswith("eja_backup_") and f.endswith(".csv")]
+        # Find all backup files
+        csv_backups = [f for f in os.listdir(backup_dir) if f.startswith("eja_backup_") and f.endswith(".csv")]
+        db_backups = [f for f in os.listdir(backup_dir) if f.startswith("db_backup_") and f.endswith(".sqlite")]
 
-        if not backups:
-            print("Nenhum backup encontrado.")
+        if not csv_backups and not db_backups:
+            print("No backups found.")
             return []
 
-        print("\nBackups disponíveis:")
-        for i, backup in enumerate(backups, 1):
-            # Extrair timestamp do nome do arquivo
-            timestamp = backup.replace("eja_backup_", "").replace(".csv", "")
-            try:
-                date_time = datetime.datetime.strptime(timestamp, "%Y%m%d_%H%M%S")
-                formatted_date = date_time.strftime("%d/%m/%Y %H:%M:%S")
-            except:
-                formatted_date = timestamp
+        # Print CSV backups
+        print("\nAvailable backups:")
+        backups = []
 
-            print(f"{i}. {backup} ({formatted_date})")
+        if csv_backups:
+            print("\nCSV Backups:")
+            for i, backup in enumerate(sorted(csv_backups), 1):
+                # Extract timestamp from filename
+                timestamp = backup.replace("eja_backup_", "").replace(".csv", "")
+                try:
+                    date_time = datetime.datetime.strptime(timestamp, "%Y%m%d_%H%M%S")
+                    formatted_date = date_time.strftime("%d/%m/%Y %H:%M:%S")
+                except Exception:
+                    formatted_date = timestamp
 
-        print()  # Linha em branco
-        return [os.path.join(backup_dir, b) for b in backups]
+                print(f"CSV-{i}. {backup} ({formatted_date})")
+                backups.append({"type": "csv", "path": os.path.join(backup_dir, backup), "display": f"CSV-{i}"})
+
+        # Print SQLite backups
+        if db_backups:
+            print("\nSQLite Backups:")
+            for i, backup in enumerate(sorted(db_backups), 1):
+                # Extract timestamp from filename
+                timestamp = backup.replace("db_backup_", "").replace(".sqlite", "")
+                try:
+                    date_time = datetime.datetime.strptime(timestamp, "%Y%m%d_%H%M%S")
+                    formatted_date = date_time.strftime("%d/%m/%Y %H:%M:%S")
+                except Exception:
+                    formatted_date = timestamp
+
+                print(f"DB-{i}. {backup} ({formatted_date})")
+                backups.append({"type": "sqlite", "path": os.path.join(backup_dir, backup), "display": f"DB-{i}"})
+
+        print()  # Blank line
+        return backups
     except Exception as e:
         report_exception(e)
-        print(f"Erro ao listar backups: {str(e)}")
+        print(f"Error listing backups: {str(e)}")
         return []
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Gerenciador de backups de EJAs')
-    subparsers = parser.add_subparsers(dest='command', help='Comando')
+    parser = argparse.ArgumentParser(description='EJA Backup Manager with SQLite support')
+    subparsers = parser.add_subparsers(dest='command', help='Command')
 
-    # Comando para backup
-    backup_parser = subparsers.add_parser('backup', help='Criar um backup dos EJAs atuais')
+    # Backup command
+    # backup_parser = subparsers.add_parser('backup', help='Create a backup of current EJA data')
 
-    # Comando para restauração
-    restore_parser = subparsers.add_parser('restore', help='Restaurar EJAs a partir de um backup')
-    restore_parser.add_argument('file', nargs='?', help='Arquivo de backup para restaurar')
+    # Restore command
+    restore_parser = subparsers.add_parser('restore', help='Restore EJA data from a backup')
+    restore_parser.add_argument('file', nargs='?', help='Backup file to restore from')
     restore_parser.add_argument('--keep-existing', action='store_true',
-                                help='Manter dados existentes e apenas adicionar novos/atualizar')
+                                help='Keep existing data and only add new/update existing (CSV only)')
 
-    # Comando para listar backups
-    list_parser = subparsers.add_parser('list', help='Listar todos os backups disponíveis')
+    # List command
+    # list_parser = subparsers.add_parser('list', help='List all available backups')
 
     args = parser.parse_args()
 
@@ -116,37 +200,43 @@ def main():
 
     elif args.command == 'restore':
         if not args.file:
-            # Se não foi especificado um arquivo, listar os disponíveis e perguntar
+            # If no file specified, list available backups and ask
             backups = list_backups()
             if not backups:
                 return
 
             while True:
                 try:
-                    choice = input("Digite o número do backup a ser restaurado (ou 'q' para sair): ")
+                    choice = input("Enter the backup ID to restore (e.g., 'CSV-1' or 'DB-2') or 'q' to quit: ")
                     if choice.lower() == 'q':
                         return
 
-                    choice = int(choice)
-                    if 1 <= choice <= len(backups):
-                        selected_backup = backups[choice - 1]
+                    # Find the selected backup
+                    selected_backup = None
+                    for backup in backups:
+                        if backup["display"] == choice:
+                            selected_backup = backup
+                            break
+
+                    if selected_backup:
+                        backup_path = selected_backup["path"]
                         break
                     else:
-                        print("Número inválido. Tente novamente.")
+                        print("Invalid backup ID. Try again.")
                 except ValueError:
-                    print("Entrada inválida. Digite um número ou 'q'.")
+                    print("Invalid input. Enter a backup ID or 'q'.")
         else:
-            selected_backup = args.file
+            backup_path = args.file
 
-        # Confirmar sobrescrita
-        if not args.keep_existing:
-            confirm = input("ATENÇÃO: Esta ação irá sobrescrever todos os dados existentes. Continuar? (s/n): ")
-            if confirm.lower() != 's':
-                print("Operação cancelada.")
+        # Confirm overwrite if necessary
+        if backup_path.endswith('.csv') and not args.keep_existing:
+            confirm = input("WARNING: This will overwrite all existing data. Continue? (y/n): ")
+            if confirm.lower() != 'y':
+                print("Operation cancelled.")
                 return
 
-        # Restaurar o backup
-        restore_from_backup(selected_backup, overwrite=not args.keep_existing)
+        # Restore from the backup
+        restore_from_backup(backup_path, overwrite=not args.keep_existing)
 
     elif args.command == 'list':
         list_backups()
