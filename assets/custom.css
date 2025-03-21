@@ -182,6 +182,67 @@ body {
     display: none;
 }
 
+/* Estilo para a tabela com cabeçalho fixo */
+.eja-table-container {
+    max-height: var(--table-height, 500px);
+    overflow-y: auto;
+    position: relative;
+}
+
+/* Fixa o cabeçalho da tabela */
+.eja-table thead {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background-color: #f8f9fa; /* Cor de fundo para o cabeçalho */
+}
+
+/* Garante que o cabeçalho tenha uma borda apropriada */
+.eja-table thead th {
+    border-top: 1px solid #dee2e6;
+    border-bottom: 2px solid #dee2e6;
+    background-color: #f8f9fa; /* Repetido para garantir a cobertura */
+}
+
+/* Melhora a aparência do cabeçalho */
+.eja-table thead th {
+    font-weight: bold;
+    padding: 12px 15px;
+    vertical-align: middle;
+}
+
+/* Cores alternadas nas linhas para melhor legibilidade */
+.eja-table tbody tr:nth-of-type(odd) {
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+/* Estilo para hover nas linhas */
+.eja-table tbody tr:hover {
+    background-color: rgba(0, 123, 255, 0.1);
+}
+
+/* Garante que a tabela ocupe a largura total */
+.eja-table {
+    width: 100%;
+    margin-bottom: 0;
+}
+
+/* Ajuste de altura para células de dados */
+.eja-table tbody td {
+    padding: 8px 15px;
+    vertical-align: middle;
+}
+
+@media (max-height: 768px) {
+    .eja-table-container {
+        max-height: 350px;
+    }
+    
+    .eja-table td, .eja-table th {
+        padding: 6px 10px;
+    }
+}
+
 /* ==================== Componentes de UI ==================== */
 
 /* Painéis e Cartões */

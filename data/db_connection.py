@@ -158,3 +158,13 @@ class DatabaseReader:
                 connection.close()
 
         return df
+
+
+# Função auxiliar para obter uma instância da conexão
+def get_db_connection():
+    """Retorna uma instância da conexão com o banco de dados."""
+    try:
+        return DatabaseReader()
+    except Exception as e:
+        print(f"Erro ao criar conexão com banco de dados: {str(e)}")
+        return None
