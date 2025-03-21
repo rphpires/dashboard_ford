@@ -1,46 +1,46 @@
-// Função para ajustar os gráficos dinamicamente baseado no tamanho da viewport
+// Função para ajustar os gráficos dinamicamente
 document.addEventListener('DOMContentLoaded', function() {
-    // Para cada container de gráfico, adicione uma classe específica para facilitar o styling
-    const graphContainers = {
-        'utilization-graph': 'utilization-graph',
-        'availability-graph': 'availability-graph',
-        'programs-graph': 'programs-graph',
-        'other-skills-graph': 'other-skills-graph',
-        'internal-users-graph': 'internal-users-graph',
-        'external-sales-graph': 'external-sales-graph',
-        'monthly-tracks-graph': 'monthly-tracks-graph',
-        'monthly-areas-graph': 'monthly-areas-graph',
-        'ytd-customers-graph': 'ytd-customers-graph'
-    };
+    // Forçar redesenho de todos os gráficos após o carregamento completo
+    setTimeout(function() {
+        // Obter todas as instâncias de gráficos Plotly
+        var allPlots = document.querySelectorAll('.js-plotly-plot');
+        
+        // Para cada gráfico, forçar o redesenho
+        allPlots.forEach(function(plot) {
+            if (window.Plotly && plot && plot.id) {
+                var plotElement = document.getElementById(plot.id);
+                if (plotElement && plotElement._fullLayout) {
+                    try {
+                        window.Plotly.relayout(plot.id, {
+                            'autosize': true
+                        });
+                    } catch (e) {
+                        console.error('Error resizing plot:', e);
+                    }
+                }
+            }
+        });
+        
+        // Forçar redesenho da tela
+        window.dispatchEvent(new Event('resize'));
+    }, 100);  // Pequeno atraso para garantir que os elementos estejam renderizados
     
-    // Adicionar classes aos containers
-    Object.entries(graphContainers).forEach(([id, className]) => {
-        const container = document.getElementById(id);
-        if (container && container.parentElement) {
-            container.parentElement.classList.add(className);
-        }
+    // Também redesenhar ao redimensionar a janela
+    window.addEventListener('resize', function() {
+        // Forçar redesenho após redimensionamento
+        setTimeout(function() {
+            var allPlots = document.querySelectorAll('.js-plotly-plot');
+            allPlots.forEach(function(plot) {
+                if (window.Plotly && plot && plot.id) {
+                    try {
+                        window.Plotly.relayout(plot.id, {
+                            'autosize': true
+                        });
+                    } catch (e) {
+                        console.error('Error resizing plot:', e);
+                    }
+                }
+            });
+        }, 100);
     });
-    
-    // Função para ajustar layout baseado no tamanho da tela
-    function adjustLayout() {
-        const windowHeight = window.innerHeight;
-        const windowWidth = window.innerWidth;
-        
-        // Adicionar classe específica para o tamanho da tela atual
-        document.body.classList.remove('screen-large', 'screen-medium', 'screen-small');
-        
-        if (windowWidth > 1200 && windowHeight > 900) {
-            document.body.classList.add('screen-large');
-        } else if (windowWidth > 992 || windowHeight > 700) {
-            document.body.classList.add('screen-medium');
-        } else {
-            document.body.classList.add('screen-small');
-        }
-    }
-    
-    // Executar ao carregar
-    adjustLayout();
-    
-    // Evento de redimensionamento
-    window.addEventListener('resize', adjustLayout);
 });

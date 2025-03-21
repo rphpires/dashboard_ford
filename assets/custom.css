@@ -51,17 +51,18 @@ body {
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     overflow: hidden; /* Prevenir rolagem no corpo */
+    height: 100vh;
+    width: 100vw;
 }
 
 /* ==================== Layout do Dashboard ==================== */
 
 /* Container principal - layout de tela cheia sem rolagem */
 .dashboard-container {
-    max-width: 100%;
-    width: 100%;
+    width: 100vw;
     height: 100vh;
     margin: 0;
-    padding: 10px;
+    padding: 8px;
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
@@ -73,17 +74,17 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 8px 15px;
+    padding: 6px 15px;
     background: linear-gradient(90deg, var(--primary-dark), var(--primary-color));
     color: white;
     border-radius: 12px;
-    margin-bottom: 10px;
+    margin-bottom: 8px;
     box-shadow: var(--card-shadow);
     position: relative;
     overflow: hidden;
     flex-shrink: 0;
-    min-height: 50px;
-    max-height: 50px;
+    min-height: 40px;
+    max-height: 40px;
 }
 
 .header::after {
@@ -105,30 +106,30 @@ body {
 }
 
 .logo {
-    height: 28px;
-    margin-right: 15px;
+    height: 24px; /* Reduzido de 28px */
+    margin-right: 12px; /* Reduzido de 15px */
     filter: brightness(0) invert(1);
 }
 
 .header-title {
-    font-size: 18px;
+    font-size: 16px; /* Reduzido de 18px */
     font-weight: 600;
     letter-spacing: 0.02em;
 }
 
 .header-subtitle {
-    font-size: 14px;
+    font-size: 13px; /* Reduzido de 14px */
     font-weight: 500;
-    margin-left: 20px;
+    margin-left: 16px; /* Reduzido de 20px */
     letter-spacing: 0.01em;
     opacity: 0.9;
 }
 
 .header-date {
-    font-size: 16px;
+    font-size: 14px; /* Reduzido de 16px */
     font-weight: 500;
     background-color: rgba(255, 255, 255, 0.2);
-    padding: 5px 10px;
+    padding: 4px 8px; /* Reduzido de 5px 10px */
     border-radius: 16px;
     z-index: 1;
 }
@@ -139,33 +140,29 @@ body {
 .dashboard-content {
     display: flex;
     flex: 1;
-    gap: 10px;
+    gap: 8px; /* Reduzido de 10px */
     overflow: hidden;
-    height: calc(100vh - 100px);
+    height: calc(100vh - 80px); /* Ajustado para cabeçalho e rodapé menores */
 }
 
 /* Definições para layout de três colunas */
 .three-column-layout {
     display: flex;
     flex: 1;
-    gap: 10px;
+    gap: 8px; /* Reduzido de 10px */
     overflow: hidden;
 }
 
 /* Tamanhos específicos para as 3 colunas */
-.column-small {
-    flex: 0.75;
-    min-width: 180px;
+.column-small, .column-medium, .column-large {
+    flex: 1 !important;  /* Todas as colunas têm o mesmo flex */
+    min-width: 200px;
+    width: 33.33% !important;  /* Todas as colunas têm a mesma largura */
 }
 
-.column-medium {
-    flex: 1.25;
-    min-width: 250px;
-}
-
-.column-large {
-    flex: 1.25;
-    min-width: 250px;
+/* Ajuste para a terceira coluna */
+.column-large .panel-content {
+    min-height: 0; /* Alterado de 200px para permitir flexibilidade */
 }
 
 /* Propriedades comuns para todas as colunas */
@@ -173,26 +170,16 @@ body {
     min-width: 0;
     display: flex;
     flex-direction: column;
-    gap: 8px;
-    overflow-y: auto;
-    overflow-x: hidden;
+    gap: 8px; /* Reduzido de 10px */
+    overflow: hidden; /* Alterado de overflow-y: auto para hidden */
     height: 100%;
-    padding-right: 5px;
-    scrollbar-width: thin;
-    scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
+    padding-right: 0; /* Removido padding à direita */
 }
 
+/* Remover estilos de scrollbar já que não teremos rolagem */
 .column::-webkit-scrollbar {
-    width: 6px;
-}
-
-.column::-webkit-scrollbar-thumb {
-    background-color: rgba(0, 0, 0, 0.2);
-    border-radius: 3px;
-}
-
-.column::-webkit-scrollbar-track {
-    background-color: transparent;
+    width: 0;
+    display: none;
 }
 
 /* ==================== Componentes de UI ==================== */
@@ -207,9 +194,9 @@ body {
     transition: transform 0.2s ease, box-shadow 0.2s ease;
     display: flex;
     flex-direction: column;
-    margin-bottom: 10px;
-    flex-shrink: 0;
-    min-height: 0;
+    margin-bottom: 8px; /* Reduzido de 10px */
+    flex: 1;
+    min-height: 0; /* Importante para flexbox */
 }
 
 .panel:hover {
@@ -220,8 +207,8 @@ body {
 .section-title {
     background: linear-gradient(90deg, var(--primary-dark), var(--primary-color));
     color: white;
-    padding: 8px 12px;
-    font-size: 12px;
+    padding: 6px 10px; /* Reduzido de 8px 12px */
+    font-size: 11px; /* Reduzido de 12px */
     font-weight: 600;
     letter-spacing: 0.5px;
     display: flex;
@@ -232,6 +219,7 @@ body {
     overflow: hidden;
     border-bottom: 1px solid rgba(0, 0, 0, 0.05);
     flex-shrink: 0;
+    min-height: 0; /* Removido min-height fixo */
 }
 
 .section-title::after {
@@ -246,7 +234,7 @@ body {
 }
 
 .card-title {
-    font-size: 13px !important;
+    font-size: 12px !important; /* Reduzido de 13px */
     letter-spacing: 0.2px;
     position: relative;
     z-index: 1;
@@ -257,19 +245,19 @@ body {
     z-index: 1;
     font-weight: 600;
     background-color: rgba(255, 255, 255, 0.2);
-    padding: 3px 8px;
+    padding: 2px 6px; /* Reduzido de 3px 8px */
     border-radius: 14px;
-    font-size: 13px !important;
+    font-size: 12px !important; /* Reduzido de 13px */
     letter-spacing: 0.2px;
 }
 
 .panel-content {
-    padding: 8px;
+    padding: 6px; /* Reduzido de 8px */
     display: flex;
     flex-direction: column;
-    overflow: hidden;
     flex: 1;
-    min-height: 0;
+    min-height: 0; /* Importante para flexbox */
+    overflow: hidden; /* Alterado de visible para hidden */
 }
 
 /* Caixas de métricas */
@@ -279,8 +267,8 @@ body {
     align-items: center;
     background-color: var(--background-color);
     border: 1px solid var(--card-border);
-    padding: 8px;
-    margin-bottom: 8px;
+    padding: 6px; /* Reduzido de 8px */
+    margin-bottom: 6px; /* Reduzido de 8px */
     border-radius: 8px;
     transition: all 0.2s ease;
     flex-direction: column;
@@ -297,7 +285,7 @@ body {
 
 .metric-title {
     font-weight: 600;
-    font-size: 12px !important;
+    font-size: 11px !important; /* Reduzido de 12px */
     color: var(--text-light);
     text-transform: uppercase;
     letter-spacing: 0.5px;
@@ -305,7 +293,7 @@ body {
 
 .metric-value {
     font-weight: 700;
-    font-size: 14px;
+    font-size: 13px; /* Reduzido de 14px */
     color: var(--primary-color);
     display: flex;
     align-items: center;
@@ -313,8 +301,8 @@ body {
 
 /* Versão compacta para caixas de métricas */
 .compact-metric-box {
-    padding: 6px 8px;
-    margin-bottom: 6px;
+    padding: 4px 6px; /* Reduzido de 6px 8px */
+    margin-bottom: 4px; /* Reduzido de 6px */
     background-color: var(--background-color);
     border: 1px solid var(--card-border);
     border-radius: 8px;
@@ -327,22 +315,24 @@ body {
 .chart-container {
     background-color: var(--card-bg);
     border-radius: 8px;
-    padding: 8px;
-    margin-bottom: 8px;
+    padding: 6px; /* Reduzido de 8px */
+    margin-bottom: 6px; /* Reduzido de 8px */
     box-shadow: 0 1px 3px rgba(0,0,0,0.05);
     border: 1px solid var(--card-border);
     display: flex;
     flex-direction: column;
-    flex: 1;
     position: relative;
-    min-height: 0;
-    overflow: hidden;
+    overflow: hidden; /* Alterado de visible para hidden */
+    flex: 1;
+    min-height: 0; /* Removido min-height fixo */
 }
 
 /* Plotly personalização */
 .js-plotly-plot {
+    min-height: 0 !important; /* Removido min-height fixo */
+    position: relative !important;
     width: 100% !important;
-    height: 100% !important;
+    height: 100% !important; /* Adicionado para ocupar todo o espaço disponível */
 }
 
 .js-plotly-plot .plotly .main-svg {
@@ -355,14 +345,14 @@ body {
 
 .js-plotly-plot .ytick text, 
 .js-plotly-plot .xtick text {
-    font-size: 10px !important;
+    font-size: 9px !important; /* Reduzido de 10px */
 }
 
 /* Layouts Flexíveis */
 .flex-container {
     display: flex;
-    gap: 10px;
-    margin-bottom: 10px;
+    gap: 8px; /* Reduzido de 10px */
+    margin-bottom: 8px; /* Reduzido de 10px */
     flex-wrap: wrap;
     justify-content: space-between;
     width: 100%;
@@ -371,23 +361,13 @@ body {
 .flex-item {
     flex: 1;
     min-width: 48%;
-    margin-bottom: 10px;
+    margin-bottom: 8px; /* Reduzido de 10px */
 }
 
-/* Tamanhos específicos de gráficos */
-.chart-sm {
-    height: 120px;
-    min-height: 120px;
-}
-
-.chart-md {
-    height: 150px;
-    min-height: 150px;
-}
-
-.chart-lg {
-    height: 180px;
-    min-height: 180px;
+/* Tamanhos específicos de gráficos - alterados para uso relativo */
+.chart-sm, .chart-md, .chart-lg {
+    flex: 1;
+    min-height: 0; /* Removido min-height fixo */
 }
 
 /* Cards de resumo para números importantes */
@@ -395,7 +375,7 @@ body {
     background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
     color: white;
     border-radius: 8px;
-    padding: 12px;
+    padding: 10px; /* Reduzido de 12px */
     display: flex;
     flex-direction: column;
     text-align: center;
@@ -416,54 +396,58 @@ body {
 }
 
 .summary-title {
-    font-size: 11px;
+    font-size: 10px; /* Reduzido de 11px */
     font-weight: 500;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    margin-bottom: 8px;
+    margin-bottom: 6px; /* Reduzido de 8px */
     opacity: 0.9;
 }
 
 .summary-value {
-    font-size: 24px;
+    font-size: 22px; /* Reduzido de 24px */
     font-weight: 700;
-    margin-bottom: 3px;
+    margin-bottom: 2px; /* Reduzido de 3px */
 }
 
 .summary-subtitle {
-    font-size: 10px;
+    font-size: 9px; /* Reduzido de 10px */
     opacity: 0.8;
 }
 
 /* Cards de resumo compactos */
 .compact-info-cards {
-    gap: 5px;
+    gap: 4px; /* Reduzido de 5px */
 }
 
 .compact-info-cards .summary-card {
-    padding: 10px;
+    padding: 8px; /* Reduzido de 10px */
 }
 
 .compact-info-cards .summary-title {
-    font-size: 10px;
-    margin-bottom: 5px;
+    font-size: 9px; /* Reduzido de 10px */
+    margin-bottom: 4px; /* Reduzido de 5px */
 }
 
 .compact-info-cards .summary-value {
-    font-size: 18px;
+    font-size: 16px; /* Reduzido de 18px */
     margin-bottom: 2px;
 }
 
 .compact-info-cards .summary-subtitle {
-    font-size: 9px;
+    font-size: 8px; /* Reduzido de 9px */
 }
 
 /* Containers com bordas */
 .bordered-container {
-    margin-bottom: 10px;
+    margin-bottom: 8px; /* Reduzido de 10px */
     border: 1px solid var(--card-border);
     border-radius: 8px;
     overflow: hidden;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
 }
 
 /* Tooltips personalizados */
@@ -471,21 +455,21 @@ body {
     background-color: white;
     border-radius: 6px;
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
-    padding: 8px 12px;
-    font-size: 12px;
+    padding: 6px 10px; /* Reduzido de 8px 12px */
+    font-size: 11px; /* Reduzido de 12px */
     color: var(--text-color);
     border: 1px solid var(--card-border);
 }
 
 /* Rodapé compacto */
 .footer {
-    margin-top: 5px;
-    padding: 3px;
+    margin-top: 4px; /* Reduzido de 5px */
+    padding: 2px; /* Reduzido de 3px */
     text-align: center;
-    font-size: 11px;
+    font-size: 10px; /* Reduzido de 11px */
     color: var(--text-light);
     flex-shrink: 0;
-    max-height: 30px;
+    max-height: 22px; /* Reduzido de 30px */
 }
 
 /* ==================== Estilos específicos para gráficos ==================== */
@@ -493,37 +477,20 @@ body {
 /* Utilização % */
 .utilization-graph .js-plotly-plot,
 .availability-graph .js-plotly-plot {
-    min-height: 190px;
-    height: 190px !important;
+    height: 100% !important;
+    min-height: 0 !important;
 }
 
 /* Detalhamento de utilização */
 .programs-graph .js-plotly-plot,
-.other-skills-graph .js-plotly-plot {
-    min-height: 170px;
-    height: 170px !important;
-}
-
+.other-skills-graph .js-plotly-plot,
 .internal-users-graph .js-plotly-plot,
-.external-sales-graph .js-plotly-plot {
-    min-height: 170px;
-    height: 170px !important;
-}
-
-/* Tracks, áreas e clientes */
-.monthly-tracks-graph .js-plotly-plot {
-    min-height: 210px;
-    height: 210px !important;
-}
-
-.monthly-areas-graph .js-plotly-plot {
-    min-height: 210px;
-    height: 210px !important;
-}
-
+.external-sales-graph .js-plotly-plot,
+.monthly-tracks-graph .js-plotly-plot,
+.monthly-areas-graph .js-plotly-plot,
 .ytd-customers-graph .js-plotly-plot {
-    min-height: 210px;
-    height: 210px !important;
+    height: 100% !important;
+    min-height: 0 !important;
 }
 
 /* ==================== Novos Estilos para o Layout Modificado ==================== */
@@ -532,8 +499,8 @@ body {
 .utilization-cards {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
-    margin-bottom: 10px;
+    gap: 6px; /* Reduzido de 8px */
+    margin-bottom: 8px; /* Reduzido de 10px */
     justify-content: space-between;
 }
 
@@ -542,7 +509,7 @@ body {
     min-width: 120px;
     background-color: white;
     border-radius: 8px;
-    padding: 8px;
+    padding: 6px; /* Reduzido de 8px */
     box-shadow: 0 2px 8px rgba(0,0,0,0.05);
 }
 
@@ -561,126 +528,177 @@ body {
 .customer-stacked-chart .gauge-indicator {
     display: flex;
     align-items: center;
-    margin-bottom: 8px;
+    margin-bottom: 6px; /* Reduzido de 8px */
 }
 
 .customer-stacked-chart .gauge-value {
-    width: 30px;
-    height: 30px;
+    width: 26px; /* Reduzido de 30px */
+    height: 26px; /* Reduzido de 30px */
     border-radius: 50%;
     display: flex;
     justify-content: center;
     align-items: center;
     color: white;
     font-weight: bold;
-    font-size: 11px;
-    margin-left: 10px;
+    font-size: 10px; /* Reduzido de 11px */
+    margin-left: 8px; /* Reduzido de 10px */
 }
 
 /* ==================== Responsividade ==================== */
 
 @media (min-width: 1201px) {
     /* Ajustes para telas grandes */
-    .utilization-graph .js-plotly-plot,
-    .availability-graph .js-plotly-plot {
-        min-height: 210px;
-        height: 210px !important;
+    .dashboard-container {
+        padding: 10px;
     }
     
-    .programs-graph .js-plotly-plot,
-    .other-skills-graph .js-plotly-plot {
-        min-height: 200px;
-        height: 200px !important;
+    .header {
+        min-height: 45px;
+        max-height: 45px;
     }
     
-    .monthly-tracks-graph .js-plotly-plot,
-    .monthly-areas-graph .js-plotly-plot,
-    .ytd-customers-graph .js-plotly-plot {
-        min-height: 230px;
-        height: 230px !important;
+    .header-title {
+        font-size: 18px;
+    }
+    
+    .section-title {
+        padding: 8px 12px;
+        font-size: 12px;
+    }
+    
+    .panel-content {
+        padding: 8px;
     }
 }
 
 @media (max-width: 1200px) {
+    /* Garantir que as 3 colunas mantenham proporção */
     .column-small, .column-medium, .column-large {
-        width: 100% !important;
-        min-height: 400px;
-        margin-bottom: 15px;
+        flex: 1 !important;
+        min-width: 200px;
+        width: 33.33% !important;
     }
     
-    .dashboard-content {
-        flex-direction: column;
-        height: auto;
-        overflow-y: auto;
+    /* Reduzir ainda mais fontes e espaçamentos */
+    .header-title {
+        font-size: 15px;
     }
     
-    .column {
-        overflow-y: visible;
-        height: auto;
+    .header-subtitle {
+        font-size: 12px;
     }
     
-    /* Ajustar alturas de gráficos para telas médias */
-    .utilization-graph .js-plotly-plot,
-    .availability-graph .js-plotly-plot {
-        min-height: 180px;
-        height: 180px !important;
+    .card-title {
+        font-size: 11px !important;
+    }
+    
+    .section-title {
+        padding: 5px 8px;
+        font-size: 10px;
+    }
+    
+    .metric-title {
+        font-size: 10px !important;
+    }
+    
+    .metric-value {
+        font-size: 12px;
+    }
+    
+    .summary-value {
+        font-size: 18px;
+    }
+    
+    .js-plotly-plot .ytick text, 
+    .js-plotly-plot .xtick text {
+        font-size: 8px !important;
     }
 }
 
 @media (max-width: 992px) {
+    /* Para telas menores, ajustar proporções */
+    .dashboard-container {
+        padding: 5px;
+    }
+    
+    .dashboard-content {
+        gap: 5px;
+    }
+    
     .flex-container {
-        flex-direction: column;
+        gap: 5px;
+        margin-bottom: 5px;
+    }
+    
+    .bordered-container,
+    .panel {
+        margin-bottom: 5px;
     }
     
     .header {
-        flex-direction: column;
-        align-items: flex-start;
+        min-height: 35px;
+        max-height: 35px;
+        margin-bottom: 5px;
+        padding: 4px 10px;
+    }
+    
+    .header-title {
+        font-size: 14px;
+    }
+    
+    .header-subtitle {
+        font-size: 11px;
+        margin-left: 10px;
     }
     
     .header-date {
-        margin-top: 10px;
+        font-size: 12px;
+        padding: 3px 6px;
     }
     
-    /* Reduzir ainda mais para telas pequenas */
-    .utilization-graph .js-plotly-plot,
-    .availability-graph .js-plotly-plot,
-    .programs-graph .js-plotly-plot,
-    .other-skills-graph .js-plotly-plot,
-    .internal-users-graph .js-plotly-plot,
-    .external-sales-graph .js-plotly-plot,
-    .monthly-tracks-graph .js-plotly-plot,
-    .monthly-areas-graph .js-plotly-plot,
-    .ytd-customers-graph .js-plotly-plot {
-        min-height: 160px;
-        height: 160px !important;
+    .footer {
+        max-height: 18px;
+        font-size: 9px;
     }
 }
 
 @media (max-height: 768px) {
-    /* Escalar para baixo em telas com altura menor */
-    .utilization-graph .js-plotly-plot,
-    .availability-graph .js-plotly-plot {
-        min-height: 150px;
-        height: 150px !important;
+    /* Para telas com menor altura */
+    .dashboard-container {
+        padding: 4px;
     }
     
-    .programs-graph .js-plotly-plot,
-    .other-skills-graph .js-plotly-plot {
-        min-height: 140px;
-        height: 140px !important;
+    .header {
+        min-height: 32px;
+        max-height: 32px;
+        margin-bottom: 4px;
     }
     
-    .internal-users-graph .js-plotly-plot,
-    .external-sales-graph .js-plotly-plot {
-        min-height: 140px;
-        height: 140px !important;
+    .dashboard-content {
+        gap: 4px;
+        height: calc(100vh - 60px);
     }
     
-    .monthly-tracks-graph .js-plotly-plot,
-    .monthly-areas-graph .js-plotly-plot,
-    .ytd-customers-graph .js-plotly-plot {
-        min-height: 160px;
-        height: 160px !important;
+    .column {
+        gap: 4px;
+    }
+    
+    .panel {
+        margin-bottom: 4px;
+    }
+    
+    .panel-content {
+        padding: 4px;
+    }
+    
+    .footer {
+        margin-top: 2px;
+        max-height: 16px;
+    }
+    
+    .metric-box,
+    .chart-container {
+        margin-bottom: 4px;
     }
 }
 
@@ -726,4 +744,14 @@ body {
         print-color-adjust: exact;
         forced-color-adjust: none;
     }
+}
+
+/* Ajuste para os gráficos da coluna direita */
+#ytd-customers-graph, 
+#monthly-areas-graph, 
+#monthly-tracks-graph {
+    min-height: 0 !important;
+    height: 100% !important;
+    visibility: visible !important;
+    display: block !important;
 }

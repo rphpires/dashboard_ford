@@ -2,6 +2,7 @@
 # Funções para criação de seções e componentes de UI do dashboard
 from dash import html, dcc
 from config.config import colors
+from config.layout_config import layout_config
 
 
 def adjust_color_brightness(hex_color, brightness_offset=0):

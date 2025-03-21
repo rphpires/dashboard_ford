@@ -4,14 +4,15 @@ import plotly.graph_objs as go
 import plotly.express as px
 from plotly.subplots import make_subplots
 import numpy as np
-from config.config import colors, layout_config, dashboard_constants  # Importar configurações de cores do projeto
+from config.config import colors, dashboard_constants  # Importar configurações de cores do projeto
+from config.layout_config import layout_config, calculate_chart_height
 
 
 def create_utilization_graph(df, height=None):
     """Cria o gráfico de utilização mensal com design moderno e gradiente"""
     # Usar altura padrão se não for fornecida
     if height is None:
-        height = layout_config['chart_sm_height']
+        height = layout_config.get('chart_sm_height', 180)
 
     # Definir paleta de cores para gradiente baseado nos valores
     max_value = max(df['utilization'])
@@ -92,18 +93,18 @@ def create_utilization_graph(df, height=None):
 
     # Atualizar o layout com a altura personalizada
     fig.update_layout(
-        height=height,  # Usar o valor de altura personalizado
         autosize=True,
-        margin={'l': 40, 'r': 20, 't': 20, 'b': 40},
+        margin={'l': 30, 'r': 20, 't': 15, 'b': 30},
         plot_bgcolor='rgba(0,0,0,0)',
         paper_bgcolor='rgba(0,0,0,0)',
+        height=height,
         xaxis=dict(
             showgrid=False,
             zeroline=False,
             showline=True,
             linecolor='#E0E0E0',
             tickangle=0,
-            tickfont=dict(size=10),
+            tickfont=dict(size=9),
         ),
         yaxis=dict(
             showgrid=True,
@@ -112,15 +113,15 @@ def create_utilization_graph(df, height=None):
             zerolinecolor='#E0E0E0',
             showline=True,
             linecolor='#E0E0E0',
-            range=[0, max(df['utilization']) * 1.2],
-            tickfont=dict(size=10),
+            range=[0, max(df['utilization']) * 1.1],
+            tickfont=dict(size=9),
             title=dict(text='Utilização (%)', standoff=5),
-            title_font=dict(size=11, color="#666"),
+            title_font=dict(size=10, color="#666"),
         ),
-        bargap=0.2,
+        bargap=0.15,  # Reduzir espaçamento entre barras
         hoverlabel=dict(
             bgcolor="white",
-            font_size=12,
+            font_size=10,
             font_family="Segoe UI",
             bordercolor="#DDD"
         ),
@@ -133,7 +134,7 @@ def create_availability_graph(df, height=None):
     """Cria o gráfico de disponibilidade com design moderno usando áreas sombreadas"""
     # Usar altura padrão se não for fornecida
     if height is None:
-        height = layout_config['chart_sm_height']
+        height = layout_config.get('chart_sm_height', 180)
 
     target = dashboard_constants['target_availability']
 
@@ -180,18 +181,18 @@ def create_availability_graph(df, height=None):
 
     # Atualizar layout com a altura personalizada
     fig.update_layout(
-        height=height,  # Usar o valor de altura personalizado
         autosize=True,
-        margin={'l': 40, 'r': 20, 't': 20, 'b': 40},
+        margin={'l': 30, 'r': 20, 't': 15, 'b': 30},
         plot_bgcolor='rgba(0,0,0,0)',
         paper_bgcolor='rgba(0,0,0,0)',
+        height=height,
         xaxis=dict(
             showgrid=False,
             zeroline=False,
             showline=True,
             linecolor='#E0E0E0',
             tickangle=0,
-            tickfont=dict(size=10),
+            tickfont=dict(size=9),
         ),
         yaxis=dict(
             showgrid=True,
@@ -200,9 +201,9 @@ def create_availability_graph(df, height=None):
             showline=True,
             linecolor='#E0E0E0',
             range=[0, 110],
-            tickfont=dict(size=10),
+            tickfont=dict(size=9),
             title=dict(text='Disponibilidade (%)', standoff=5),
-            title_font=dict(size=11, color="#666"),
+            title_font=dict(size=10, color="#666"),
         ),
         annotations=[
             dict(
@@ -212,13 +213,13 @@ def create_availability_graph(df, height=None):
                 yref="y",
                 text=f"META {target}%",
                 showarrow=False,
-                font=dict(size=10, color=colors['target_line'], family="Segoe UI, sans-serif"),
+                font=dict(size=9, color=colors['target_line'], family="Segoe UI, sans-serif"),
                 xanchor="right",
                 yanchor="bottom",
                 bgcolor="rgba(255, 255, 255, 0.8)",
                 bordercolor=colors['target_line'],
                 borderwidth=1,
-                borderpad=4,
+                borderpad=3,
             )
         ],
         legend=dict(
@@ -226,11 +227,12 @@ def create_availability_graph(df, height=None):
             yanchor="bottom",
             y=1.02,
             xanchor="right",
-            x=1
+            x=1,
+            font=dict(size=9)
         ),
         hoverlabel=dict(
             bgcolor="white",
-            font_size=12,
+            font_size=10,
             font_family="Segoe UI",
             bordercolor="#DDD"
         ),
@@ -243,7 +245,7 @@ def create_programs_graph(df, height=None):
     """Cria o gráfico de utilização por programas com barras horizontais e estilo moderno"""
     # Usar altura padrão se não for fornecida
     if height is None:
-        height = layout_config['chart_sm_height']
+        height = layout_config.get('chart_sm_height', 180)
 
     # Ordenar os dados por horas (decrescente)
     df_sorted = df.sort_values('hours', ascending=False)
@@ -280,11 +282,11 @@ def create_programs_graph(df, height=None):
 
     # Atualizar layout com a altura personalizada
     fig.update_layout(
-        height=height,  # Usar o valor de altura personalizado
         autosize=True,
-        margin={'l': 100, 'r': 20, 't': 10, 'b': 40},
+        margin={'l': 90, 'r': 20, 't': 10, 'b': 30},
         plot_bgcolor='rgba(0,0,0,0)',
         paper_bgcolor='rgba(0,0,0,0)',
+        height=height,
         xaxis=dict(
             showgrid=True,
             gridcolor='rgba(224, 224, 224, 0.5)',
@@ -292,8 +294,8 @@ def create_programs_graph(df, height=None):
             showline=True,
             linecolor='#E0E0E0',
             title=dict(text='Horas', standoff=5),
-            title_font=dict(size=11, color="#666"),
-            tickfont=dict(size=10),
+            title_font=dict(size=10, color="#666"),
+            tickfont=dict(size=9),
         ),
         yaxis=dict(
             showgrid=False,
@@ -301,9 +303,9 @@ def create_programs_graph(df, height=None):
             showline=True,
             linecolor='#E0E0E0',
             automargin=True,
-            tickfont=dict(size=10),
+            tickfont=dict(size=9),
         ),
-        bargap=0.2,
+        bargap=0.15,
         hoverlabel=dict(
             bgcolor="white",
             font_size=12,
@@ -319,7 +321,7 @@ def create_other_skills_graph(df, height=None):
     """Cria o gráfico de outras equipes de habilidades com barras horizontais e estilo moderno"""
     # Usar altura padrão se não for fornecida
     if height is None:
-        height = layout_config['chart_sm_height']
+        height = layout_config.get('chart_sm_height', 180)
 
     # Ordenar os dados por horas (decrescente)
     df_sorted = df.sort_values('hours', ascending=False)
@@ -343,7 +345,7 @@ def create_other_skills_graph(df, height=None):
             marker_color=colors_list[:len(df_sorted)],
             text=[f"{h} ({p:.1f}%)" for h, p in zip(df_sorted['hours'], percentages)],
             textposition='auto',
-            textfont=dict(color='white', size=10),
+            textfont=dict(color='white', size=9),  # Reduzido de 10px
             name='Horas',
             hovertemplate='<b>%{y}</b><br>Horas: %{x}<br>Percentual: %{text}<extra></extra>',
         )
@@ -351,9 +353,9 @@ def create_other_skills_graph(df, height=None):
 
     # Atualizar layout com a altura personalizada
     fig.update_layout(
-        height=height,  # Usar o valor de altura personalizado
+        height=height,
         autosize=True,
-        margin={'l': 100, 'r': 20, 't': 10, 'b': 30},
+        margin={'l': 90, 'r': 15, 't': 5, 'b': 20},  # Margens reduzidas
         plot_bgcolor='rgba(0,0,0,0)',
         paper_bgcolor='rgba(0,0,0,0)',
         xaxis=dict(
@@ -363,8 +365,8 @@ def create_other_skills_graph(df, height=None):
             showline=True,
             linecolor='#E0E0E0',
             title=dict(text='Horas', standoff=5),
-            title_font=dict(size=11, color="#666"),
-            tickfont=dict(size=10),
+            title_font=dict(size=10, color="#666"),
+            tickfont=dict(size=9),
         ),
         yaxis=dict(
             showgrid=False,
@@ -372,12 +374,12 @@ def create_other_skills_graph(df, height=None):
             showline=True,
             linecolor='#E0E0E0',
             automargin=True,
-            tickfont=dict(size=10),
+            tickfont=dict(size=9),
         ),
-        bargap=0.2,
+        bargap=0.15,  # Reduzido de 0.2
         hoverlabel=dict(
             bgcolor="white",
-            font_size=12,
+            font_size=10,
             font_family="Segoe UI",
             bordercolor="#DDD"
         ),
@@ -391,7 +393,7 @@ def create_internal_users_graph(df, height=None):
     """Cria o gráfico de usuários internos com design moderno usando gráfico de pizza"""
     # Usar altura padrão se não for fornecida
     if height is None:
-        height = layout_config['chart_md_height']
+        height = layout_config.get('chart_md_height', 180)
 
     # Ordenar os dados por horas (decrescente)
     df_sorted = df.sort_values('hours', ascending=False)
@@ -420,13 +422,12 @@ def create_internal_users_graph(df, height=None):
             hole=0.6,
             textposition='inside',
             textinfo='percent',
+            textfont=dict(size=9),  # Tamanho reduzido
             hoverinfo='label+value+percent',
             hovertemplate='<b>%{label}</b><br>Horas: %{value}<br>Percentual: %{percent}<extra></extra>',
             marker=dict(colors=colors_list[:len(df_sorted)], line=dict(color='white', width=1)),
             showlegend=False,
-            # Opcionalmente usar os percentuais calculados:
             text=percentages,
-            # textinfo='text+label'
         ),
         row=1, col=1
     )
@@ -440,28 +441,18 @@ def create_internal_users_graph(df, height=None):
             marker_color=colors_list[:len(df_sorted)],
             text=[f"{h}" for h in df_sorted['hours']],
             textposition='auto',
-            textfont=dict(size=10),
+            textfont=dict(size=9),  # Tamanho reduzido
             hovertemplate='<b>%{y}</b><br>Horas: %{x}<extra></extra>',
             showlegend=False,
         ),
         row=1, col=2
     )
 
-    # # Adicionar anotação no centro do donut
-    # fig.add_annotation(
-    #     text=f"{total}<br>Total",
-    #     x=0.2, y=0.5,
-    #     font=dict(size=14, color='#333', family="Segoe UI, sans-serif"),
-    #     showarrow=False,
-    #     xref="paper",
-    #     yref="paper"
-    # )
-
     # Atualizar layout com a altura personalizada
     fig.update_layout(
-        height=height,  # Usar o valor de altura personalizado
+        height=height,
         autosize=True,
-        margin={'l': 10, 'r': 10, 't': 10, 'b': 10},
+        margin={'l': 5, 'r': 5, 't': 5, 'b': 5},  # Margens reduzidas
         plot_bgcolor='rgba(0,0,0,0)',
         paper_bgcolor='rgba(0,0,0,0)',
         xaxis=dict(
@@ -470,7 +461,7 @@ def create_internal_users_graph(df, height=None):
             zeroline=False,
             showline=True,
             linecolor='#E0E0E0',
-            tickfont=dict(size=9),
+            tickfont=dict(size=8),  # Tamanho reduzido
             domain=[0.55, 1]
         ),
         yaxis=dict(
@@ -479,11 +470,11 @@ def create_internal_users_graph(df, height=None):
             showline=True,
             linecolor='#E0E0E0',
             automargin=True,
-            tickfont=dict(size=9),
+            tickfont=dict(size=8),  # Tamanho reduzido
         ),
         hoverlabel=dict(
             bgcolor="white",
-            font_size=11,
+            font_size=10,
             font_family="Segoe UI",
             bordercolor="#DDD"
         ),
@@ -496,7 +487,7 @@ def create_external_sales_graph(df, height=None):
     """Cria o gráfico de vendas externas com design moderno usando gráfico de rosca"""
     # Usar altura padrão se não for fornecida
     if height is None:
-        height = layout_config['chart_md_height']
+        height = layout_config.get('chart_md_height', 180)
 
     # Ordenar dados
     df_sorted = df.sort_values('hours', ascending=False)
@@ -519,13 +510,11 @@ def create_external_sales_graph(df, height=None):
             hole=0.7,
             textposition='inside',
             textinfo='percent',
-            textfont=dict(size=10, color="white"),
+            textfont=dict(size=9, color="white"),  # Tamanho reduzido
             hoverinfo='label+value+percent',
             hovertemplate='<b>%{label}</b><br>Horas: %{value}<br>Percentual: %{percent}<extra></extra>',
             marker=dict(colors=colors_list[:len(df_sorted)], line=dict(color='white', width=1)),
-            # Opcionalmente usar os percentuais calculados:
             text=percentages,
-            # textinfo='text+label',
         )
     )
 
@@ -533,15 +522,15 @@ def create_external_sales_graph(df, height=None):
     fig.add_annotation(
         text=f"{total}<br>Total",
         x=0.5, y=0.5,
-        font=dict(size=14, color='#333', family="Segoe UI, sans-serif"),
+        font=dict(size=12, color='#333', family="Segoe UI, sans-serif"),  # Tamanho reduzido
         showarrow=False
     )
 
     # Atualizar layout com a altura personalizada
     fig.update_layout(
-        height=height,  # Usar a altura passada como parâmetro
+        height=height,
         autosize=True,
-        margin={'l': 10, 'r': 10, 't': 10, 'b': 10},
+        margin={'l': 5, 'r': 5, 't': 5, 'b': 5},  # Margens reduzidas
         plot_bgcolor='rgba(0,0,0,0)',
         paper_bgcolor='rgba(0,0,0,0)',
         showlegend=True,
@@ -551,11 +540,11 @@ def create_external_sales_graph(df, height=None):
             y=-0.1,
             xanchor="center",
             x=0.5,
-            font=dict(size=9)
+            font=dict(size=8)  # Tamanho reduzido
         ),
         hoverlabel=dict(
             bgcolor="white",
-            font_size=11,
+            font_size=10,
             font_family="Segoe UI",
             bordercolor="#DDD"
         ),
@@ -567,7 +556,7 @@ def create_external_sales_graph(df, height=None):
 def create_tracks_graph(df, height=None, bottom_margin=None, max_items=None):
     """Cria o gráfico de utilização por tracks com design moderno usando treemap"""
     if height is None:
-        height = layout_config['chart_md_height']
+        height = layout_config.get('chart_md_height', 180)
 
     # Limitar para os top N itens, se solicitado
     if max_items is not None:
@@ -615,7 +604,7 @@ def create_tracks_graph(df, height=None, bottom_margin=None, max_items=None):
 def create_areas_graph(df, height=None):
     """Cria o gráfico de utilização por áreas com design moderno usando gráfico de pizza"""
     if height is None:
-        height = layout_config['chart_md_height']
+        height = layout_config.get('chart_md_height', 180)
 
     # Ordenar dados
     df_sorted = df.sort_values('hours', ascending=False)
@@ -640,6 +629,7 @@ def create_areas_graph(df, height=None):
             hole=0.6,
             textposition='inside',
             textinfo='percent',
+            textfont=dict(size=9),  # Tamanho reduzido
             hoverinfo='label+value+percent',
             hovertemplate='<b>%{label}</b><br>Horas: %{value}<br>Percentual: %{percent}<extra></extra>',
             marker=dict(colors=colors_list[:len(df_sorted)], line=dict(color='white', width=1)),
@@ -657,7 +647,7 @@ def create_areas_graph(df, height=None):
             marker_color=colors_list[:len(df_sorted)],
             text=[f"{h}" for h in df_sorted['hours']],
             textposition='auto',
-            textfont=dict(size=10),
+            textfont=dict(size=9),  # Tamanho reduzido
             hovertemplate='<b>%{y}</b><br>Horas: %{x}<br>Percentual: %{text}<extra></extra>',
             showlegend=False,
         ),
@@ -669,7 +659,7 @@ def create_areas_graph(df, height=None):
     fig.add_annotation(
         text=f"{total}<br>Total",
         x=0.2, y=0.5,
-        font=dict(size=14, color='#333', family="Segoe UI, sans-serif"),
+        font=dict(size=12, color='#333', family="Segoe UI, sans-serif"),  # Tamanho reduzido
         showarrow=False,
         xref="paper",
         yref="paper"
@@ -677,9 +667,9 @@ def create_areas_graph(df, height=None):
 
     # Atualizar layout com a altura personalizada
     fig.update_layout(
-        height=height,  # Usar a altura passada como parâmetro
+        height=height,
         autosize=True,
-        margin={'l': 10, 'r': 10, 't': 10, 'b': 10},
+        margin={'l': 5, 'r': 5, 't': 5, 'b': 5},  # Margens reduzidas
         plot_bgcolor='rgba(0,0,0,0)',
         paper_bgcolor='rgba(0,0,0,0)',
         xaxis=dict(
@@ -688,7 +678,7 @@ def create_areas_graph(df, height=None):
             zeroline=False,
             showline=True,
             linecolor='#E0E0E0',
-            tickfont=dict(size=9),
+            tickfont=dict(size=8),  # Tamanho reduzido
             domain=[0.55, 1]
         ),
         yaxis=dict(
@@ -697,11 +687,11 @@ def create_areas_graph(df, height=None):
             showline=True,
             linecolor='#E0E0E0',
             automargin=True,
-            tickfont=dict(size=9),
+            tickfont=dict(size=8),  # Tamanho reduzido
         ),
         hoverlabel=dict(
             bgcolor="white",
-            font_size=11,
+            font_size=10,
             font_family="Segoe UI",
             bordercolor="#DDD"
         ),
@@ -713,7 +703,7 @@ def create_areas_graph(df, height=None):
 def create_customers_stacked_graph(df, height=None):
     """Cria um gráfico de barras empilhadas para visualização de clientes"""
     if height is None:
-        height = layout_config['chart_md_height']
+        height = layout_config.get('chart_md_height', 180)
 
     # Ordenar dados
     df_sorted = df.sort_values('hours', ascending=False)
@@ -733,6 +723,7 @@ def create_customers_stacked_graph(df, height=None):
         x=df_sorted['hours'],
         text=df_sorted['hours'],
         textposition='auto',
+        textfont=dict(size=9),  # Tamanho reduzido
         orientation='h',
         marker=dict(color=colors_list[:len(df_sorted)]),
         name='Total',
@@ -746,37 +737,37 @@ def create_customers_stacked_graph(df, height=None):
             y=customer_type,
             text=percentage,
             showarrow=False,
-            font=dict(size=14, color="#333"),
+            font=dict(size=11, color="#333"),  # Tamanho reduzido
             xanchor="left",
             yanchor="middle",
-            bgcolor="#fff",  # Fundo branco para evitar sobreposição
+            bgcolor="#fff",
             bordercolor=colors_list[i % len(colors_list)],
             borderwidth=2,
-            borderpad=4,  # Adiciona um padding interno
-            xshift=25  # Move o texto para a direita
+            borderpad=3,  # Reduzido de 4
+            xshift=20  # Reduzido de 25
         )
 
-        # Adicionar círculos coloridos como marcadores usando annotations em vez de shapes
+        # Adicionar círculos coloridos como marcadores (tamanho reduzido)
         fig.add_annotation(
             x=max(df_sorted['hours']) * 1.03,
             y=customer_type,
-            text="●",  # Usando um caractere de círculo
+            text="●",
             showarrow=False,
-            font=dict(size=26, color=colors_list[i % len(colors_list)]),
+            font=dict(size=20, color=colors_list[i % len(colors_list)]),  # Tamanho reduzido
             xanchor="left",
             yanchor="middle",
-            xshift=5  # Move o círculo para a direita
+            xshift=4  # Reduzido de 5
         )
 
     # Atualizar layout para ser mais moderno
     fig.update_layout(
         height=height,
         autosize=True,
-        margin={'l': 10, 'r': 40, 't': 10, 'b': 10},
+        margin={'l': 5, 'r': 35, 't': 5, 'b': 5},  # Margens reduzidas
         plot_bgcolor='rgba(0,0,0,0)',
         paper_bgcolor='rgba(0,0,0,0)',
         barmode='stack',
-        bargap=0.3,
+        bargap=0.25,  # Reduzido de 0.3
         xaxis=dict(
             showgrid=True,
             gridcolor='rgba(224, 224, 224, 0.5)',
@@ -784,10 +775,7 @@ def create_customers_stacked_graph(df, height=None):
             showline=True,
             linecolor='#E0E0E0',
             domain=[0, 1],
-            # tickfont=dict(size=14),  # Aumentado de ~10 para 14
-            # title=dict(
-            #     font=dict(size=14)  # Tamanho da fonte do título do eixo X
-            # )
+            tickfont=dict(size=8),  # Tamanho reduzido
         ),
         yaxis=dict(
             showgrid=False,
@@ -795,14 +783,11 @@ def create_customers_stacked_graph(df, height=None):
             showline=True,
             linecolor='#E0E0E0',
             automargin=True,
-            # tickfont=dict(size=14),  # Aumentado de ~10 para 14
-            # title=dict(
-            #     font=dict(size=14)  # Tamanho da fonte do título do eixo Y
-            # )
+            tickfont=dict(size=8),  # Tamanho reduzido
         ),
         hoverlabel=dict(
             bgcolor="white",
-            font_size=12,
+            font_size=10,
             font_family="Segoe UI",
             bordercolor="#DDD"
         ),
@@ -812,7 +797,7 @@ def create_customers_stacked_graph(df, height=None):
             y=1.02,
             xanchor="right",
             x=1,
-            # font=dict(size=14)
+            font=dict(size=8)  # Tamanho reduzido
         )
     )
 

@@ -5,6 +5,7 @@ from dash import html, dcc, Input, Output, State, callback
 import dash_bootstrap_components as dbc
 import datetime
 from layouts.header import create_header
+from config.layout_config import layout_config, get_responsive_config
 from components.sections import (
     create_section_container, create_section_header,
     create_metric_header, create_graph_section,
@@ -107,16 +108,16 @@ def create_utilization_availability_column(dfs, ytd_utilization_percentage, ytd_
         vendas_externas_perc_fmt = "3%"
 
     return [
-        # Seção de Utilização (%) - MODIFICADA: Cards agrupados e gráfico expandido
+        # Seção de Utilização (%)
         create_section_container([
             create_section_header('UTILIZAÇÃO (%)', ytd_utilization_percentage),
             html.Div(
                 className='panel-content',
                 children=[
-                    # Cards de resumo agrupados dentro da seção de Utilização
+                    # Cards de resumo agrupados
                     html.Div(
                         className='flex-container',
-                        style={'marginBottom': '16px', 'justifyContent': 'space-between'},
+                        style={'marginBottom': '8px'},
                         children=[
                             create_info_card('Programas', f"{int(programas_horas)} hr",
                                              f"{programas_perc_fmt} do total", color='#1E88E5'),
@@ -128,16 +129,16 @@ def create_utilization_availability_column(dfs, ytd_utilization_percentage, ytd_
                                              f"{vendas_externas_perc_fmt} do total", color='#F57C00')
                         ]
                     ),
-                    # Gráfico expandido verticalmente
+                    # Gráfico - sem altura fixa para ajuste automático
                     create_graph_section(
                         'utilization-graph',
-                        create_utilization_graph(dfs['utilization'], height=240)
+                        create_utilization_graph(dfs['utilization'], height=None)
                     )
                 ]
             )
-        ], margin_bottom='10px'),
+        ], margin_bottom='8px'),
 
-        # Seção de Disponibilidade de Tracks (%) - MODIFICADA: Gráfico expandido
+        # Seção de Disponibilidade de Tracks (%)
         create_section_container([
             create_section_header('DISPONIBILIDADE DE TRACKS (%)', ytd_availability_percentage),
             html.Div(
@@ -145,12 +146,13 @@ def create_utilization_availability_column(dfs, ytd_utilization_percentage, ytd_
                 children=[
                     create_graph_section(
                         'availability-graph',
-                        create_availability_graph(dfs['availability'], height=240)
+                        create_availability_graph(dfs['availability'], height=None)
                     )
                 ]
             )
-        ], margin_bottom='10px')
+        ], margin_bottom='8px')
     ]
+
 
 # Função para criar o detalhamento de utilização mensal otimizado e expandido
 def create_optimized_utilization_breakdown(dfs, total_hours):
@@ -204,12 +206,11 @@ def create_optimized_utilization_breakdown(dfs, total_hours):
         create_section_header('DETALHAMENTO DE UTILIZAÇÃO MENSAL', f"{total_hours} hr"),
         html.Div(
             className='panel-content',
-            style={'minHeight': '600px'},
             children=[
-                # Indicadores de Resumo em linha compacta - espalhados horizontalmente
+                # Indicadores de Resumo em linha compacta
                 html.Div(
                     className='flex-container compact-info-cards',
-                    style={'marginBottom': '16px', 'justifyContent': 'space-between'},
+                    style={'marginBottom': '8px'},
                     children=[
                         create_info_card('Programas', f"{int(programas_horas)} hr",
                                          f"{programas_perc_fmt} do total", color='#1E88E5'),
@@ -222,41 +223,41 @@ def create_optimized_utilization_breakdown(dfs, total_hours):
                     ]
                 ),
 
-                # Programas - Com gráfico moderno e expandido
+                # Programas - altura flexível
                 create_bordered_container([
                     create_metric_header('PROGRAMAS', f"{int(programas_horas)}", programas_perc_fmt),
                     create_graph_section(
                         'programs-graph',
-                        create_programs_graph(dfs['programs'], height=200)
+                        create_programs_graph(dfs['programs'], height=None)
                     )
                 ]),
 
-                # Other Skill Teams - Com gráfico moderno e expandido
+                # Other Skill Teams - altura flexível
                 create_bordered_container([
                     create_metric_header('OUTRAS EQUIPES DE HABILIDADES', f"{int(outras_equipes_horas)}", outras_equipes_perc_fmt),
                     create_graph_section(
                         'other-skills-graph',
-                        create_other_skills_graph(dfs['other_skills'], height=200)
+                        create_other_skills_graph(dfs['other_skills'], height=None)
                     )
                 ]),
 
-                # Internal Users and External Sales (lado a lado) - Com gráficos modernos
+                # Internal Users and External Sales (lado a lado)
                 create_side_by_side_container([
                     # Internal Users
                     create_flex_item([
                         create_metric_header('USUÁRIOS INTERNOS', f"{int(usuarios_internos_horas)}", usuarios_internos_perc_fmt),
                         create_graph_section(
                             'internal-users-graph',
-                            create_internal_users_graph(dfs['internal_users'], height=200)
+                            create_internal_users_graph(dfs['internal_users'], height=None)
                         )
-                    ], margin_right='10px', min_width='38%'),
+                    ], margin_right='8px', min_width='38%'),
 
                     # External Sales
                     create_flex_item([
                         create_metric_header('VENDAS EXTERNAS', f"{int(vendas_externas_horas)}", vendas_externas_perc_fmt),
                         create_graph_section(
                             'external-sales-graph',
-                            create_external_sales_graph(dfs['external_sales'], height=200)
+                            create_external_sales_graph(dfs['external_sales'], height=None)
                         )
                     ], min_width='38%')
                 ])
@@ -264,16 +265,15 @@ def create_optimized_utilization_breakdown(dfs, total_hours):
         )
     ])
 
+
 # Função para criar a coluna com tracks, áreas e clientes (modificada)
-
-
 def create_tracks_areas_column(dfs, total_hours, total_hours_ytd):
     """
     Cria a coluna com utilização por tracks, áreas e clientes
     Modificada para exibir apenas 8 tracks e usar novo tipo de gráfico para clientes
     """
     return [
-        # Seção de Utilização por Tracks - MODIFICADA: Limitada aos 8 principais itens
+        # Seção de Utilização por Tracks
         create_section_container([
             create_section_header('UTILIZAÇÃO POR TRACKS', f"{total_hours} hr"),
             html.Div(
@@ -281,13 +281,13 @@ def create_tracks_areas_column(dfs, total_hours, total_hours_ytd):
                 children=[
                     create_graph_section(
                         'monthly-tracks-graph',
-                        create_tracks_graph(dfs['tracks'], height=260, max_items=8)
+                        create_tracks_graph(dfs['tracks'], height=None, max_items=8)
                     )
                 ]
             )
-        ], margin_bottom='10px'),
+        ], margin_bottom='8px'),
 
-        # Utilização por Áreas - MODIFICADA: Layout simplificado e maior
+        # Utilização por Áreas
         create_section_container([
             create_section_header('UTILIZAÇÃO POR ÁREAS', f"{total_hours} hr"),
             html.Div(
@@ -295,13 +295,13 @@ def create_tracks_areas_column(dfs, total_hours, total_hours_ytd):
                 children=[
                     create_graph_section(
                         'monthly-areas-graph',
-                        create_areas_graph(dfs['areas'], height=260)  # MODIFICADO: Aumentando altura
+                        create_areas_graph(dfs['areas'], height=None)
                     )
                 ]
             )
-        ], margin_bottom='10px'),
+        ], margin_bottom='8px'),
 
-        # Seção de Utilização por Clientes - MODIFICADA: Novo modelo de gráfico
+        # Seção de Utilização por Clientes
         create_section_container([
             create_section_header('UTILIZAÇÃO POR CLIENTES', total_hours_ytd),
             html.Div(
@@ -309,7 +309,7 @@ def create_tracks_areas_column(dfs, total_hours, total_hours_ytd):
                 children=[
                     create_graph_section(
                         'ytd-customers-graph',
-                        create_customers_stacked_graph(dfs['customers_ytd'], height=260)  # NOVO: Usando o novo tipo de gráfico
+                        create_customers_stacked_graph(dfs['customers_ytd'], height=None)
                     )
                 ]
             )
@@ -325,34 +325,23 @@ main_layout = html.Div(
     children=[
         # Cabeçalho
         create_header(current_month, current_day),
-
-        # # Métricas de resumo - dispostas em linha para ocupar menos espaço vertical
-        # html.Div(
-        #     className='summary-metrics',
-        #     children=[
-        #         create_summary_metrics(ytd_utilization_percentage, ytd_availability_percentage, total_hours)
-        #     ]
-        # ),
-
         # Conteúdo principal - reorganizado para 3 colunas
         html.Div(
             className='dashboard-content three-column-layout',
-            style={
-                'display': 'flex',
-                'flex': '1',
-                'flexWrap': 'nowrap',  # Impedir quebra para garantir 3 colunas
-                'overflow': 'hidden',
-                'height': 'calc(100vh - 150px)'  # Ajustar altura para evitar rolagem
-            },
+            # style={
+            #     'display': 'flex',
+            #     'flex': '1',
+            #     'flexWrap': 'nowrap',  # Impedir quebra para garantir 3 colunas
+            #     'overflow': 'hidden',
+            #     'height': 'calc(100vh - 150px)'  # Ajustar altura para evitar rolagem
+            # },
             children=[
                 # Coluna 1: Utilização e Disponibilidade
                 html.Div(
                     className='column column-small',
                     style={
-                        'width': '25%',
-                        'minWidth': '180px',
-                        'overflow': 'auto',
-                        'paddingRight': '8px'
+                        'width': '33.33%',
+                        'minWidth': '200px',
                     },
                     children=create_utilization_availability_column(
                         dfs,
@@ -365,9 +354,8 @@ main_layout = html.Div(
                 html.Div(
                     className='column column-medium',
                     style={
-                        'width': '37.5%',
-                        'minWidth': '250px',
-                        'overflow': 'auto'
+                        'width': '33.33%',
+                        'minWidth': '200px',
                     },
                     children=create_tracks_areas_column(
                         dfs,
@@ -380,10 +368,8 @@ main_layout = html.Div(
                 html.Div(
                     className='column column-large',
                     style={
-                        'width': '37.5%',
-                        'minWidth': '250px',
-                        'overflow': 'auto',
-                        'paddingRight': '8px'
+                        'width': '33.33%',
+                        'minWidth': '200px',
                     },
                     children=[
                         # Detalhamento da utilização mensal com layout otimizado e expandido
@@ -399,13 +385,6 @@ main_layout = html.Div(
         # Rodapé com tamanho fixo
         html.Div(
             className='footer',
-            style={
-                'textAlign': 'center',
-                'padding': '5px',
-                'fontSize': '12px',
-                'color': '#546E7A',
-                'height': '30px'
-            },
             children=[
                 f"zeentech VEV Dashboard • Atualizado em: {datetime.datetime.now().strftime('%d/%m/%Y %H:%M')}"
             ]
