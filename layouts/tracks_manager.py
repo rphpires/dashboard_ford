@@ -1,43 +1,43 @@
-# layouts/eja_manager.py
-# Layout para gerenciamento de EJAs com suporte a SQLite
+# layouts/tracks_manager.py
+# Layout para gerenciamento de Tracks com suporte a SQLite
 from dash import html, dcc
 import dash_bootstrap_components as dbc
-from data.eja_manager import get_eja_manager
+from data.tracks_manager import get_tracks_manager
 from utils.tracer import *
 
 
-def create_eja_table(ejas, page_current=0, page_size=10):
+def create_track_table(tracks, page_current=0, page_size=10):
     """
-    Cria uma tabela de EJAs com botões de ação de edição e exclusão com IDs melhorados
+    Cria uma tabela de Tracks com botões de ação de edição e exclusão com IDs melhorados
     """
     # Calcular índices para paginação
     start_idx = page_current * page_size
     end_idx = start_idx + page_size
 
-    paged_ejas = ejas[start_idx:end_idx] if ejas else []
+    paged_tracks = tracks[start_idx:end_idx] if tracks else []
 
-    # Se não houver EJAs, mostrar mensagem
-    if not paged_ejas:
-        return html.Div("Nenhum EJA encontrado.", className="text-center my-4")
+    # Se não houver Tracks, mostrar mensagem
+    if not paged_tracks:
+        return html.Div("Nenhum Track encontrado.", className="text-center my-4")
 
     # Cabeçalhos da tabela
-    headers = ["ID", "EJA CODE", "TITLE", "NEW CLASSIFICATION", "AÇÕES"]
+    headers = ["ID", "TRACK", "PISTA", "PONTO", "AÇÕES"]
 
     # Criar linha de cabeçalho
     header_row = html.Tr([html.Th(h) for h in headers])
 
     # Criar linhas de dados
     data_rows = []
-    for i, eja in enumerate(paged_ejas):
+    for i, track in enumerate(paged_tracks):
         # ID da linha - importante para garantir unicidade
-        row_id = eja.get('id', str(i))
+        row_id = track.get('id', str(i))
 
         # Criar botões de ação com IDs que incluem prefixos para evitar conflitos
         actions = html.Td([
             # Botão de edição - com ID exclusivo
             dbc.Button(
                 html.I(className="fas fa-edit"),
-                id={"type": "edit-button", "index": row_id, "action": "edit"},
+                id={"type": "track-edit-button", "index": row_id, "action": "edit"},
                 color="primary",
                 size="sm",
                 className="me-1",  # Atualizado para Bootstrap 5
@@ -46,7 +46,7 @@ def create_eja_table(ejas, page_current=0, page_size=10):
             # Botão de exclusão - com ID exclusivo
             dbc.Button(
                 html.I(className="fas fa-trash-alt"),
-                id={"type": "delete-button", "index": row_id, "action": "delete"},
+                id={"type": "track-delete-button", "index": row_id, "action": "delete"},
                 color="danger",
                 size="sm",
                 title="Excluir"
@@ -56,9 +56,9 @@ def create_eja_table(ejas, page_current=0, page_size=10):
         # Criar linha da tabela
         row = html.Tr([
             html.Td(row_id),
-            html.Td(eja.get('EJA CODE', eja.get('eja_code', ''))),
-            html.Td(eja.get('TITLE', eja.get('title', ''))),
-            html.Td(eja.get('NEW CLASSIFICATION', eja.get('new_classification', ''))),
+            html.Td(track.get('TRACK', track.get('track', ''))),
+            html.Td(track.get('PISTA', track.get('pista', ''))),
+            html.Td(track.get('PONTO', track.get('ponto', ''))),
             actions
         ])
 
@@ -67,15 +67,15 @@ def create_eja_table(ejas, page_current=0, page_size=10):
     # Criar tabela
     table = html.Table(
         [html.Thead(header_row), html.Tbody(data_rows)],
-        className="table table-striped table-bordered table-hover"
+        className="table table-striped table-bordered table-hover eja-table"  # Reaproveitamos o estilo da tabela EJA
     )
 
     # Calcular o número total de páginas
-    total_pages = (len(ejas) - 1) // page_size + 1 if ejas else 1
+    total_pages = (len(tracks) - 1) // page_size + 1 if tracks else 1
 
     # Criar paginação
     pagination = dbc.Pagination(
-        id="eja-pagination",
+        id="track-pagination",
         active_page=page_current + 1,  # +1 porque a UI é base 1, mas o código é base 0
         max_value=total_pages,
         fully_expanded=False,
@@ -88,31 +88,31 @@ def create_eja_table(ejas, page_current=0, page_size=10):
     return html.Div([
         table,
         pagination,
-        html.Div(f"Mostrando {len(paged_ejas)} de {len(ejas)} registros",
+        html.Div(f"Mostrando {len(paged_tracks)} de {len(tracks)} registros",
                  className="text-muted text-center mt-2")
     ])
 
 
-def create_eja_manager_layout():
+def create_tracks_manager_layout():
     """
-    Cria o layout para o gerenciador de EJAs com identificadores de botões aprimorados
+    Cria o layout para o gerenciador de Tracks com identificadores de botões aprimorados
     e expansão vertical adequada
     """
     return dbc.Container([
         dbc.Card([
-            dbc.CardHeader("Gerenciador de EJAs"),
+            dbc.CardHeader("Gerenciador de Tracks"),
             dbc.CardBody([
                 # Controles de busca e botões
                 dbc.Row([
                     # Coluna para o termo de busca
                     dbc.Col([
                         dbc.Label("Termo de Busca:"),
-                        dbc.Input(id="search-term", type="text", placeholder="Digite um termo para busca...", className="mb-2")
+                        dbc.Input(id="track-search-term", type="text", placeholder="Digite um termo para busca...", className="mb-2")
                     ], md=4),
 
                     dbc.Col([
-                        dbc.Label("Código EJA:"),
-                        dbc.Input(id="search-eja-code", type="text", placeholder="Digite um código EJA...", className="mb-2")
+                        dbc.Label("Pista:"),
+                        dbc.Input(id="track-search-pista", type="text", placeholder="Digite uma pista...", className="mb-2")
                     ], md=3),
 
                     # Coluna para os botões
@@ -121,41 +121,41 @@ def create_eja_manager_layout():
                             # Botão de busca - Modificado para usar um ID exclusivo
                             dbc.Button(
                                 "Buscar",
-                                id={"type": "search-button", "action": "search"},
+                                id={"type": "track-search-button", "action": "search"},
                                 color="primary",
                                 className="me-2"  # Atualizado para Bootstrap 5
                             ),
 
-                            # Botão para adicionar EJA
+                            # Botão para adicionar Track
                             dbc.Button(
-                                "Adicionar EJA",
-                                id="add-eja-button",
+                                "Adicionar Track",
+                                id="add-track-button",
                                 color="success",
                                 className="me-2"  # Atualizado para Bootstrap 5
-                            ),
-
-                            # Botão para exportar CSV
-                            dbc.Button(
-                                "Exportar CSV",
-                                id="export-button",
-                                color="info",
-                                className="me-2"  # Atualizado para Bootstrap 5
-                            ),
-
-                            # Botão para importar CSV
-                            dbc.Button(
-                                "Importar CSV",
-                                id="import-csv-button",
-                                color="warning"
                             )
+
+                            # # Botão para exportar CSV
+                            # dbc.Button(
+                            #     "Exportar CSV",
+                            #     id="export-track-button",
+                            #     color="info",
+                            #     className="me-2"  # Atualizado para Bootstrap 5
+                            # ),
+
+                            # # Botão para importar CSV
+                            # dbc.Button(
+                            #     "Importar CSV",
+                            #     id="import-track-csv-button",
+                            #     color="warning"
+                            # )
                         ], className="d-flex align-items-center h-100")
                     ], md=5)
                 ], className="mb-3"),
 
-                # Container para a tabela de EJAs - Modificado para expandir verticalmente
+                # Container para a tabela de Tracks - Modificado para expandir verticalmente
                 html.Div(
-                    id="eja-table-container",
-                    className="eja-table-container",
+                    id="track-table-container",
+                    className="track-table-container",
                     style={
                         "height": "calc(100vh - 250px)",  # Altura dinâmica baseada na altura da janela
                         "overflow-y": "auto",             # Adiciona rolagem vertical quando necessário
@@ -165,7 +165,7 @@ def create_eja_manager_layout():
 
                 # Status de exportação
                 dbc.Toast(
-                    id="export-status",
+                    id="track-export-status",
                     header="Status da Exportação",
                     is_open=False,
                     dismissable=True,
@@ -175,7 +175,7 @@ def create_eja_manager_layout():
 
                 # Status de importação
                 dbc.Toast(
-                    id="import-status",
+                    id="track-import-status",
                     header="Status da Importação",
                     is_open=False,
                     dismissable=True,
@@ -185,7 +185,7 @@ def create_eja_manager_layout():
 
                 # Status de exclusão
                 dbc.Toast(
-                    id="eja-delete-status",
+                    id="track-delete-status",
                     header="Status da Exclusão",
                     is_open=False,
                     dismissable=True,
@@ -195,7 +195,7 @@ def create_eja_manager_layout():
 
                 # Status do formulário
                 dbc.Toast(
-                    id="eja-form-status",
+                    id="track-form-status",
                     header="Status da Operação",
                     is_open=False,
                     dismissable=True,
@@ -207,14 +207,14 @@ def create_eja_manager_layout():
                 dbc.Modal([
                     dbc.ModalHeader(dbc.ModalTitle("Confirmar Exclusão")),
                     dbc.ModalBody([
-                        html.P(id="delete-confirmation-message"),
-                        dbc.Input(id="delete-eja-id", type="hidden")
+                        html.P(id="track-delete-confirmation-message"),
+                        dbc.Input(id="delete-track-id", type="hidden")
                     ]),
                     dbc.ModalFooter([
-                        dbc.Button("Cancelar", id="cancel-delete-button", color="secondary", className="me-2"),
-                        dbc.Button("Confirmar", id="confirm-delete-button", color="danger")
+                        dbc.Button("Cancelar", id="cancel-track-delete-button", color="secondary", className="me-2"),
+                        dbc.Button("Confirmar", id="confirm-track-delete-button", color="danger")
                     ])
-                ], id="delete-eja-modal", is_open=False),
+                ], id="delete-track-modal", is_open=False),
 
                 # Modal de importação CSV
                 dbc.Modal([
@@ -222,7 +222,7 @@ def create_eja_manager_layout():
                     dbc.ModalBody([
                         # Componente de upload
                         dcc.Upload(
-                            id="upload-csv",
+                            id="upload-track-csv",
                             children=html.Div([
                                 'Arraste e solte ou ',
                                 html.A('Selecione um Arquivo CSV')
@@ -242,55 +242,67 @@ def create_eja_manager_layout():
 
                         # Checkbox para sobrescrever
                         dbc.Checkbox(
-                            id="overwrite-checkbox",
+                            id="track-overwrite-checkbox",
                             label="Sobrescrever registros existentes",
                             value=["overwrite"]
                         )
                     ]),
                     dbc.ModalFooter([
-                        dbc.Button("Cancelar", id="cancel-import-button", color="secondary", className="me-2"),
-                        dbc.Button("Importar", id="import-button", color="primary")
+                        dbc.Button("Cancelar", id="cancel-track-import-button", color="secondary", className="me-2"),
+                        dbc.Button("Importar", id="import-track-button", color="primary")
                     ])
-                ], id="import-modal", is_open=False),
+                ], id="import-track-modal", is_open=False),
 
-                # Modal de formulário para adicionar/editar EJA
+                # Modal de formulário para adicionar/editar Track
                 dbc.Modal([
-                    dbc.ModalHeader(dbc.ModalTitle(id="eja-form-title")),
+                    dbc.ModalHeader(dbc.ModalTitle(id="track-form-title")),
                     dbc.ModalBody([
                         # Campo oculto para o modo do formulário
-                        dbc.Input(id="form-mode", type="hidden", value="add"),
-                        dbc.Input(id="edit-eja-id", type="hidden", value=""),
+                        dbc.Input(id="track-form-mode", type="hidden", value="add"),
+                        dbc.Input(id="edit-track-id", type="hidden", value=""),
 
                         # Campos do formulário
-                        dbc.Label("Código EJA:", html_for="eja-code-input"),
+                        dbc.Label("Track:", html_for="track-input"),
                         dbc.Input(
-                            id="eja-code-input",
+                            id="track-input",
                             type="text",
-                            placeholder="Digite o código do EJA",
+                            placeholder="Digite o nome do Track",
                             className="mb-3"
                         ),
 
-                        dbc.Label("Título:", html_for="eja-title-input"),
+                        dbc.Label("Pista:", html_for="pista-input"),
                         dbc.Input(
-                            id="eja-title-input",
+                            id="pista-input",
                             type="text",
-                            placeholder="Digite o título do EJA",
+                            placeholder="Digite o nome da Pista",
                             className="mb-3"
                         ),
 
-                        dbc.Label("Classificação:", html_for="eja-classification-input"),
+                        dbc.Label("Ponto:", html_for="ponto-input"),
                         dbc.Input(
-                            id="eja-classification-input",
+                            id="ponto-input",
                             type="text",
-                            placeholder="Digite a classificação do EJA",
+                            placeholder="Digite o Ponto (opcional)",
                             className="mb-3"
                         )
                     ]),
                     dbc.ModalFooter([
-                        dbc.Button("Cancelar", id="cancel-eja-form-button", color="secondary", className="me-2"),
-                        dbc.Button("Salvar", id="save-eja-form-button", color="primary")
+                        dbc.Button("Cancelar", id="cancel-track-form-button", color="secondary", className="me-2"),
+                        dbc.Button("Salvar", id="save-track-form-button", color="primary")
                     ])
-                ], id="eja-form-modal", is_open=False),
+                ], id="track-form-modal", is_open=False),
             ], style={"height": "calc(100vh - 150px)", "overflow": "hidden"})  # Dimensão fixa para o CardBody
         ], style={"height": "calc(100vh - 100px)"})  # Dimensão fixa para o Card
     ], fluid=True, style={"height": "100vh", "padding": "1rem"})  # Container com altura completa
+
+
+def create_track_search_button():
+    """
+    Cria um botão de busca com um ID exclusivo para evitar conflitos com outros callbacks
+    """
+    return dbc.Button(
+        "Buscar",
+        id={"type": "track-search-button", "action": "search"},
+        color="primary",
+        className="me-2"
+    )

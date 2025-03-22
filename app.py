@@ -33,6 +33,11 @@ import json
 import tempfile
 from dash.exceptions import PreventUpdate
 
+from layouts.tracks_manager import create_tracks_manager_layout
+from data.tracks_manager import get_tracks_manager
+from layouts.tracks_manager import create_track_table
+
+
 # Inicializar a aplicação Dash com Bootstrap para melhor estilo
 app = dash.Dash(
     __name__,
@@ -399,10 +404,13 @@ app.layout = html.Div([
     dcc.Location(id='url', refresh=False),
     dcc.Store(id='eja-store', data={}),
     dcc.Store(id='eja-data-store', data={}),
+    dcc.Store(id='track-data-store', data={}),  # Novo store para tracks
     html.Div(id='dummy-div-edit', style={'display': 'none'}),
     html.Div(id='dummy-div-delete', style={'display': 'none'}),
     html.Div(id='eja-delete-refresh', style={'display': 'none'}),
+    html.Div(id='track-delete-refresh', style={'display': 'none'}),  # Novo refresh trigger para tracks
     html.Div(id='import-refresh', style={'display': 'none'}),
+    html.Div(id='track-import-refresh', style={'display': 'none'}),  # Novo import refresh para tracks
     html.Div(id='resize-trigger', style={'display': 'none'}),
     html.Div([
         dbc.Tabs(
@@ -410,6 +418,7 @@ app.layout = html.Div([
             children=[
                 dbc.Tab(label='Dashboard', tab_id='tab-dashboard'),
                 dbc.Tab(label='Gerenciar EJAs', tab_id='tab-eja-manager'),
+                dbc.Tab(label='Gerenciar Tracks', tab_id='tab-tracks-manager'),  # Nova aba
             ],
             active_tab='tab-dashboard',
         ),
@@ -441,6 +450,24 @@ def render_tab_content(active_tab):
                         for body_child in card_child.children:
                             if hasattr(body_child, 'id') and body_child.id == "eja-table-container":
                                 body_child.children = create_eja_table(all_ejas)
+
+        return layout
+    elif active_tab == 'tab-tracks-manager':
+        # Layout para o gerenciador de tracks
+        layout = create_tracks_manager_layout()
+
+        # Pré-carregar a tabela com todos os tracks
+        tracks_manager = get_tracks_manager()
+        all_tracks = tracks_manager.get_all_tracks()
+
+        # Encontrar o container da tabela no layout e atualizar seu conteúdo
+        for child in layout.children:
+            if isinstance(child, dbc.Card) and hasattr(child, 'children'):
+                for card_child in child.children:
+                    if isinstance(card_child, dbc.CardBody) and hasattr(card_child, 'children'):
+                        for body_child in card_child.children:
+                            if hasattr(body_child, 'id') and body_child.id == "track-table-container":
+                                body_child.children = create_track_table(all_tracks)
 
         return layout
     return html.Div("Conteúdo não encontrado")
@@ -1176,6 +1203,403 @@ def handle_all_status_messages(
 
     # Caso padrão
     return defaults
+
+
+@app.callback(
+    [
+        Output("track-form-modal", "is_open"),
+        Output("track-form-title", "children"),
+        Output("track-form-mode", "value"),
+        Output("track-input", "value"),
+        Output("pista-input", "value"),
+        Output("ponto-input", "value"),
+        Output("edit-track-id", "value")
+    ],
+    [
+        Input("add-track-button", "n_clicks"),
+        Input("cancel-track-form-button", "n_clicks"),
+        Input({"type": "track-edit-button", "index": dash.ALL, "action": "edit"}, "n_clicks"),
+    ],
+    [
+        State("track-form-modal", "is_open"),
+    ],
+    prevent_initial_call=True
+)
+def toggle_track_form_modal(add_clicks, cancel_clicks, edit_clicks, is_open):
+    ctx = dash.callback_context
+
+    if not ctx.triggered:
+        raise PreventUpdate
+
+    trigger_id = ctx.triggered[0]['prop_id'].split('.')[0]
+
+    # Adicionar novo Track - abrir modal vazio
+    if trigger_id == "add-track-button":
+        return True, "Adicionar Novo Track", "add", "", "", "", ""
+
+    # Cancelar - fechar modal
+    if trigger_id == "cancel-track-form-button":
+        return False, "", "", "", "", "", ""
+
+    # Editar Track existente
+    try:
+        # Verificar se o trigger é um botão de edição
+        if isinstance(json.loads(trigger_id), dict) and json.loads(trigger_id).get("type") == "track-edit-button":
+            track_id = json.loads(trigger_id).get("index")
+            if track_id:
+                # Obter os dados do Track para edição
+                tracks_manager = get_tracks_manager()
+                track = tracks_manager.get_track_by_id(track_id)
+
+                if track:
+                    # Obter os valores para os campos do formulário
+                    track_name = track.get('TRACK', track.get('track', ''))
+                    pista = track.get('PISTA', track.get('pista', ''))
+                    ponto = track.get('PONTO', track.get('ponto', ''))
+
+                    return True, f"Editar Track #{track_id}", "edit", track_name, pista, ponto, track_id
+    except Exception:
+        pass
+
+    # Caso padrão - não altera o estado atual
+    return is_open, "", "", "", "", "", ""
+
+
+# Callback para salvar o Track (novo ou editado)
+@app.callback(
+    [
+        Output("track-form-status", "is_open"),
+        Output("track-form-status", "children"),
+        Output("track-form-status", "header"),
+        Output("track-form-status", "color"),
+        Output("track-form-modal", "is_open", allow_duplicate=True),
+        Output("track-delete-refresh", "children", allow_duplicate=True)
+    ],
+    Input("save-track-form-button", "n_clicks"),
+    [
+        State("track-form-mode", "value"),
+        State("edit-track-id", "value"),
+        State("track-input", "value"),
+        State("pista-input", "value"),
+        State("ponto-input", "value"),
+    ],
+    prevent_initial_call=True
+)
+def save_track_form(n_clicks, form_mode, edit_track_id, track, pista, ponto):
+    if not n_clicks:
+        raise PreventUpdate
+
+    # Validar campos obrigatórios
+    if not track or not pista:
+        return True, "Track e Pista são campos obrigatórios.", "Erro", "danger", True, no_update
+
+    try:
+        # Preparar os dados do Track
+        track_data = {
+            "track": track,
+            "pista": pista,
+            "ponto": ponto or ""  # Garantir que nunca seja None
+        }
+
+        # Obter gerenciador de Tracks
+        tracks_manager = get_tracks_manager()
+
+        # Adicionar ou atualizar o Track dependendo do modo
+        if form_mode == "add":
+            result = tracks_manager.add_track(track_data)
+            success_message = "Track adicionado com sucesso!"
+            error_prefix = "Erro ao adicionar Track:"
+        else:  # mode == "edit"
+            result = tracks_manager.update_track(edit_track_id, track_data)
+            success_message = "Track atualizado com sucesso!"
+            error_prefix = "Erro ao atualizar Track:"
+
+        # Verificar resultado
+        if isinstance(result, dict) and result.get('error'):
+            return True, f"{error_prefix} {result['error']}", "Erro", "danger", True, no_update
+
+        # Gerar timestamp para atualizar a tabela
+        import time
+        refresh_time = str(time.time())
+
+        # Sucesso - fechar modal e mostrar mensagem
+        return True, success_message, "Sucesso", "success", False, refresh_time
+
+    except Exception as e:
+        # Erro - mostrar mensagem mas manter modal aberto
+        return True, f"Erro: {str(e)}", "Erro", "danger", True, no_update
+
+
+# Callback para mostrar confirmação de exclusão
+@app.callback(
+    Output("delete-track-modal", "is_open"),
+    Output("track-delete-confirmation-message", "children"),
+    Output("delete-track-id", "value"),
+    Input({"type": "track-delete-button", "index": dash.ALL, "action": "delete"}, "n_clicks"),
+    Input("cancel-track-delete-button", "n_clicks"),
+    prevent_initial_call=True
+)
+def show_track_delete_confirmation(delete_clicks, cancel_click):
+    ctx = callback_context
+    if not ctx.triggered:
+        raise PreventUpdate
+
+    # Obter o ID completo do elemento que disparou o callback
+    trigger_full = ctx.triggered[0]['prop_id']
+    trigger_id = trigger_full.split('.')[0]
+
+    # Para o botão cancelar
+    if "cancel-track-delete-button" in trigger_full:
+        return False, "", ""
+
+    if delete_clicks and any(click for click in delete_clicks if click):
+        # Identificar qual botão foi clicado
+        triggered_id = json.loads(trigger_id)
+        row_id = triggered_id["index"]
+
+        # Buscar informações do Track
+        tracks_manager = get_tracks_manager()
+        track = tracks_manager.get_track_by_id(row_id)
+
+        if track:
+            # Obter informações para mensagem
+            track_name = track.get('TRACK', track.get('track', ''))
+            pista = track.get('PISTA', track.get('pista', ''))
+
+            # Criar mensagem de confirmação
+            message = f"Tem certeza que deseja excluir o Track #{row_id} ({track_name} - {pista})?"
+            return True, message, row_id
+
+    # Caso padrão
+    return False, "", ""
+
+
+# Callback para executar a exclusão
+@app.callback(
+    [
+        Output("track-delete-status", "is_open"),
+        Output("track-delete-status", "children"),
+        Output("track-delete-status", "header"),
+        Output("track-delete-status", "color"),
+        Output("track-delete-refresh", "children")
+    ],
+    Input("confirm-track-delete-button", "n_clicks"),
+    State("delete-track-id", "value"),
+    prevent_initial_call=True
+)
+def delete_track(confirm_click, track_id):
+    if not confirm_click or not track_id:
+        raise PreventUpdate
+
+    # Realizar a exclusão
+    tracks_manager = get_tracks_manager()
+    success = tracks_manager.delete_track(track_id)
+
+    # Gerar timestamp único para atualização da tabela
+    import time
+    refresh_time = str(time.time())
+
+    if success:
+        return True, "Track excluído com sucesso!", "Exclusão Concluída", "success", refresh_time
+    else:
+        return True, "Erro ao excluir o Track.", "Erro", "danger", no_update
+
+
+# Callback para fechar o modal de exclusão
+@app.callback(
+    Output("delete-track-modal", "is_open", allow_duplicate=True),
+    Input("confirm-track-delete-button", "n_clicks"),
+    prevent_initial_call=True
+)
+def close_track_delete_modal(n_clicks):
+    if n_clicks:
+        return False
+    raise PreventUpdate
+
+
+# Callback para gerenciar a abertura e fechamento do modal de importação
+@app.callback(
+    Output("import-track-modal", "is_open"),
+    Input("import-track-csv-button", "n_clicks"),
+    Input("cancel-track-import-button", "n_clicks"),
+    State("import-track-modal", "is_open"),
+    prevent_initial_call=True
+)
+def toggle_track_import_modal(import_click, cancel_click, is_open):
+    if import_click or cancel_click:
+        return not is_open
+    return is_open
+
+
+# Callback para processar a exportação de tracks
+@app.callback(
+    [
+        Output("track-export-status", "is_open"),
+        Output("track-export-status", "children"),
+        Output("track-export-status", "header"),
+        Output("track-export-status", "color"),
+    ],
+    Input("export-track-button", "n_clicks"),
+    prevent_initial_call=True
+)
+def handle_track_export(n_clicks):
+    if not n_clicks:
+        raise PreventUpdate
+
+    try:
+        # Exportar usando o gerenciador de Tracks
+        tracks_manager = get_tracks_manager()
+        export_path = tracks_manager.export_csv()
+
+        if export_path and os.path.exists(export_path):
+            return True, f"Tracks exportados com sucesso para: {export_path}", "Exportação Concluída", "success"
+        else:
+            return True, f"Erro ao exportar tracks: {export_path}", "Erro", "danger"
+    except Exception as e:
+        return True, f"Erro ao exportar tracks: {str(e)}", "Erro", "danger"
+
+
+# Callback para processar a importação de CSV
+@app.callback(
+    [
+        Output("track-import-status", "is_open"),
+        Output("track-import-status", "children"),
+        Output("track-import-status", "header"),
+        Output("track-import-status", "color"),
+        Output("track-import-refresh", "children"),
+        Output("import-track-modal", "is_open", allow_duplicate=True)
+    ],
+    Input("import-track-button", "n_clicks"),
+    [
+        State("upload-track-csv", "contents"),
+        State("upload-track-csv", "filename"),
+        State("track-overwrite-checkbox", "value"),
+    ],
+    prevent_initial_call=True
+)
+def process_track_csv_import(n_clicks, contents, filename, overwrite):
+    if not n_clicks or not contents:
+        raise PreventUpdate
+
+    try:
+        # Decodificar o conteúdo do arquivo
+        content_type, content_string = contents.split(',')
+        decoded = base64.b64decode(content_string)
+
+        # Salvar em arquivo temporário
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.csv') as temp:
+            temp.write(decoded)
+            temp_path = temp.name
+
+        # Importar usando o gerenciador de Tracks
+        tracks_manager = get_tracks_manager()
+        overwrite_flag = overwrite and "overwrite" in overwrite
+        result = tracks_manager.import_csv(temp_path, overwrite=overwrite_flag)
+
+        # Remover o arquivo temporário
+        os.unlink(temp_path)
+
+        # Verificar resultado
+        if 'error' in result:
+            return True, result['error'], "Erro na Importação", "danger", no_update, False
+
+        # Mensagem de sucesso
+        if overwrite_flag:
+            message = f"Importação concluída com sucesso! {result.get('imported', 0)} registros importados."
+        else:
+            message = f"Importação concluída! Adicionados: {result.get('imported', 0)}, Atualizados: {result.get('updated', 0)}, Ignorados: {result.get('skipped', 0)}."
+
+        # Gerar timestamp único para atualização da tabela
+        import time
+        refresh_time = str(time.time())
+
+        return True, message, "Importação Concluída", "success", refresh_time, False
+
+    except Exception as e:
+        return True, f"Erro ao processar arquivo: {str(e)}", "Erro", "danger", no_update, False
+
+
+# Callback unificado para gerenciar todas as atualizações da tabela de Tracks
+@app.callback(
+    Output("track-table-container", "children"),
+    Output("track-data-store", "data"),
+    [
+        Input({"type": "track-search-button", "action": "search"}, "n_clicks"),
+        Input("track-delete-refresh", "children"),
+        Input("track-import-refresh", "children"),
+    ],
+    [
+        State("track-search-term", "value"),
+        State("track-search-pista", "value"),
+        State("track-data-store", "data")
+    ],
+    prevent_initial_call=True
+)
+def update_track_table(search_clicks, delete_refresh, import_refresh, search_term, pista, data_store):
+    # Determinar qual input disparou o callback
+    ctx = callback_context
+    if not ctx.triggered:
+        raise PreventUpdate
+
+    # Identificar o acionador
+    trigger_id = ctx.triggered[0]['prop_id'].split('.')[0]
+
+    # Carregar o gerenciador de Tracks
+    tracks_manager = get_tracks_manager()
+
+    # Processar de acordo com o acionador
+    if "track-search-button" in trigger_id and search_clicks:
+        # Busca de Tracks
+        filtered_tracks = tracks_manager.search_tracks(search_term=search_term, pista=pista)
+
+        # Atualizar o data_store com os resultados filtrados
+        data_store['filtered_tracks'] = filtered_tracks
+        data_store['page_current'] = 0
+
+        return create_track_table(filtered_tracks, page_current=0), data_store
+
+    elif trigger_id in ["track-delete-refresh", "track-import-refresh"]:
+        # Atualização após exclusão ou importação
+        all_tracks = tracks_manager.get_all_tracks()
+
+        # Resetar para mostrar todos os Tracks
+        data_store['filtered_tracks'] = all_tracks
+        data_store['page_current'] = 0
+
+        return create_track_table(all_tracks, page_current=0), data_store
+
+    # Caso padrão - não atualizar
+    raise PreventUpdate
+
+
+# Callback para a paginação da tabela de tracks
+@app.callback(
+    Output("track-table-container", "children", allow_duplicate=True),
+    Output("track-data-store", "data", allow_duplicate=True),
+    Input("track-pagination", "active_page"),
+    State("track-data-store", "data"),
+    prevent_initial_call=True
+)
+def handle_track_pagination(active_page, data_store):
+    if not active_page:
+        raise PreventUpdate
+
+    # Ajustar página (UI é base 1, código é base 0)
+    page_current = active_page - 1
+
+    # Atualizar a página atual no data_store
+    data_store['page_current'] = page_current
+
+    # Usar os dados filtrados atuais (não buscar todos novamente)
+    filtered_tracks = data_store.get('filtered_tracks', [])
+    if not filtered_tracks:
+        # Se não existirem dados filtrados, buscar todos
+        tracks_manager = get_tracks_manager()
+        filtered_tracks = tracks_manager.get_all_tracks()
+        data_store['filtered_tracks'] = filtered_tracks
+
+    # Criar tabela paginada
+    return create_track_table(filtered_tracks, page_current=page_current), data_store
 
 
 app.index_string = '''
