@@ -33,6 +33,9 @@ import base64
 import json
 import tempfile
 from dash.exceptions import PreventUpdate
+from data.weekly_processor import setup_scheduler, check_and_process_if_needed
+import threading
+
 
 # Inicializar a aplicação Dash com Bootstrap para melhor estilo
 app = dash.Dash(
@@ -49,11 +52,22 @@ app = dash.Dash(
     ],
 )
 
+
+def init_weekly_processor():
+    # Verificar se é necessário processar dados
+    needs_processing = check_and_process_if_needed()
+    # Configurar agendamento semanal (executar imediatamente apenas se for necessário)
+    setup_scheduler(run_immediately=needs_processing)
+    trace("Inicialização do processador semanal concluída", color="green")
+
+
+threading.Thread(target=init_weekly_processor, daemon=True).start()
+
+
 # # Obter dados reais
-dfs, tracks_data, areas_data_df = load_dashboard_data()
+dfs, tracks_data, areas_data_df, periodo_info = load_dashboard_data()
 
 # Obter informações do período atual
-periodo_info = get_current_period_info()
 current_month = periodo_info['current_month']
 current_day = periodo_info['current_day']
 ytd_utilization_percentage = periodo_info['ytd_utilization_percentage']
@@ -61,9 +75,8 @@ ytd_availability_percentage = periodo_info['ytd_availability_percentage']
 total_hours = periodo_info['total_hours']
 total_hours_ytd = periodo_info['total_hours_ytd']
 
+
 # Função para criar a coluna de gráficos de utilização e disponibilidade
-
-
 def create_utilization_availability_column(dfs, ytd_utilization_percentage, ytd_availability_percentage):
     """
     Cria a coluna de gráficos de utilização e disponibilidade

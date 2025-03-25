@@ -721,7 +721,7 @@ def create_areas_graph(df, height=None):
             textinfo='percent',
             textfont=dict(size=9),  # Tamanho reduzido
             hoverinfo='label+value+percent',
-            hovertemplate='<b>%{label}</b><br>Horas: %{value}<br>Percentual: %{percent}<extra></extra>',
+            hovertemplate='<b>%{label}</b><br>Horas: %{value} hr<br>Percentual: %{percent}<extra></extra>',
             marker=dict(colors=colors_list[:len(df_sorted)], line=dict(color='white', width=1)),
             showlegend=False,
         ),
@@ -738,7 +738,7 @@ def create_areas_graph(df, height=None):
             text=[f"{h}" for h in df_sorted['hours']],
             textposition='auto',
             textfont=dict(size=9),  # Tamanho reduzido
-            hovertemplate='<b>%{y}</b><br>Horas: %{x}<br>Percentual: %{text}<extra></extra>',
+            hovertemplate='<b>%{y}</b><br>Horas: %{x} hr<br>Percentual: %{text}<extra></extra>',
             showlegend=False,
         ),
         row=1, col=2
@@ -790,16 +790,182 @@ def create_areas_graph(df, height=None):
     return fig
 
 
-def create_customers_stacked_graph(df, height=None):
-    """Cria um gráfico de barras empilhadas para visualização de clientes"""
+# def create_customers_stacked_graph(df, height=None):
+#     """Cria um gráfico de barras empilhadas para visualização de clientes"""
+#     if height is None:
+#         height = layout_config.get('chart_md_height', 180)
+
+#     # Ordenar dados
+#     df_sorted = df.sort_values('hours', ascending=False)
+
+#     # Preparar dados para barras empilhadas - simulando subclassificações
+#     # Em um caso real, você usaria subclassificações reais dos dados
+
+#     # Criar figura
+#     fig = go.Figure()
+
+#     # Paleta de cores
+#     colors_list = ['#FF6D00', '#FF9100', '#FFAB00', '#FFD600', '#AEEA00', '#64DD17', '#00C853', '#00BFA5']
+
+#     # Adicionar primeira categoria como barra principal
+#     fig.add_trace(go.Bar(
+#         y=df_sorted['customer_type'],
+#         x=df_sorted['hours'],
+#         text=df_sorted['hours'],
+#         textposition='auto',
+#         textfont=dict(size=9),  # Tamanho reduzido
+#         orientation='h',
+#         marker=dict(color=colors_list[:len(df_sorted)]),
+#         name='Total',
+#         hovertemplate='<b>%{y}</b><br>Horas: %{x}<br>Percentual: %{text}<extra></extra>',
+#     ))
+
+#     # Vamos colocar os percentuais como anotações em vez de um trace de scatter
+#     for i, (customer_type, percentage) in enumerate(zip(df_sorted['customer_type'], df_sorted['percentage'])):
+#         fig.add_annotation(
+#             x=max(df_sorted['hours']) * 1.05,
+#             y=customer_type,
+#             text=percentage,
+#             showarrow=False,
+#             font=dict(size=11, color="#333"),  # Tamanho reduzido
+#             xanchor="left",
+#             yanchor="middle",
+#             bgcolor="#fff",
+#             bordercolor=colors_list[i % len(colors_list)],
+#             borderwidth=2,
+#             borderpad=3,  # Reduzido de 4
+#             xshift=20  # Reduzido de 25
+#         )
+
+#         # Adicionar círculos coloridos como marcadores (tamanho reduzido)
+#         fig.add_annotation(
+#             x=max(df_sorted['hours']) * 1.03,
+#             y=customer_type,
+#             text="●",
+#             showarrow=False,
+#             font=dict(size=20, color=colors_list[i % len(colors_list)]),  # Tamanho reduzido
+#             xanchor="left",
+#             yanchor="middle",
+#             xshift=4  # Reduzido de 5
+#         )
+
+#     # Atualizar layout para ser mais moderno
+#     fig.update_layout(
+#         height=height,
+#         autosize=True,
+#         margin={'l': 5, 'r': 35, 't': 5, 'b': 5},  # Margens reduzidas
+#         plot_bgcolor='rgba(0,0,0,0)',
+#         paper_bgcolor='rgba(0,0,0,0)',
+#         barmode='stack',
+#         bargap=0.25,  # Reduzido de 0.3
+#         xaxis=dict(
+#             showgrid=True,
+#             gridcolor='rgba(224, 224, 224, 0.5)',
+#             zeroline=False,
+#             showline=True,
+#             linecolor='#E0E0E0',
+#             domain=[0, 1],
+#             tickfont=dict(size=8),  # Tamanho reduzido
+#         ),
+#         yaxis=dict(
+#             showgrid=False,
+#             zeroline=False,
+#             showline=True,
+#             linecolor='#E0E0E0',
+#             automargin=True,
+#             tickfont=dict(size=8),  # Tamanho reduzido
+#         ),
+#         hoverlabel=dict(
+#             bgcolor="white",
+#             font_size=10,
+#             font_family="Segoe UI",
+#             bordercolor="#DDD"
+#         ),
+#         legend=dict(
+#             orientation="h",
+#             yanchor="bottom",
+#             y=1.02,
+#             xanchor="right",
+#             x=1,
+#             font=dict(size=8)  # Tamanho reduzido
+#         )
+#     )
+
+#     return fig
+
+
+def create_customers_stacked_graph(df, height=None, use_cached_data=True):
+    """
+    Cria um gráfico de barras empilhadas para visualização de clientes usando dados
+    da tabela auxiliar clients_usage se disponível.
+
+    Args:
+        df (DataFrame): DataFrame com dados dos clientes (fallback)
+        height (int, opcional): Altura personalizada do gráfico
+        use_cached_data (bool): Se True, tenta usar os dados da tabela clients_usage
+
+    Returns:
+        plotly.graph_objects.Figure: Figura do gráfico
+    """
     if height is None:
         height = layout_config.get('chart_md_height', 180)
 
-    # Ordenar dados
-    df_sorted = df.sort_values('hours', ascending=False)
+    try:
+        # Tentar carregar dados da tabela auxiliar se solicitado
+        if use_cached_data:
+            from data.local_db_handler import get_db_handler
+            db_handler = get_db_handler()
 
-    # Preparar dados para barras empilhadas - simulando subclassificações
-    # Em um caso real, você usaria subclassificações reais dos dados
+            # Recuperar dados de utilização de clientes das últimas 12 semanas
+            cached_df = db_handler.get_client_usage_data(weeks=12)
+
+            # Se tiver dados no cache, usar eles
+            if not cached_df.empty:
+                # Agrupar por cliente e calcular total
+                grouped_df = cached_df.groupby('classification').agg({
+                    'total_hours': 'sum'
+                }).reset_index()
+
+                # Renomear colunas para compatibilidade
+                grouped_df.rename(columns={
+                    'classification': 'customer_type',
+                    'total_hours': 'hours'
+                }, inplace=True)
+
+                # Calcular porcentagem
+                total = grouped_df['hours'].sum()
+                grouped_df['percentage'] = grouped_df['hours'].apply(
+                    lambda x: f"{(x/total*100):.1f}%" if total > 0 else "0.0%"
+                )
+
+                # Ordenar por horas (decrescente)
+                df_sorted = grouped_df.sort_values('hours', ascending=False)
+
+                # Log para depuração
+                print(f"Usando dados em cache para o gráfico de clientes ({len(df_sorted)} registros)")
+            else:
+                # Fallback para o DataFrame original
+                df_sorted = df.sort_values('hours', ascending=False)
+                print("Usando dados originais para o gráfico de clientes (cache vazio)")
+        else:
+            # Usar o DataFrame original
+            df_sorted = df.sort_values('hours', ascending=False)
+    except Exception as e:
+        # Em caso de erro, fallback para o DataFrame original
+        print(f"Erro ao usar dados em cache: {str(e)}")
+        df_sorted = df.sort_values('hours', ascending=False)
+
+    # Função para converter horas decimais para formato HH:MM para tooltips
+    def format_hours(hours):
+        hours_int = int(hours)
+        minutes = int((hours - hours_int) * 60)
+        return f"{hours_int:02d}:{minutes:02d}"
+
+    # Criar coluna com horas formatadas para tooltips
+    df_sorted['hours_formatted'] = df_sorted['hours'].apply(format_hours)
+
+    # Criar coluna com valores inteiros para exibir no gráfico
+    df_sorted['hours_int'] = df_sorted['hours'].apply(lambda x: int(x))
 
     # Criar figura
     fig = go.Figure()
@@ -811,13 +977,14 @@ def create_customers_stacked_graph(df, height=None):
     fig.add_trace(go.Bar(
         y=df_sorted['customer_type'],
         x=df_sorted['hours'],
-        text=df_sorted['hours'],
+        text=[f"{h} hr" for h in df_sorted['hours_int']],  # Texto exibido nas barras como valores inteiros
         textposition='auto',
         textfont=dict(size=9),  # Tamanho reduzido
         orientation='h',
         marker=dict(color=colors_list[:len(df_sorted)]),
         name='Total',
-        hovertemplate='<b>%{y}</b><br>Horas: %{x}<br>Percentual: %{text}<extra></extra>',
+        hovertemplate='<b>%{y}</b><br>Horas: %{customdata[0]}<br>Percentual: %{customdata[1]}<extra></extra>',
+        customdata=df_sorted[['hours_formatted', 'percentage']].values,  # Dados personalizados para tooltip
     ))
 
     # Vamos colocar os percentuais como anotações em vez de um trace de scatter

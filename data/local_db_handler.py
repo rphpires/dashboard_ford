@@ -87,11 +87,32 @@ class LocalDatabaseHandler:
             )
             ''')
 
+            # Tabela clients_usage para armazenar utilização semanal
+            self.cursor.execute('''
+            CREATE TABLE IF NOT EXISTS clients_usage (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                week_number INTEGER NOT NULL,      -- Número da semana no ano (1-53)
+                year INTEGER NOT NULL,             -- Ano
+                start_date TEXT NOT NULL,          -- Data inicial da semana (YYYY-MM-DD)
+                end_date TEXT NOT NULL,            -- Data final da semana (YYYY-MM-DD)
+                client_name TEXT NOT NULL,         -- Nome do cliente
+                classification TEXT NOT NULL,      -- Classificação (PROGRAMS, OTHER SKILL TEAMS, etc.)
+                hours REAL NOT NULL,               -- Horas consumidas (valor decimal)
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+            ''')
+
             # Criar índices para melhorar a performance
             self.cursor.execute('CREATE INDEX IF NOT EXISTS idx_eja_code ON eja (eja_code)')
             self.cursor.execute('CREATE INDEX IF NOT EXISTS idx_eja_title ON eja (title)')
             self.cursor.execute('CREATE INDEX IF NOT EXISTS idx_eja_class ON eja (new_classification)')
             self.cursor.execute('CREATE INDEX IF NOT EXISTS idx_track_pista ON tracks (pista)')
+
+            # Índices para a tabela clients_usage
+            self.cursor.execute('CREATE INDEX IF NOT EXISTS idx_clients_usage_week ON clients_usage (week_number, year)')
+            self.cursor.execute('CREATE INDEX IF NOT EXISTS idx_clients_usage_date ON clients_usage (start_date, end_date)')
+            self.cursor.execute('CREATE INDEX IF NOT EXISTS idx_clients_usage_client ON clients_usage (client_name)')
+            self.cursor.execute('CREATE INDEX IF NOT EXISTS idx_clients_usage_class ON clients_usage (classification)')
 
             # Commit para salvar as alterações
             self.conn.commit()
@@ -112,6 +133,67 @@ class LocalDatabaseHandler:
             report_exception(e)
             trace(f"Erro ao fazer select: {str(e)}", color="red")
             return None
+
+    def get_client_usage_data(self, weeks=12, classification=None):
+        """
+        Obtém dados de utilização por cliente das últimas semanas.
+
+        Args:
+            weeks (int): Número de semanas para recuperar (padrão: 12)
+            classification (str, opcional): Classificação específica para filtrar
+
+        Returns:
+            pd.DataFrame: DataFrame com os dados de utilização
+        """
+        try:
+            query = """
+                SELECT
+                    client_name,
+                    classification,
+                    SUM(hours) as total_hours,
+                    year,
+                    week_number,
+                    start_date
+                FROM clients_usage
+                WHERE 1=1
+            """
+
+            params = []
+
+            if classification:
+                query += " AND classification = ?"
+                params.append(classification)
+
+            # Limitar às semanas mais recentes
+            if weeks > 0:
+                query += """
+                    AND (year, week_number) IN (
+                        SELECT year, week_number FROM clients_usage
+                        GROUP BY year, week_number
+                        ORDER BY year DESC, week_number DESC
+                        LIMIT ?
+                    )
+                """
+                params.append(weeks)
+
+            query += " GROUP BY client_name, classification ORDER BY total_hours DESC"
+
+            self.cursor.execute(query, params)
+            rows = self.cursor.fetchall()
+
+            if not rows:
+                return pd.DataFrame()
+
+            # Converter para DataFrame
+            import pandas as pd
+            df = pd.DataFrame([dict(row) for row in rows])
+
+            return df
+
+        except Exception as e:
+            report_exception(e)
+            trace(f"Erro ao obter dados de utilização por cliente: {str(e)}", color="red")
+            return pd.DataFrame()
 
     # =================== Métodos para gerenciamento de EJAs ===================
 
@@ -498,3 +580,7 @@ class LocalDatabaseHandler:
 def get_db_handler():
     """Retorna uma instância do gerenciador de banco de dados local."""
     return LocalDatabaseHandler()
+
+
+if __name__ == '__main__':
+    local_db = get_db_handler()

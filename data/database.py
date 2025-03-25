@@ -9,15 +9,13 @@ from datetime import datetime
 import sys
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
-# Importe a classe EJAReportGenerator do dash_2.py
-
 
 class ReportGenerator:
     """
     Classe para gerar relatórios de horas trabalhadas por classificação EJA.
     """
 
-    def __init__(self, dashboard_df=None, eja_df=None, dashboard_file=None, eja_file=None):
+    def __init__(self, dashboard_df=None, db_handler=None):
         """
         Inicializa o gerador de relatórios.
 
@@ -27,20 +25,15 @@ class ReportGenerator:
             dashboard_file (str, opcional): Caminho para o arquivo dashboard_ford.csv
             eja_file (str, opcional): Caminho para o arquivo eja_simplificado.csv
         """
-        # Se fornecidos DataFrames, usar diretamente
+        # Armazenar referência para o DataFrame do dashboard
         self.dashboard_df = dashboard_df
-        self.eja_df = eja_df
 
-        # Se fornecidos caminhos de arquivo, carregar os DataFrames
-        if dashboard_file and not dashboard_df:
-            self.dashboard_df = pd.read_csv(dashboard_file, encoding='utf-8')
-
-        if eja_file and not eja_df:
-            self.eja_df = pd.read_csv(eja_file, encoding='utf-8')
-
-        # Preparar os DataFrames
-        if self.dashboard_df is not None and self.eja_df is not None:
-            self._preparar_dataframes()
+        # Obter o gerenciador de banco local
+        if db_handler is None:
+            from data.local_db_handler import get_db_handler
+            self.db_handler = get_db_handler()
+        else:
+            self.db_handler = db_handler
 
     def _preparar_dataframes(self):
         """Prepara os DataFrames para processamento, convertendo tipos de dados."""
@@ -57,8 +50,8 @@ class ReportGenerator:
 
             horas, minutos = map(int, tempo_str.split(':'))
             return horas + (minutos / 60.0)
-        except Exception as ex:
-            report_exception(ex)
+        except Exception as e:
+            print(f"Erro ao converter tempo: {e}")
             return 0.0
 
     def format_datetime(self, total_horas):
@@ -70,18 +63,8 @@ class ReportGenerator:
         return f"{horas_inteiras:02d}:{minutos:02d}"
 
     def gerar_relatorio_eja(self, classificacao, top_n=7):
-        """
-        Gera um relatório com as horas por classificação.
-
-        Args:
-            classificacao (str): Valor de NEW CLASSIFICATION para filtrar
-            top_n (int): Número de itens principais a retornar
-
-        Returns:
-            dict: Resultado do processamento
-        """
-        if self.dashboard_df is None or self.eja_df is None:
-            return {"error": "DataFrames não inicializados"}
+        if self.dashboard_df is None:
+            return {"error": "DataFrame do dashboard não inicializado"}
 
         dashboard_copy = self.dashboard_df.copy()
         dashboard_copy['HorasDecimais'] = dashboard_copy['StayTime'].apply(self.converter_tempo_para_horas)
@@ -89,67 +72,82 @@ class ReportGenerator:
         # Converter para float para garantir a compatibilidade de tipos
         total_horas_geral = float(dashboard_copy['HorasDecimais'].sum())
 
-        # Filtrar EJA por classificação
-        eja_filtrado = self.eja_df[self.eja_df['CLASSIFICATION'] == classificacao]
+        # print(f"Tipo de dados da coluna EJA: {dashboard_copy['EJA'].dtype}")
+        # print("Primeiros 5 valores da coluna EJA:")
+        # print(dashboard_copy['EJA'].head(5))
+        # print("Exemplos de tipos de itens individuais na coluna EJA:")
+        # for i, item in enumerate(dashboard_copy['EJA'].head(5)):
+        #     print(f"  Item {i}: {item} (tipo: {type(item)})")
 
-        if len(eja_filtrado) == 0:
-            return {"error": f"Nenhum registro encontrado com a classificação '{classificacao}'"}
+        # Consultar os EJAs do banco SQLite pela classificação
+        try:
+            # Obter os EJA codes para a classificação especificada
+            self.db_handler.cursor.execute(
+                "SELECT id, eja_code, title FROM eja WHERE new_classification = ?",
+                (classificacao,)
+            )
+            eja_records = self.db_handler.cursor.fetchall()
 
-        # Lista de EJA CODEs que pertencem à classificação desejada
-        eja_codes_da_classificacao = set(eja_filtrado['CLASSIFICATION'].tolist())
+            if not eja_records:
+                return {"error": f"Nenhum registro encontrado com a classificação '{classificacao}'"}
 
-        # Filtrar registros do dashboard que têm EJA correspondente na classificação
-        # dashboard_filtrado = self.dashboard_df[self.dashboard_df['EJA'].isin(eja_codes_da_classificacao)]
-        dashboard_filtrado = self.dashboard_df[self.dashboard_df['EJA'].isin(eja_codes_da_classificacao)].copy()
+            # Criar um dicionário para mapear código EJA para título
+            eja_titles = {str(row['eja_code']): row['title'] for row in eja_records}
 
-        if len(dashboard_filtrado) == 0:
-            return {"error": f"Nenhum registro no dashboard corresponde à classificação '{classificacao}'"}
+            # Lista de EJA codes que pertencem à classificação desejada
+            eja_codes_da_classificacao = list(eja_titles.keys())
 
-        # Converter a coluna StayTime para horas decimais
-        dashboard_filtrado['HorasDecimais'] = dashboard_filtrado['StayTime'].apply(self.converter_tempo_para_horas)
+            print(dashboard_copy['EJA'])
+            # Filtrar registros do dashboard que têm EJA correspondente na classificação
+            dashboard_filtrado = dashboard_copy[dashboard_copy['EJA'].isin(eja_codes_da_classificacao)].copy()
+            if len(dashboard_filtrado) == 0:
+                return {"error": f"Nenhum registro no dashboard corresponde à classificação '{classificacao}'"}
 
-        # Agrupar por EJA e somar as horas
-        horas_por_eja = dashboard_filtrado.groupby('EJA')['HorasDecimais'].sum().reset_index()
+            # Agrupar por EJA e somar as horas
+            horas_por_eja = dashboard_filtrado.groupby('EJA')['HorasDecimais'].sum().reset_index()
 
-        # Ordenar por horas (decrescente)
-        horas_por_eja = horas_por_eja.sort_values('HorasDecimais', ascending=False)
+            # Ordenar por horas (decrescente)
+            horas_por_eja = horas_por_eja.sort_values('HorasDecimais', ascending=False)
 
-        # Calcular o total de horas
-        total_horas = self.format_datetime(horas_por_eja['HorasDecimais'].sum())
-        _total_horas = float(horas_por_eja['HorasDecimais'].sum())
+            # Calcular o total de horas
+            total_horas = self.format_datetime(horas_por_eja['HorasDecimais'].sum())
+            _total_horas = float(horas_por_eja['HorasDecimais'].sum())
 
-        # Pegar os top_n itens com mais horas
-        top_itens = horas_por_eja.head(top_n)
+            # Pegar os top_n itens com mais horas
+            top_itens = horas_por_eja.head(top_n)
 
-        # Calcular a porcentagem em relação ao total
-        porcentagem = (_total_horas / total_horas_geral) * 100 if total_horas_geral > 0 else 0
+            # Calcular a porcentagem em relação ao total
+            porcentagem = (_total_horas / total_horas_geral) * 100 if total_horas_geral > 0 else 0
 
-        # Criar lista de resultados com título do EJA
-        resultado_top = []
-        for _, row in top_itens.iterrows():
-            eja_code = row['EJA']
-            # Buscar o título correspondente ao EJA CODE
-            titulo_encontrado = self.eja_df[self.eja_df['EJA CODE'] == eja_code]['TITLE']
-            titulo = titulo_encontrado.iloc[0] if not titulo_encontrado.empty else "Título não encontrado"
+            # Criar lista de resultados com título do EJA
+            resultado_top = []
+            for _, row in top_itens.iterrows():
+                eja_code = row['EJA']
+                # Obter o título do dicionário criado anteriormente
+                titulo = eja_titles.get(eja_code, "Título não encontrado")
 
-            resultado_top.append({
-                "EJA_CODE": int(eja_code) if pd.notna(eja_code) else None,
-                "TITLE": titulo,
-                "HORAS": self.format_datetime(row['HorasDecimais']),
-                "HORAS_DECIMAL": row['HorasDecimais']
-            })
+                resultado_top.append({
+                    "EJA_CODE": int(eja_code) if pd.notna(eja_code) else None,
+                    "TITLE": titulo,
+                    "HORAS": self.format_datetime(row['HorasDecimais']),
+                    "HORAS_DECIMAL": row['HorasDecimais']
+                })
 
-        # Montar o resultado final
-        resultado = {
-            "classificacao": classificacao,
-            "total_horas": total_horas,
-            "total_horas_decimal": _total_horas,
-            "porcentagem": f"{porcentagem:.1f}%",
-            "porcentagem_decimal": porcentagem,
-            "top_itens": resultado_top
-        }
+            # Montar o resultado final
+            resultado = {
+                "classificacao": classificacao,
+                "total_horas": total_horas,
+                "total_horas_decimal": _total_horas,
+                "porcentagem": f"{porcentagem:.1f}%",
+                "porcentagem_decimal": porcentagem,
+                "top_itens": resultado_top
+            }
 
-        return resultado
+            return resultado
+
+        except Exception as e:
+            print(f"Erro ao gerar relatório EJA: {str(e)}")
+            return {"error": f"Erro ao processar dados: {str(e)}"}
 
     def gerar_relatorio_tracks(self, top_n=7):
         try:
@@ -207,15 +205,8 @@ def load_real_data():
             from .mock_data import get_all_dataframes
             return get_all_dataframes()
 
-        # Carregar dados de EJA do arquivo auxiliar
-        eja_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "aux_files", "eja_simplificado.csv")
-        if not os.path.exists(eja_path):
-            print(f"Arquivo EJA não encontrado em {eja_path}. Usando dados simulados.")
-            from .mock_data import get_all_dataframes
-            return get_all_dataframes()
-
         # Instanciar o gerador de relatórios
-        report_gen = ReportGenerator(dashboard_df=dashboard_df, eja_file=eja_path)
+        report_gen = ReportGenerator(dashboard_df=dashboard_df)
 
         # Gerar relatórios para cada classificação
         programs_data = report_gen.gerar_relatorio_eja("PROGRAMS")
@@ -231,7 +222,20 @@ def load_real_data():
         report_tracks = report_gen.gerar_relatorio_tracks()
         area_data = process_areas_data(dashboard_df)
 
-        return processed_data, report_tracks, area_data
+        # Calcular horas totais
+        dashboard_df['HorasDecimais'] = dashboard_df['StayTime'].apply(report_gen.converter_tempo_para_horas)
+        total_horas = report_gen.format_datetime(dashboard_df['HorasDecimais'].sum())
+        current_date = datetime.now()
+        metrics_data = {
+            'current_month': current_date.strftime('%B').upper(),
+            'current_day': current_date.strftime('%d'),
+            'total_hours': total_horas,
+            'total_hours_ytd': total_horas,  # Por enquanto, igual ao total do mês
+            'ytd_utilization_percentage': '82.5%',  # Placeholder
+            'ytd_availability_percentage': '88.2%'  # Placeholder
+        }
+
+        return processed_data, report_tracks, area_data, metrics_data
 
     except Exception as e:
         print(f"Erro ao carregar dados reais: {e}")
@@ -413,3 +417,7 @@ def process_areas_data(raw_data):
     areas_df = areas_df.drop(columns=['hours_exact'])
 
     return areas_df
+
+
+if __name__ == '__main__':
+    ...
