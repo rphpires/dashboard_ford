@@ -26,6 +26,7 @@ from layouts.right_column import create_right_column
 
 from data.database import load_dashboard_data, get_current_period_info
 from data.eja_manager import get_eja_manager
+from data.tracks_manager import adjust_tracks_names
 from layouts.eja_manager import create_eja_table
 import os
 import base64
@@ -48,8 +49,8 @@ app = dash.Dash(
     ],
 )
 
-# Obter dados reais
-dfs = load_dashboard_data()
+# # Obter dados reais
+dfs, tracks_data, areas_data_df = load_dashboard_data()
 
 # Obter informações do período atual
 periodo_info = get_current_period_info()
@@ -283,7 +284,7 @@ def create_tracks_areas_column(dfs, total_hours, total_hours_ytd):
                 children=[
                     create_graph_section(
                         'monthly-tracks-graph',
-                        create_tracks_graph(dfs['tracks'], height=None, max_items=8)
+                        create_tracks_graph(adjust_tracks_names(tracks_data), height=None, max_items=8)
                     )
                 ]
             )
@@ -297,7 +298,7 @@ def create_tracks_areas_column(dfs, total_hours, total_hours_ytd):
                 children=[
                     create_graph_section(
                         'monthly-areas-graph',
-                        create_areas_graph(dfs['areas'], height=None)
+                        create_areas_graph(areas_data_df, height=None)  # TODO: Use real data on this graph
                     )
                 ]
             )
@@ -311,7 +312,7 @@ def create_tracks_areas_column(dfs, total_hours, total_hours_ytd):
                 children=[
                     create_graph_section(
                         'ytd-customers-graph',
-                        create_customers_stacked_graph(dfs['customers_ytd'], height=None)
+                        create_customers_stacked_graph(dfs['customers_ytd'], height=None)  # TODO: Use real data on this graph
                     )
                 ]
             )
@@ -330,13 +331,6 @@ main_layout = html.Div(
         # Conteúdo principal - reorganizado para 3 colunas
         html.Div(
             className='dashboard-content three-column-layout',
-            # style={
-            #     'display': 'flex',
-            #     'flex': '1',
-            #     'flexWrap': 'nowrap',  # Impedir quebra para garantir 3 colunas
-            #     'overflow': 'hidden',
-            #     'height': 'calc(100vh - 150px)'  # Ajustar altura para evitar rolagem
-            # },
             children=[
                 # Coluna 1: Utilização e Disponibilidade
                 html.Div(

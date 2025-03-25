@@ -23,7 +23,7 @@ class LocalDatabaseHandler:
         if db_path is None:
             # Caminho padrão no diretório de dados
             self.db_path = os.path.join(os.path.dirname(os.path.dirname(__file__)),
-                                        "data", "zeentech_dashboard.db")
+                                        "data", "database.db")
         else:
             self.db_path = db_path
 
@@ -83,9 +83,7 @@ class LocalDatabaseHandler:
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 ponto TEXT,
                 pista TEXT,
-                track TEXT,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                track TEXT
             )
             ''')
 
@@ -104,6 +102,16 @@ class LocalDatabaseHandler:
             trace(f"Erro ao criar tabelas no SQLite: {str(e)}", color="red")
             self.conn.rollback()
             return False
+
+    def select(self, script):
+        """Retorna todos os EJAs do banco de dados."""
+        try:
+            self.cursor.execute(script)
+            return self.cursor.fetchone()
+        except Exception as e:
+            report_exception(e)
+            trace(f"Erro ao fazer select: {str(e)}", color="red")
+            return None
 
     # =================== Métodos para gerenciamento de EJAs ===================
 

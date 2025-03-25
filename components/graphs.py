@@ -553,10 +553,101 @@ def create_external_sales_graph(df, height=None):
     return fig
 
 
-def create_tracks_graph(df, height=None, bottom_margin=None, max_items=None):
+# def create_tracks_graph(tracks_dict, height=None, bottom_margin=None, max_items=None):
+#     """Cria o gráfico de utilização por tracks com design moderno usando treemap"""
+#     import pandas as pd
+#     import plotly.express as px
+
+#     if height is None:
+#         height = layout_config.get('chart_md_height', 180)
+
+#     # Transformar o dicionário em DataFrame
+#     tracks_data = []
+#     for ponto, track_info in tracks_dict.items():
+#         # Converter tempo no formato HH:MM para horas decimais
+#         hours, minutes = map(int, track_info['track_time'].split(':'))
+#         total_hours = hours + (minutes / 60)
+
+#         tracks_data.append({
+#             'ponto': ponto,
+#             'track_type': track_info['track_name'],
+#             'hours': total_hours,  # Valor numérico para cálculos
+#             'track_time': track_info['track_time']  # Tempo original para exibição
+#         })
+
+#     # Criar DataFrame
+#     df = pd.DataFrame(tracks_data)
+
+#     # Limitar para os top N itens, se solicitado
+#     if max_items is not None:
+#         df_sorted = df.sort_values('hours', ascending=False).head(max_items)
+#     else:
+#         # Ordenar dados
+#         df_sorted = df.sort_values('hours', ascending=False)
+
+#     # Calcular percentuais
+#     total_hours = df_sorted['hours'].sum()
+#     df_sorted['percentage'] = df_sorted['hours'].apply(lambda x: f"{(x/total_hours*100):.1f}%")
+
+#     # Criar treemap usando plotly express
+#     fig = px.treemap(
+#         df_sorted,
+#         values='hours',  # Voltar a usar valores numéricos
+#         names='track_type',
+#         path=[px.Constant('Tracks'), 'track_type'],
+#         color='hours',
+#         color_continuous_scale=['#E1F5FE', '#81D4FA', '#4FC3F7', '#29B6F6', '#03A9F4', '#0288D1', '#0277BD'],
+#         custom_data=['track_time', 'percentage']  # Adicionar dados personalizados
+#     )
+
+#     # Atualizar texto e layout do treemap
+#     fig.update_traces(
+#         texttemplate='%{label}<br>%{customdata[0]}',  # Usar track_time para exibição
+#         hovertemplate='<b>%{label}</b><br>Horas: %{customdata[0]}<br>Percentual: %{customdata[1]}<extra></extra>'
+#     )
+
+#     # Atualizar layout com a altura personalizada
+#     fig.update_layout(
+#         height=height,  # Usar a altura passada como parâmetro
+#         autosize=True,
+#         margin={'l': 10, 'r': 10, 't': 10, 'b': bottom_margin or 10},
+#         coloraxis_showscale=False,
+#         plot_bgcolor='rgba(0,0,0,0)',
+#         paper_bgcolor='rgba(0,0,0,0)',
+#         hoverlabel=dict(
+#             bgcolor="white",
+#             font_size=12,
+#             font_family="Segoe UI",
+#             bordercolor="#DDD"
+#         ),
+#     )
+
+#     return fig
+
+def create_tracks_graph(tracks_dict, height=None, bottom_margin=None, max_items=None):
     """Cria o gráfico de utilização por tracks com design moderno usando treemap"""
+    import pandas as pd
+    import plotly.express as px
+
     if height is None:
         height = layout_config.get('chart_md_height', 180)
+
+    # Transformar o dicionário em DataFrame
+    tracks_data = []
+    for ponto, track_info in tracks_dict.items():
+        # Converter tempo no formato HH:MM para horas decimais
+        hours, minutes = map(int, track_info['track_time'].split(':'))
+        total_hours = hours + (minutes / 60)
+
+        tracks_data.append({
+            'ponto': ponto,
+            'track_type': track_info['track_name'],
+            'hours': total_hours,  # Valor numérico para cálculos
+            'track_time': track_info['track_time']  # Tempo original para exibição
+        })
+
+    # Criar DataFrame
+    df = pd.DataFrame(tracks_data)
 
     # Limitar para os top N itens, se solicitado
     if max_items is not None:
@@ -565,21 +656,26 @@ def create_tracks_graph(df, height=None, bottom_margin=None, max_items=None):
         # Ordenar dados
         df_sorted = df.sort_values('hours', ascending=False)
 
+    # Calcular percentuais
+    total_hours = df_sorted['hours'].sum()
+    df_sorted['percentage'] = df_sorted['hours'].apply(lambda x: f"{(x/total_hours*100):.1f}%")
+
     # Criar treemap usando plotly express
     fig = px.treemap(
         df_sorted,
-        values='hours',
+        values='hours',  # Voltar a usar valores numéricos
+        names='track_type',
         path=[px.Constant('Tracks'), 'track_type'],
         color='hours',
         color_continuous_scale=['#E1F5FE', '#81D4FA', '#4FC3F7', '#29B6F6', '#03A9F4', '#0288D1', '#0277BD'],
-        hover_data={'hours': True, 'percentage': True},
-        custom_data=['percentage']
+        custom_data=['track_time', 'percentage']  # Adicionar dados personalizados
     )
 
     # Atualizar texto e layout do treemap
     fig.update_traces(
-        textinfo='label+value',
-        hovertemplate='<b>%{label}</b><br>Horas: %{value}<br>Percentual: %{customdata[0]}<extra></extra>'
+        texttemplate='%{label}<br>%{customdata[0]} hr<br>%{customdata[1]}',  # Adicionar porcentagem
+        hoverinfo='none',  # Desabilitar tooltip
+        hovertemplate=None  # Remover template de hover
     )
 
     # Atualizar layout com a altura personalizada
@@ -589,13 +685,7 @@ def create_tracks_graph(df, height=None, bottom_margin=None, max_items=None):
         margin={'l': 10, 'r': 10, 't': 10, 'b': bottom_margin or 10},
         coloraxis_showscale=False,
         plot_bgcolor='rgba(0,0,0,0)',
-        paper_bgcolor='rgba(0,0,0,0)',
-        hoverlabel=dict(
-            bgcolor="white",
-            font_size=12,
-            font_family="Segoe UI",
-            bordercolor="#DDD"
-        ),
+        paper_bgcolor='rgba(0,0,0,0)'
     )
 
     return fig

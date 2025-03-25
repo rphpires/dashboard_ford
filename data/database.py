@@ -3,6 +3,7 @@
 from utils.tracer import report_exception
 from .db_connection import DatabaseReader
 import os
+import numpy as np
 import pandas as pd
 from datetime import datetime
 import sys
@@ -11,7 +12,7 @@ sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 # Importe a classe EJAReportGenerator do dash_2.py
 
 
-class EJAReportGenerator:
+class ReportGenerator:
     """
     Classe para gerar relatórios de horas trabalhadas por classificação EJA.
     """
@@ -68,7 +69,7 @@ class EJAReportGenerator:
         # Formatar como HH:MM
         return f"{horas_inteiras:02d}:{minutos:02d}"
 
-    def gerar_relatorio(self, classificacao, top_n=7):
+    def gerar_relatorio_eja(self, classificacao, top_n=7):
         """
         Gera um relatório com as horas por classificação.
 
@@ -89,13 +90,13 @@ class EJAReportGenerator:
         total_horas_geral = float(dashboard_copy['HorasDecimais'].sum())
 
         # Filtrar EJA por classificação
-        eja_filtrado = self.eja_df[self.eja_df['NEW CLASSIFICATION'] == classificacao]
+        eja_filtrado = self.eja_df[self.eja_df['CLASSIFICATION'] == classificacao]
 
         if len(eja_filtrado) == 0:
             return {"error": f"Nenhum registro encontrado com a classificação '{classificacao}'"}
 
         # Lista de EJA CODEs que pertencem à classificação desejada
-        eja_codes_da_classificacao = set(eja_filtrado['EJA CODE'].tolist())
+        eja_codes_da_classificacao = set(eja_filtrado['CLASSIFICATION'].tolist())
 
         # Filtrar registros do dashboard que têm EJA correspondente na classificação
         # dashboard_filtrado = self.dashboard_df[self.dashboard_df['EJA'].isin(eja_codes_da_classificacao)]
@@ -150,6 +151,24 @@ class EJAReportGenerator:
 
         return resultado
 
+    def gerar_relatorio_tracks(self, top_n=7):
+        try:
+            dashboard_copy = self.dashboard_df.copy()
+            dashboard_copy['HorasDecimais'] = dashboard_copy['StayTime'].apply(self.converter_tempo_para_horas)
+
+            # Agrupar por LocalityName e somar as horas
+            tracks_horas = dashboard_copy.groupby('LocalityName')['HorasDecimais'].sum().to_dict()
+            tracks_horas_ordenado = dict(sorted(tracks_horas.items(), key=lambda item: item[1], reverse=True))
+
+            for key, item in tracks_horas_ordenado.items():
+                formated_dte = self.format_datetime(item)
+                tracks_horas_ordenado[key] = formated_dte
+
+        except Exception:
+            print('Error converting tracks')
+
+        return tracks_horas_ordenado
+
 
 def get_db_connection():
     """
@@ -182,6 +201,7 @@ def load_real_data():
         # Obter dados do banco
         dashboard_df = sql.execute_stored_procedure_df("sp_VehicleAccessReport", [start_date, end_date])
 
+        print(dashboard_df)
         if dashboard_df is None or dashboard_df.empty:
             print("Não foi possível obter dados do banco. Usando dados simulados.")
             from .mock_data import get_all_dataframes
@@ -195,20 +215,23 @@ def load_real_data():
             return get_all_dataframes()
 
         # Instanciar o gerador de relatórios
-        report_gen = EJAReportGenerator(dashboard_df=dashboard_df, eja_file=eja_path)
+        report_gen = ReportGenerator(dashboard_df=dashboard_df, eja_file=eja_path)
 
         # Gerar relatórios para cada classificação
-        programs_data = report_gen.gerar_relatorio("PROGRAMS")
-        other_skills_data = report_gen.gerar_relatorio("OTHER SKILL TEAMS")
-        internal_users_data = report_gen.gerar_relatorio("INTERNAL USERS")
-        external_sales_data = report_gen.gerar_relatorio("EXTERNAL SALES")
+        programs_data = report_gen.gerar_relatorio_eja("PROGRAMS")
+        other_skills_data = report_gen.gerar_relatorio_eja("OTHER SKILL TEAMS")
+        internal_users_data = report_gen.gerar_relatorio_eja("INTERNAL USERS")
+        external_sales_data = report_gen.gerar_relatorio_eja("EXTERNAL SALES")
 
         # Processar dados para compatibilidade com o dashboard
         processed_data = process_real_data_for_dashboard(dashboard_df, report_gen,
                                                          programs_data, other_skills_data,
                                                          internal_users_data, external_sales_data)
 
-        return processed_data
+        report_tracks = report_gen.gerar_relatorio_tracks()
+        area_data = process_areas_data(dashboard_df)
+
+        return processed_data, report_tracks, area_data
 
     except Exception as e:
         print(f"Erro ao carregar dados reais: {e}")
@@ -271,7 +294,6 @@ def load_dashboard_data():
     Tenta carregar dados reais e, se falhar, usa os dados simulados.
     """
     try:
-        # Tentar carregar dados reais
         return load_real_data()
     except Exception as e:
         print(f"Erro ao carregar dados reais: {e}")
@@ -300,7 +322,7 @@ def get_current_period_info():
 
         # Ler dados do EJA
         eja_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "aux_files", "eja_simplificado.csv")
-        report_gen = EJAReportGenerator(dashboard_df=dashboard_df, eja_file=eja_path)
+        report_gen = ReportGenerator(dashboard_df=dashboard_df, eja_file=eja_path)
 
         # Calcular horas totais
         dashboard_df['HorasDecimais'] = dashboard_df['StayTime'].apply(report_gen.converter_tempo_para_horas)
@@ -329,3 +351,65 @@ def get_current_period_info():
             'ytd_utilization_percentage': '16%',
             'ytd_availability_percentage': '96%'
         }
+
+# Adicionar à data/database.py
+
+
+def process_areas_data(raw_data):
+    """
+    Processa os dados brutos da tabela, agrupando por VehicleDepartment e somando StayTime
+
+    Args:
+        raw_data (DataFrame): DataFrame com os dados brutos da consulta SQL
+
+    Returns:
+        DataFrame: DataFrame processado com colunas 'area' e 'hours'
+    """
+    import pandas as pd
+
+    # Verificar se o DataFrame tem as colunas necessárias
+    if 'VehicleDepartment' not in raw_data.columns or 'StayTime' not in raw_data.columns:
+        # Se não tiver, retornar dados simulados para evitar erro
+        return pd.DataFrame({
+            'area': ['Departamento 1', 'Departamento 2', 'Departamento 3', 'Departamento 4'],
+            'hours': [120, 85, 65, 30]
+        })
+
+    # Converter StayTime para horas se estiver em outro formato
+    # Assumindo que StayTime está em minutos
+    if 'StayTime' in raw_data.columns:
+        # Verifique o tipo/formato de StayTime
+        if pd.api.types.is_string_dtype(raw_data['StayTime']):
+            # Se for string no formato HH:MM, converter para horas decimais
+            def convert_time(time_str):
+                try:
+                    hours, minutes = map(int, time_str.split(':'))
+                    return hours + (minutes / 60.0)
+                except (ValueError, AttributeError):
+                    return 0
+
+            raw_data['hours'] = raw_data['StayTime'].apply(convert_time)
+        else:
+            # Assumindo que está em minutos
+            raw_data['hours'] = raw_data['StayTime'] / 60.0
+
+    # Agrupar por VehicleDepartment e somar as horas (mantendo a precisão)
+    areas_df = raw_data.groupby('VehicleDepartment')['hours'].sum().reset_index()
+
+    # Armazenar os valores decimais exatos para os cálculos
+    areas_df['hours_exact'] = areas_df['hours']
+
+    # Arredondar os valores apenas para a exibição no gráfico
+    # Usando np.round() para arredondar para o inteiro mais próximo (não truncando)
+    areas_df['hours'] = np.round(areas_df['hours']).astype(int)
+
+    # Renomear colunas para corresponder ao formato esperado pela função de gráfico
+    areas_df = areas_df.rename(columns={'VehicleDepartment': 'area'})
+
+    # Ordenar por horas exatas em ordem decrescente (mantém a ordem correta)
+    areas_df = areas_df.sort_values('hours_exact', ascending=False)
+
+    # Remover a coluna auxiliar se não for necessária para outros cálculos
+    areas_df = areas_df.drop(columns=['hours_exact'])
+
+    return areas_df

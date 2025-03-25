@@ -168,3 +168,12 @@ def get_db_connection():
     except Exception as e:
         print(f"Erro ao criar conexão com banco de dados: {str(e)}")
         return None
+
+
+if __name__ == '__main__':
+    sql = DatabaseReader()
+    start_date = '2024-01-01 00:00:33.220'
+    end_date = '2024-01-31 23:59:59.220'
+
+    ret = sql.execute_stored_procedure_df('sp_VehicleAccessReport', [start_date, end_date])
+    print(ret)
