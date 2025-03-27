@@ -418,23 +418,23 @@ def create_internal_users_graph(df, height=None):
         horizontal_spacing=0.01
     )
 
-    # Adicionar gráfico de pizza
-    fig.add_trace(
-        go.Pie(
-            labels=df_sorted['department'],
-            values=df_sorted['hours'],
-            hole=0.6,
-            textposition='inside',
-            textinfo='percent',
-            textfont=dict(size=9),  # Tamanho reduzido
-            hoverinfo='label+value+percent',
-            hovertemplate='<b>%{label}</b><br>Horas: %{value}<br>Percentual: %{percent}<extra></extra>',
-            marker=dict(colors=colors_list[:len(df_sorted)], line=dict(color='white', width=1)),
-            showlegend=False,
-            text=percentages,
-        ),
-        row=1, col=1
-    )
+    # # Adicionar gráfico de pizza
+    # fig.add_trace(
+    #     go.Pie(
+    #         labels=df_sorted['department'],
+    #         values=df_sorted['hours'],
+    #         hole=0.6,
+    #         textposition='inside',
+    #         textinfo='percent',
+    #         textfont=dict(size=9),  # Tamanho reduzido
+    #         hoverinfo='label+value+percent',
+    #         hovertemplate='<b>%{label}</b><br>Horas: %{value}<br>Percentual: %{percent}<extra></extra>',
+    #         marker=dict(colors=colors_list[:len(df_sorted)], line=dict(color='white', width=1)),
+    #         showlegend=False,
+    #         text=percentages,
+    #     ),
+    #     row=1, col=1
+    # )
 
     # Adicionar barras horizontais
     fig.add_trace(
