@@ -105,6 +105,7 @@ def create_utilization_graph(df, height=None):
             linecolor='#E0E0E0',
             tickangle=0,
             tickfont=dict(size=9),
+            fixedrange=True
         ),
         yaxis=dict(
             showgrid=True,
@@ -117,6 +118,7 @@ def create_utilization_graph(df, height=None):
             tickfont=dict(size=9),
             title=dict(text='Utilização (%)', standoff=5),
             title_font=dict(size=10, color="#666"),
+            fixedrange=True
         ),
         bargap=0.15,  # Reduzir espaçamento entre barras
         hoverlabel=dict(
@@ -126,6 +128,8 @@ def create_utilization_graph(df, height=None):
             bordercolor="#DDD"
         ),
     )
+
+    fig.update_traces(hoverinfo='text')
 
     return fig
 

@@ -413,6 +413,11 @@ body {
     align-items: center;
 }
 
+.chart-container > div {
+    flex: 1;
+    height: 100% !important;
+}
+
 /* Containers de gráficos */
 .chart-container {
     background-color: var(--card-bg);
@@ -428,19 +433,24 @@ body {
     flex: 1;
     min-height: 0 !important; /* Removido min-height fixo */
     max-height: none !important;
-    height: auto !important;
+    height: 100% !important;
 }
 
 /* Plotly personalização */
 .js-plotly-plot {
-    min-height: 0 !important; /* Removido min-height fixo */
-    position: relative !important;
     width: 100% !important;
-    height: 100% !important; /* Adicionado para ocupar todo o espaço disponível */
+    height: 100% !important;
+    min-height: 0 !important;
+    flex: 1 !important;
+    display: flex;
+    flex-direction: column;
 }
 
 .js-plotly-plot .plotly .main-svg {
     border-radius: 6px;
+    width: 100% !important;
+    height: 100% !important;
+    max-height: 100% !important;
 }
 
 .js-plotly-plot .plotly .bars .points path {
@@ -469,9 +479,11 @@ body {
 }
 
 /* Tamanhos específicos de gráficos - alterados para uso relativo */
-.chart-sm, .chart-md, .chart-lg {
+.chart-md, .chart-sm, .chart-lg {
+    width: 100%;
+    height: 100%;
+    min-height: 0;
     flex: 1;
-    min-height: 0; /* Removido min-height fixo */
 }
 
 /* Cards de resumo para números importantes */

@@ -12,7 +12,7 @@ from components.sections import (
     create_section_container, create_section_header,
     create_metric_header, create_graph_section,
     create_bordered_container, create_side_by_side_container,
-    create_flex_item, create_info_card, 
+    create_flex_item, create_info_card,
     # create_compact_metric_box, create_summary_metrics
 )
 from components.graphs import (
@@ -371,9 +371,9 @@ def create_tracks_areas_column(dfs, total_hours, total_hours_ytd):
             else:
                 # Se já for um dicionário, usar diretamente
                 tracks_dict = dfs['tracks_data']
-                print(f"tracks_dict obtido de dfs['tracks_data']")
+                print("tracks_dict obtido de dfs['tracks_data']")
         else:
-            print(f"Aviso: dfs['tracks_data'] não disponível, usando dicionário vazio")
+            print("Aviso: dfs['tracks_data'] não disponível, usando dicionário vazio")
 
         # Log do conteúdo de tracks_dict
         print(f"tracks_dict tipo: {type(tracks_dict)}")
@@ -390,7 +390,7 @@ def create_tracks_areas_column(dfs, total_hours, total_hours_ytd):
         areas_df = pd.DataFrame(columns=['area', 'hours'])
         if 'areas_data_df' in dfs and dfs['areas_data_df'] is not None:
             areas_df = dfs['areas_data_df']
-            print(f"areas_df obtido de dfs['areas_data_df']")
+            print("areas_df obtido de dfs['areas_data_df']")
             # Verificar se areas_df tem o formato correto
             if 'area' not in areas_df.columns or 'hours' not in areas_df.columns:
                 print("areas_df não tem as colunas necessárias. Recriando DataFrame...")
@@ -422,7 +422,7 @@ def create_tracks_areas_column(dfs, total_hours, total_hours_ytd):
                             'hours': [120, 85, 65, 30]
                         })
         else:
-            print(f"Aviso: dfs['areas_data_df'] não disponível, usando DataFrame vazio")
+            print("Aviso: dfs['areas_data_df'] não disponível, usando DataFrame vazio")
 
         # Log do conteúdo de areas_df
         print(f"areas_df tipo: {type(areas_df)}")
@@ -454,7 +454,7 @@ def create_tracks_areas_column(dfs, total_hours, total_hours_ytd):
         # Tentar importar e usar a função adjust_tracks_names
         try:
             adjusted_tracks = adjust_tracks_names(tracks_dict)
-            print(f"Tracks ajustados com adjust_tracks_names()")
+            print("Tracks ajustados com adjust_tracks_names()")
             # Verificar se o ajuste afetou os dados
             if isinstance(adjusted_tracks, dict):
                 print(f"adjusted_tracks tem {len(adjusted_tracks)} itens")
@@ -514,9 +514,8 @@ def create_tracks_areas_column(dfs, total_hours, total_hours_ytd):
                 )
                 if height is None:
                     try:
-                        from config.layout_config import layout_config
                         height = layout_config.get('chart_md_height', 180)
-                    except:
+                    except Exception:
                         height = 180
 
                 fig.update_layout(
@@ -1691,7 +1690,7 @@ app.index_string = '''
                 overflow: hidden;
                 display: flex;
                 /* Altura máxima para não sobrepor o footer */
-                max-height: calc(100vh - 80px) !important; 
+                max-height: calc(100vh - 80px) !important;
                 padding-bottom: 40px;
             }
 
