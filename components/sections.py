@@ -25,7 +25,7 @@ def adjust_color_brightness(hex_color, brightness_offset=0):
     return f'#{rgb_adjusted[0]:02x}{rgb_adjusted[1]:02x}{rgb_adjusted[2]:02x}'
 
 
-def create_section_container(children, margin_bottom='10px'):
+def create_section_container(children, margin_bottom='0px'):
     """
     Cria um container de seção com margens personalizáveis
 
