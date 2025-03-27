@@ -1739,7 +1739,7 @@ app.index_string = '''
             .chart-container {
                 min-height: 0 !important;
                 height: auto !important;
-                margin-bottom: 10px !important;
+                margin-bottom: 0 !important;
             }
 
             /* Garantir que os conteúdos dos painéis sejam visíveis */
