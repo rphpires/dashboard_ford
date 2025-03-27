@@ -196,7 +196,7 @@ body {
     height: 100% !important;
     max-height: calc(100vh - 90px) !important;
     padding-right: 0; /* Removido padding à direita */
-    padding-bottom: 30px !important;
+    padding-bottom: 0 !important;
 }
 
 /* Remover estilos de scrollbar já que não teremos rolagem */
