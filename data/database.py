@@ -1,12 +1,14 @@
 # data/database.py
 # Funções para conexão com banco de dados SQL Server
 from utils.tracer import report_exception
-from .db_connection import DatabaseReader
+from data.db_connection import DatabaseReader
 import os
+import sys
 import numpy as np
 import pandas as pd
-from datetime import datetime
-import sys
+from datetime import datetime as dt, timedelta
+from dateutil import relativedelta
+
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 
@@ -179,9 +181,77 @@ def get_db_connection():
         return None
 
 
-def load_real_data():
+# def load_real_data(start_date=None, end_date=None):
+#     """
+#     Carrega dados reais do banco de dados e processa com o EJAReportGenerator
+#     """
+#     try:
+#         # Obter conexão com o banco
+#         sql = get_db_connection()
+
+#         if not sql:
+#             print("Erro ao conectar ao banco de dados. Usando dados simulados.")
+#             from .mock_data import get_all_dataframes
+#             return get_all_dataframes()
+
+#         # Definir período de consulta (ajuste conforme necessário)
+#         start_date = '2024-01-01 00:00:33.220'
+#         end_date = '2024-01-31 23:59:59.220'
+
+#         # Obter dados do banco
+#         dashboard_df = sql.execute_stored_procedure_df("sp_VehicleAccessReport", [start_date, end_date])
+
+#         print(dashboard_df)
+#         if dashboard_df is None or dashboard_df.empty:
+#             print("Não foi possível obter dados do banco. Usando dados simulados.")
+#             from .mock_data import get_all_dataframes
+#             return get_all_dataframes()
+
+#         # Instanciar o gerador de relatórios
+#         report_gen = ReportGenerator(dashboard_df=dashboard_df)
+
+#         # Gerar relatórios para cada classificação
+#         programs_data = report_gen.gerar_relatorio_eja("PROGRAMS")
+#         other_skills_data = report_gen.gerar_relatorio_eja("OTHER SKILL TEAMS")
+#         internal_users_data = report_gen.gerar_relatorio_eja("INTERNAL USERS")
+#         external_sales_data = report_gen.gerar_relatorio_eja("EXTERNAL SALES")
+
+#         # Processar dados para compatibilidade com o dashboard
+#         processed_data = process_real_data_for_dashboard(dashboard_df, report_gen,
+#                                                          programs_data, other_skills_data,
+#                                                          internal_users_data, external_sales_data)
+
+#         report_tracks = report_gen.gerar_relatorio_tracks()
+#         area_data = process_areas_data(dashboard_df)
+
+#         # Calcular horas totais
+#         dashboard_df['HorasDecimais'] = dashboard_df['StayTime'].apply(report_gen.converter_tempo_para_horas)
+#         total_horas = report_gen.format_datetime(dashboard_df['HorasDecimais'].sum())
+#         current_date = datetime.now()
+#         metrics_data = {
+#             'current_month': current_date.strftime('%B').upper(),
+#             'current_day': current_date.strftime('%d'),
+#             'total_hours': total_horas,
+#             'total_hours_ytd': total_horas,  # Por enquanto, igual ao total do mês
+#             'ytd_utilization_percentage': '82.5%',  # Placeholder
+#             'ytd_availability_percentage': '88.2%'  # Placeholder
+#         }
+
+#         return processed_data, report_tracks, area_data, metrics_data
+
+#     except Exception as e:
+#         print(f"Erro ao carregar dados reais: {e}")
+#         from .mock_data import get_all_dataframes
+#         return get_all_dataframes()
+
+# Modificação no arquivo data/database.py
+def load_real_data(start_date=None, end_date=None):
     """
     Carrega dados reais do banco de dados e processa com o EJAReportGenerator
+
+    Args:
+        start_date (str, optional): Data inicial no formato 'YYYY-MM-DD'
+        end_date (str, optional): Data final no formato 'YYYY-MM-DD'
     """
     try:
         # Obter conexão com o banco
@@ -192,14 +262,34 @@ def load_real_data():
             from .mock_data import get_all_dataframes
             return get_all_dataframes()
 
-        # Definir período de consulta (ajuste conforme necessário)
-        start_date = '2024-01-01 00:00:33.220'
-        end_date = '2024-01-31 23:59:59.220'
+        # Definir período de consulta
+        if start_date is None or end_date is None:
+            # Se não foram fornecidas datas, usar o mês atual
+            current_date = dt.now()
+            year = current_date.year
+            month = current_date.month
+
+            # Primeiro dia do mês atual
+            start_date = f'{year}-{month:02d}-01 00:00:00.000'
+
+            # Calcular o último dia do mês atual
+            if month == 12:
+                next_month_year = year + 1
+                next_month = 1
+            else:
+                next_month_year = year
+                next_month = month + 1
+
+            end_date = f'{next_month_year}-{next_month:02d}-01 00:00:00.000'
+
+            # Voltar um dia (último dia do mês atual)
+            end_date_obj = dt.strptime(end_date, '%Y-%m-%d %H:%M:%S.%f')
+            end_date_obj = end_date_obj - timedelta(days=1)
+            end_date = end_date_obj.strftime('%Y-%m-%d 23:59:59.999')
 
         # Obter dados do banco
         dashboard_df = sql.execute_stored_procedure_df("sp_VehicleAccessReport", [start_date, end_date])
 
-        print(dashboard_df)
         if dashboard_df is None or dashboard_df.empty:
             print("Não foi possível obter dados do banco. Usando dados simulados.")
             from .mock_data import get_all_dataframes
@@ -225,14 +315,25 @@ def load_real_data():
         # Calcular horas totais
         dashboard_df['HorasDecimais'] = dashboard_df['StayTime'].apply(report_gen.converter_tempo_para_horas)
         total_horas = report_gen.format_datetime(dashboard_df['HorasDecimais'].sum())
-        current_date = datetime.now()
+
+        # Extrair mês e ano das datas para exibição
+        try:
+            display_date = dt.strptime(start_date.split()[0], '%Y-%m-%d')
+            display_month = display_date.strftime('%B').upper()
+            display_day = display_date.strftime('%d')
+        except Exception:
+            current_date = dt.now()
+            display_month = current_date.strftime('%B').upper()
+            display_day = current_date.strftime('%d')
+
         metrics_data = {
-            'current_month': current_date.strftime('%B').upper(),
-            'current_day': current_date.strftime('%d'),
+            'current_month': display_month,
+            'current_day': display_day,
             'total_hours': total_horas,
             'total_hours_ytd': total_horas,  # Por enquanto, igual ao total do mês
             'ytd_utilization_percentage': '82.5%',  # Placeholder
-            'ytd_availability_percentage': '88.2%'  # Placeholder
+            'ytd_availability_percentage': '88.2%',  # Placeholder
+            'selected_date': start_date.split()[0] if isinstance(start_date, str) else None
         }
 
         return processed_data, report_tracks, area_data, metrics_data
@@ -243,19 +344,121 @@ def load_real_data():
         return get_all_dataframes()
 
 
+def get_available_months(limit=20):
+    """
+    Retorna uma lista dos últimos 20 meses cronologicamente.
+
+    Args:
+        limit (int): Número máximo de meses a retornar
+
+    Returns:
+        list: Lista de dicionários com informações dos meses disponíveis
+    """
+    # Gerar uma lista dos últimos 'limit' meses a partir do mês atual
+    current_date = dt.now()
+    months = []
+
+    for i in range(limit):
+        # Calcular o mês i meses atrás
+        year = current_date.year
+        month = current_date.month - i
+
+        # Ajustar o ano se necessário
+        while month <= 0:
+            year -= 1
+            month += 12
+
+        # Criar objeto de data para formatação
+        date_obj = dt(year, month, 1)
+
+        # Calcular o último dia do mês
+        if month == 12:
+            next_month_year = year + 1
+            next_month = 1
+        else:
+            next_month_year = year
+            next_month = month + 1
+
+        next_month_date = dt(next_month_year, next_month, 1)
+        last_day = (next_month_date - timedelta(days=1)).day
+
+        # Formato para exibição
+        display_text = date_obj.strftime('%B %Y').upper()
+
+        # Formato para valor
+        start_date = f"{year}-{month:02d}-01"
+        end_date = f"{year}-{month:02d}-{last_day}"
+
+        months.append({
+            'display': display_text,
+            'value': f"{start_date}|{end_date}",
+            'year': year,
+            'month': month
+        })
+
+    return months
+
+
+def generate_fallback_months(limit=20):
+    """
+    Gera uma lista de meses retroativos a partir do mês atual.
+
+    Args:
+        limit (int): Número de meses a gerar
+
+    Returns:
+        list: Lista de dicionários com informações dos meses
+    """
+    current_date = dt.now()
+    months = []
+
+    for i in range(limit):
+        # Calcular o mês i meses atrás
+        date = current_date - relativedelta(months=i)
+        year = date.year
+        month = date.month
+
+        # Calcular o último dia do mês
+        if month == 12:
+            next_month_year = year + 1
+            next_month = 1
+        else:
+            next_month_year = year
+            next_month = month + 1
+
+        next_month_date = dt(next_month_year, next_month, 1)
+        last_day = (next_month_date - timedelta(days=1)).day
+
+        # Formato para exibição
+        display_text = date.strftime('%B %Y').upper()
+
+        # Formato para valor
+        start_date = f"{year}-{month:02d}-01"
+        end_date = f"{year}-{month:02d}-{last_day}"
+
+        months.append({
+            'display': display_text,
+            'value': f"{start_date}|{end_date}",
+            'year': year,
+            'month': month
+        })
+
+    return months
+
+
 def process_real_data_for_dashboard(dashboard_df, report_gen, programs_data, other_skills_data, internal_users_data, external_sales_data):
     """
     Processa os dados reais para o formato esperado pelo dashboard
     """
     # Importar dados simulados para manter a estrutura adequada
     from .mock_data import get_all_dataframes
-    mock_data = get_all_dataframes()
-
-    # Calcular utilização mensal (placeholder - deve ser calculado com dados reais)
-    # Esta é uma implementação básica; ajuste conforme necessário
+    mock_dfs, _, _, _ = get_all_dataframes()
 
     # Processar dados para o dashboard
-    processed_data = mock_data.copy()  # Manter a estrutura base
+    processed_data = {}
+    # Copiar a estrutura base dos dados simulados
+    for key in mock_dfs:
+        processed_data[key] = mock_dfs[key].copy() if hasattr(mock_dfs[key], 'copy') else mock_dfs[key]
 
     # Processar dados de programas
     if 'error' not in programs_data:
@@ -292,13 +495,24 @@ def process_real_data_for_dashboard(dashboard_df, report_gen, programs_data, oth
     return processed_data
 
 
-def load_dashboard_data():
+def load_dashboard_data(start_date=None, end_date=None):
     """
     Função principal para carregar todos os dados do dashboard.
     Tenta carregar dados reais e, se falhar, usa os dados simulados.
     """
     try:
-        return load_real_data()
+        # Tenta carregar dados reais com as datas especificadas
+        result = load_real_data(start_date, end_date)
+
+        # Verificar se o resultado tem 4 itens
+        if isinstance(result, tuple) and len(result) == 4:
+            return result
+        else:
+            print(f"Erro: load_real_data retornou {len(result) if isinstance(result, tuple) else type(result)} valores em vez de 4")
+            # Usar dados simulados como fallback
+            from .mock_data import get_all_dataframes
+            return get_all_dataframes()
+
     except Exception as e:
         print(f"Erro ao carregar dados reais: {e}")
         # Em caso de falha, usar dados simulados
@@ -333,7 +547,7 @@ def get_current_period_info():
         total_horas = report_gen.format_datetime(dashboard_df['HorasDecimais'].sum())
 
         # Data atual para exibição
-        current_date = datetime.now()
+        current_date = dt.now()
 
         return {
             'current_month': current_date.strftime('%B').upper(),
@@ -420,4 +634,5 @@ def process_areas_data(raw_data):
 
 
 if __name__ == '__main__':
-    ...
+    ret = get_available_months()
+    print(ret)

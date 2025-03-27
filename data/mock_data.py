@@ -1,6 +1,8 @@
 # data/mock_data.py
 # Dados simulados para o dashboard
 import pandas as pd
+from datetime import datetime as dt
+
 
 # Dados de utilização mensal (%)
 utilization_data = {
@@ -122,16 +124,38 @@ def get_customers_ytd_df():
 
 
 def get_all_dataframes():
-    return {
+    """
+    Retorna dados simulados para o dashboard, formatados para os 4 valores esperados.
+
+    Returns:
+        tuple: (dfs, tracks_data, areas_data_df, periodo_info)
+    """
+    # Dicionário com todos os DataFrames para visualizações
+    dfs = {
         'utilization': get_utilization_df(),
         'availability': get_availability_df(),
-        'tracks': get_tracks_df(),
-        'tracks_ytd': get_tracks_ytd_df(),
-        'areas': get_areas_df(),
-        'areas_ytd': get_areas_ytd_df(),
         'programs': get_programs_df(),
         'other_skills': get_other_skills_df(),
         'internal_users': get_internal_users_df(),
         'external_sales': get_external_sales_df(),
         'customers_ytd': get_customers_ytd_df()
     }
+
+    # Dados de tracks específicos
+    tracks_data = get_tracks_df()
+
+    # DataFrame de áreas
+    areas_data_df = get_areas_df()
+
+    # Informações do período
+    periodo_info = {
+        'current_month': dt.now().strftime('%B').upper(),
+        'current_day': str(dt.now().day),
+        'ytd_utilization_percentage': '82.5%',
+        'ytd_availability_percentage': '88.2%',
+        'total_hours': '1032',
+        'total_hours_ytd': '10386'
+    }
+
+    # Retornar os 4 valores esperados
+    return dfs, tracks_data, areas_data_df, periodo_info

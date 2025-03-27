@@ -50,7 +50,7 @@ body {
     letter-spacing: 0.01em;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    overflow: hidden; /* Prevenir rolagem no corpo */
+    overflow: hidden !important;
     height: 100vh;
     width: 100vw;
 }
@@ -60,13 +60,14 @@ body {
 /* Container principal - layout de tela cheia sem rolagem */
 .dashboard-container {
     width: 100vw;
-    height: 100vh;
+    height: calc(100vh - 35px) !important; /* Reserva espaço para o footer */
+    max-height: calc(100vh - 35px) !important;
+    padding-bottom: 35px !important;
     margin: 0;
     padding: 8px;
-    box-sizing: border-box;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
 }
 
 /* Header Styling - Moderno e compacto */
@@ -74,17 +75,17 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 6px 15px;
+    padding: 4px 10px;
     background: linear-gradient(90deg, var(--primary-dark), var(--primary-color));
     color: white;
     border-radius: 12px;
-    margin-bottom: 8px;
+    margin-bottom: 5px;
     box-shadow: var(--card-shadow);
     position: relative;
     overflow: hidden;
     flex-shrink: 0;
-    min-height: 40px;
-    max-height: 40px;
+    min-height: 35px;
+    max-height: 35px;
 }
 
 .header::after {
@@ -105,6 +106,11 @@ body {
     z-index: 1;
 }
 
+.header-left .logo {
+    height: 20px;
+    margin-right: 8px;
+}
+
 .logo {
     height: 24px; /* Reduzido de 28px */
     margin-right: 12px; /* Reduzido de 15px */
@@ -112,13 +118,13 @@ body {
 }
 
 .header-title {
-    font-size: 16px; /* Reduzido de 18px */
+    font-size: 14px; /* Reduzido de 18px */
     font-weight: 600;
     letter-spacing: 0.02em;
 }
 
 .header-subtitle {
-    font-size: 13px; /* Reduzido de 14px */
+    font-size: 11px; /* Reduzido de 14px */
     font-weight: 500;
     margin-left: 16px; /* Reduzido de 20px */
     letter-spacing: 0.01em;
@@ -136,13 +142,25 @@ body {
 
 /* ==================== Layout de 3 Colunas ==================== */
 
+#tab-content, .tabs-content-container {
+    padding-bottom: 5px !important;
+    overflow: hidden !important;
+}
+
+#dashboard-content > div {
+    padding-bottom: 5px !important; /* Garante que o conteúdo termina antes do footer */
+}
+
 /* Layout de conteúdo principal - 3 colunas */
 .dashboard-content {
     display: flex;
-    flex: 1;
+    flex: 1 !important;
     gap: 8px; /* Reduzido de 10px */
-    overflow: hidden;
+    overflow: hidden !important;
     height: calc(100vh - 80px); /* Ajustado para cabeçalho e rodapé menores */
+    max-height: calc(100vh - 80px) !important; /* Reservar espaço para header (45px) e footer (35px) */
+    padding-bottom: 5px !important;
+    margin-bottom: 0 !important; /* Margem extra no final */
 }
 
 /* Definições para layout de três colunas */
@@ -151,6 +169,9 @@ body {
     flex: 1;
     gap: 8px; /* Reduzido de 10px */
     overflow: hidden;
+    height: auto !important;
+    max-height: calc(100vh - 85px) !important;
+    padding-bottom: 5 !important;
 }
 
 /* Tamanhos específicos para as 3 colunas */
@@ -172,8 +193,10 @@ body {
     flex-direction: column;
     gap: 8px; /* Reduzido de 10px */
     overflow: hidden; /* Alterado de overflow-y: auto para hidden */
-    height: 100%;
+    height: 100% !important;
+    max-height: calc(100vh - 90px) !important;
     padding-right: 0; /* Removido padding à direita */
+    padding-bottom: 30px !important;
 }
 
 /* Remover estilos de scrollbar já que não teremos rolagem */
@@ -241,6 +264,22 @@ body {
     .eja-table td, .eja-table th {
         padding: 6px 10px;
     }
+    .dashboard-container {
+        height: calc(100vh - 30px) !important;
+        max-height: calc(100vh - 30px) !important;
+    }
+    
+    .dashboard-content, .column {
+        max-height: calc(100vh - 75px) !important;
+    }
+    
+    .three-column-layout {
+        max-height: calc(100vh - 75px) !important;
+    }
+    
+    .footer {
+        height: 25px !important;
+    }
 }
 
 /* ==================== Componentes de UI ==================== */
@@ -255,7 +294,7 @@ body {
     transition: transform 0.2s ease, box-shadow 0.2s ease;
     display: flex;
     flex-direction: column;
-    margin-bottom: 8px; /* Reduzido de 10px */
+    margin-bottom: 4px; /* Reduzido de 10px */
     flex: 1;
     min-height: 0; /* Importante para flexbox */
 }
@@ -317,8 +356,10 @@ body {
     display: flex;
     flex-direction: column;
     flex: 1;
+    height: auto !important;
     min-height: 0; /* Importante para flexbox */
-    overflow: hidden; /* Alterado de visible para hidden */
+    max-height: none !important;
+    overflow: visible !important; /* Alterado de visible para hidden */
 }
 
 /* Caixas de métricas */
@@ -376,7 +417,7 @@ body {
 .chart-container {
     background-color: var(--card-bg);
     border-radius: 8px;
-    padding: 6px; /* Reduzido de 8px */
+    padding: 6px !important; ; /* Reduzido de 8px */
     margin-bottom: 6px; /* Reduzido de 8px */
     box-shadow: 0 1px 3px rgba(0,0,0,0.05);
     border: 1px solid var(--card-border);
@@ -385,7 +426,9 @@ body {
     position: relative;
     overflow: hidden; /* Alterado de visible para hidden */
     flex: 1;
-    min-height: 0; /* Removido min-height fixo */
+    min-height: 0 !important; /* Removido min-height fixo */
+    max-height: none !important;
+    height: auto !important;
 }
 
 /* Plotly personalização */
@@ -413,7 +456,7 @@ body {
 .flex-container {
     display: flex;
     gap: 8px; /* Reduzido de 10px */
-    margin-bottom: 8px; /* Reduzido de 10px */
+    margin-bottom: 4px; /* Reduzido de 10px */
     flex-wrap: wrap;
     justify-content: space-between;
     width: 100%;
@@ -422,7 +465,7 @@ body {
 .flex-item {
     flex: 1;
     min-width: 48%;
-    margin-bottom: 8px; /* Reduzido de 10px */
+    margin-bottom: 4px; /* Reduzido de 10px */
 }
 
 /* Tamanhos específicos de gráficos - alterados para uso relativo */
@@ -501,7 +544,7 @@ body {
 
 /* Containers com bordas */
 .bordered-container {
-    margin-bottom: 8px; /* Reduzido de 10px */
+    margin-bottom: 4px; /* Reduzido de 10px */
     border: 1px solid var(--card-border);
     border-radius: 8px;
     overflow: hidden;
@@ -522,15 +565,32 @@ body {
     border: 1px solid var(--card-border);
 }
 
+.footer::before {
+    content: "";
+    position: absolute;
+    top: -5px;
+    left: 0;
+    width: 100%;
+    height: 5px;
+    background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,1));
+    z-index: 9998;
+}
+
 /* Rodapé compacto */
 .footer {
-    margin-top: 4px; /* Reduzido de 5px */
-    padding: 2px; /* Reduzido de 3px */
-    text-align: center;
-    font-size: 10px; /* Reduzido de 11px */
-    color: var(--text-light);
-    flex-shrink: 0;
-    max-height: 22px; /* Reduzido de 30px */
+    position: fixed !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 30px !important;
+    background-color: #f8f9fa !important;
+    text-align: center !important;
+    padding: 5px 0 !important;
+    font-size: 12px !important;
+    color: #666 !important;
+    border-top: 1px solid #e9ecef !important;
+    z-index: 9999 !important; /* Valor alto para garantir que fique por cima */
+    box-shadow: 0 -2px 5px rgba(0,0,0,0.05) !important; /* Sombra sutil */
 }
 
 /* ==================== Estilos específicos para gráficos ==================== */
@@ -561,7 +621,7 @@ body {
     display: flex;
     flex-wrap: wrap;
     gap: 6px; /* Reduzido de 8px */
-    margin-bottom: 8px; /* Reduzido de 10px */
+    margin-bottom: 4px; /* Reduzido de 10px */
     justify-content: space-between;
 }
 
@@ -677,6 +737,24 @@ body {
 }
 
 @media (max-width: 992px) {
+    #month-selector {
+        width: 160px !important;
+        height: 24px !important;
+        line-height: 24px !important;
+    }
+
+    #month-selector .Select-control {
+        height: 24px !important;
+        line-height: 24px !important;
+        padding: 0 6px !important;
+    }
+
+    #month-selector .Select-value-label,
+    #month-selector .Select-input input {
+        font-size: 11px !important;
+        line-height: 24px !important;
+    }
+
     /* Para telas menores, ajustar proporções */
     .dashboard-container {
         padding: 5px;
@@ -697,19 +775,19 @@ body {
     }
     
     .header {
-        min-height: 35px;
-        max-height: 35px;
+        min-height: 30px;
+        max-height: 30px;
         margin-bottom: 5px;
-        padding: 4px 10px;
+        padding: 3px 8px;
     }
     
     .header-title {
-        font-size: 14px;
+        font-size: 12px;
     }
     
     .header-subtitle {
-        font-size: 11px;
-        margin-left: 10px;
+        font-size: 10px;
+        margin-left: 8px;
     }
     
     .header-date {
@@ -816,3 +894,113 @@ body {
     visibility: visible !important;
     display: block !important;
 }
+
+
+
+/* ==================== Seletor de data do Header ==================== */
+.header-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    margin-right: 15px;
+}
+
+.header-date {
+    margin-top: 5px;
+    font-size: 14px;
+}
+
+
+.month-selector-dropdown {
+    width: 200px;
+    margin-bottom: 5px;
+    color: #333;
+    font-size: 14px;
+}
+
+/* Ajustes para o estilo do dropdown */
+.month-selector-dropdown .Select-control {
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    background-color: rgba(255, 255, 255, 0.9);
+}
+
+.month-selector-dropdown .Select-menu-outer {
+    z-index: 10;
+}
+
+/* Dropdown Arrow */
+#month-selector .Select-arrow-zone {
+    display: flex !important;
+    align-items: center !important;
+    height: 26px !important;
+}
+
+.loading-message {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+    width: 100%;
+    font-size: 1.5rem;
+    color: #666;
+    text-align: center;
+}
+
+.error-message {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+    width: 100%;
+    font-size: 1.5rem;
+    color: #dc3545;
+    text-align: center;
+    padding: 20px;
+    background-color: rgba(220, 53, 69, 0.1);
+    border: 1px solid rgba(220, 53, 69, 0.3);
+    border-radius: 4px;
+}
+
+#month-selector .Select-control {
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background-color: white;
+}
+
+#month-selector .Select-menu-outer {
+    z-index: 9999;  /* Valor alto para garantir que aparece sobre outros elementos */
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+
+/* Adicione esse CSS ao seu arquivo de estilos ou como um estilo inline */
+
+/* Aumentar o z-index do dropdown para garantir que fique acima de outros elementos */
+.dash-dropdown .Select-menu-outer {
+    z-index: 1000 !important; /* Um valor alto para garantir que fique acima de outros elementos */
+    position: absolute !important;
+}
+
+/* Garantir que o container do dropdown tenha posição relativa */
+.dash-dropdown {
+    position: relative !important;
+}
+
+/* Garantir que o dropdown não seja cortado por containers com overflow hidden */
+.header-container {
+    overflow: visible !important;
+}
+
+/* Ajustar a altura máxima da lista de opções e adicionar rolagem se necessário */
+.dash-dropdown .Select-menu {
+    max-height: 300px !important; /* Ajuste conforme necessário */
+    overflow-y: auto !important;
+}
+
+/* Garantir que o dropdown fique acima de todos os outros elementos */
+.dash-dropdown .VirtualizedSelectFocusedOption {
+    z-index: 1001 !important;
+}
+
