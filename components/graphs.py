@@ -487,6 +487,75 @@ def create_internal_users_graph(df, height=None):
     return fig
 
 
+# def create_external_sales_graph(df, height=None):
+#     """Cria o gráfico de vendas externas com design moderno usando gráfico de rosca"""
+#     # Usar altura padrão se não for fornecida
+#     if height is None:
+#         height = layout_config.get('chart_md_height', 180)
+
+#     # Ordenar dados
+#     df_sorted = df.sort_values('hours', ascending=False)
+
+#     # Calcular percentuais
+#     total = df_sorted['hours'].sum()
+#     percentages = [f"{(val/total*100):.1f}%" for val in df_sorted['hours']]
+
+#     # Definir cores
+#     colors_list = ['#00897B', '#26A69A', '#4DB6AC', '#80CBC4', '#B2DFDB']
+
+#     # Criar figura
+#     fig = go.Figure()
+
+#     # Adicionar gráfico de rosca
+#     fig.add_trace(
+#         go.Pie(
+#             labels=df_sorted['company'],
+#             values=df_sorted['hours'],
+#             hole=0.7,
+#             textposition='inside',
+#             textinfo='percent',
+#             textfont=dict(size=9, color="white"),  # Tamanho reduzido
+#             hoverinfo='label+value+percent',
+#             hovertemplate='<b>%{label}</b><br>Horas: %{value}<br>Percentual: %{percent}<extra></extra>',
+#             marker=dict(colors=colors_list[:len(df_sorted)], line=dict(color='white', width=1)),
+#             text=percentages,
+#         )
+#     )
+
+#     # Adicionar anotação no centro
+#     fig.add_annotation(
+#         text=f"{total}<br>Total",
+#         x=0.5, y=0.5,
+#         font=dict(size=12, color='#333', family="Segoe UI, sans-serif"),  # Tamanho reduzido
+#         showarrow=False
+#     )
+
+#     # Atualizar layout com a altura personalizada
+#     fig.update_layout(
+#         height=height,
+#         autosize=True,
+#         margin={'l': 5, 'r': 5, 't': 5, 'b': 5},  # Margens reduzidas
+#         plot_bgcolor='rgba(0,0,0,0)',
+#         paper_bgcolor='rgba(0,0,0,0)',
+#         showlegend=True,
+#         legend=dict(
+#             orientation="h",
+#             yanchor="bottom",
+#             y=-0.1,
+#             xanchor="center",
+#             x=0.5,
+#             font=dict(size=8)  # Tamanho reduzido
+#         ),
+#         hoverlabel=dict(
+#             bgcolor="white",
+#             font_size=10,
+#             font_family="Segoe UI",
+#             bordercolor="#DDD"
+#         ),
+#     )
+
+#     return fig
+
 def create_external_sales_graph(df, height=None):
     """Cria o gráfico de vendas externas com design moderno usando gráfico de rosca"""
     # Usar altura padrão se não for fornecida
@@ -514,7 +583,7 @@ def create_external_sales_graph(df, height=None):
             hole=0.7,
             textposition='inside',
             textinfo='percent',
-            textfont=dict(size=9, color="white"),  # Tamanho reduzido
+            textfont=dict(size=9, color="white"),
             hoverinfo='label+value+percent',
             hovertemplate='<b>%{label}</b><br>Horas: %{value}<br>Percentual: %{percent}<extra></extra>',
             marker=dict(colors=colors_list[:len(df_sorted)], line=dict(color='white', width=1)),
@@ -526,25 +595,25 @@ def create_external_sales_graph(df, height=None):
     fig.add_annotation(
         text=f"{total}<br>Total",
         x=0.5, y=0.5,
-        font=dict(size=12, color='#333', family="Segoe UI, sans-serif"),  # Tamanho reduzido
+        font=dict(size=12, color='#333', family="Segoe UI, sans-serif"),
         showarrow=False
     )
 
-    # Atualizar layout com a altura personalizada
+    # Atualizar layout com a altura personalizada e mais espaço para a legenda
     fig.update_layout(
         height=height,
         autosize=True,
-        margin={'l': 5, 'r': 5, 't': 5, 'b': 5},  # Margens reduzidas
+        margin={'l': 5, 'r': 5, 't': 5, 'b': 30},  # Aumentei a margem inferior para dar mais espaço
         plot_bgcolor='rgba(0,0,0,0)',
         paper_bgcolor='rgba(0,0,0,0)',
         showlegend=True,
         legend=dict(
             orientation="h",
             yanchor="bottom",
-            y=-0.1,
+            y=-0.25,  # Posição mais baixa para a legenda
             xanchor="center",
             x=0.5,
-            font=dict(size=8)  # Tamanho reduzido
+            font=dict(size=8)
         ),
         hoverlabel=dict(
             bgcolor="white",
@@ -552,6 +621,11 @@ def create_external_sales_graph(df, height=None):
             font_family="Segoe UI",
             bordercolor="#DDD"
         ),
+    )
+
+    # Reduzir o gráfico de rosca para deixar espaço para a legenda
+    fig.update_traces(
+        domain=dict(x=[0, 1], y=[0.1, 1])  # Reduz a área vertical do gráfico
     )
 
     return fig
