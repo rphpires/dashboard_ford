@@ -79,15 +79,33 @@ def create_metric_header(title, value, percentage, font_size='11px'):
     """
     return html.Div(
         className='metric-box',
-        style={'marginBottom': '8px'},
+        style={
+            'display': 'flex',  # Use flexbox para alinhamento horizontal
+            'width': '100%',    # Ocupar toda a largura
+            'justifyContent': 'space-between' # Distribuir conteúdo
+        },
         children=[
-            html.Div(title, className='metric-title', style={'fontSize': font_size}),
+            html.Div(
+                title, 
+                className='metric-title', 
+                style={
+                    'fontSize': font_size
+                }
+            ),
             html.Div(
                 className='metric-value',
-                style={'fontSize': font_size},
+                style={
+                    'fontSize': font_size
+                },
                 children=[
                     html.Span(value),
-                    html.Span(f" ({percentage})", style={'marginLeft': '5px', 'color': '#546E7A'})
+                    html.Span(
+                        f" ({percentage})", 
+                        style={
+                            'marginLeft': '5px', 
+                            'color': '#546E7A'
+                        }
+                    )
                 ]
             )
         ]
@@ -125,7 +143,7 @@ def create_graph_section(id, figure, height=None):
     )
 
 
-def create_bordered_container(children, margin_bottom='10px'):
+def create_bordered_container(children, margin_bottom='0'):
     """
     Cria um container com borda
 

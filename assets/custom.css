@@ -369,15 +369,17 @@ body {
     align-items: center;
     background-color: var(--background-color);
     border: 1px solid var(--card-border);
-    padding: 6px; /* Reduzido de 8px */
-    margin-bottom: 6px; /* Reduzido de 8px */
-    border-radius: 8px;
+    padding-left: 8px; /* Reduzido de 6px para 4px 6px */
+    border-radius: 4px;
     transition: all 0.2s ease;
-    flex-direction: column;
-    align-items: flex-start;
+    flex-direction: row;
+    align-items: center; /* Alterado de flex-start para center */
     background: #f8f9fa;
     flex-shrink: 0;
+    min-height: auto; /* Adicionado para evitar altura mínima */
+    height: auto; /* Adicionado para ajustar altura automaticamente */
 }
+
 
 .metric-box:hover {
     transform: translateY(-2px);
@@ -387,18 +389,22 @@ body {
 
 .metric-title {
     font-weight: 600;
-    font-size: 11px !important; /* Reduzido de 12px */
+    font-size: 11px !important;
     color: var(--text-light);
     text-transform: uppercase;
     letter-spacing: 0.5px;
+    margin: 0; /* Remover margens */
+    padding: 0; /* Remover padding */
 }
 
 .metric-value {
     font-weight: 700;
-    font-size: 13px; /* Reduzido de 14px */
+    font-size: 13px;
     color: var(--primary-color);
     display: flex;
     align-items: center;
+    margin: 0; /* Remover margens */
+    padding: 0; /* Remover padding */
 }
 
 /* Versão compacta para caixas de métricas */
@@ -421,9 +427,8 @@ body {
 /* Containers de gráficos */
 .chart-container {
     background-color: var(--card-bg);
-    border-radius: 8px;
-    padding: 6px !important; ; /* Reduzido de 8px */
-    margin-bottom: 6px; /* Reduzido de 8px */
+    border-radius: 4px;
+    padding: 2px !important; ; /* Reduzido de 8px */
     box-shadow: 0 1px 3px rgba(0,0,0,0.05);
     border: 1px solid var(--card-border);
     display: flex;
@@ -434,6 +439,16 @@ body {
     min-height: 0 !important; /* Removido min-height fixo */
     max-height: none !important;
     height: 100% !important;
+}
+
+.chart-container .metric-box {
+    flex: 0;
+    padding: 4px !important; /* Reduzido de 8px */
+}
+
+.flex-item .metric-box {
+    flex: 0;
+    padding: 4px !important; /* Reduzido de 8px */
 }
 
 /* Plotly personalização */
@@ -465,6 +480,7 @@ body {
 /* Layouts Flexíveis */
 .flex-container {
     display: flex;
+    padding: 6px;
     gap: 8px; /* Reduzido de 10px */
     margin-bottom: 4px; /* Reduzido de 10px */
     flex-wrap: wrap;
@@ -847,10 +863,6 @@ body {
         max-height: 16px;
     }
     
-    .metric-box,
-    .chart-container {
-        margin-bottom: 4px;
-    }
 }
 
 /* ==================== Estilos para Impressão ==================== */
