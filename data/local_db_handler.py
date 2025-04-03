@@ -1,5 +1,4 @@
 # data/local_db_handler.py
-# Gerenciador simplificado do banco de dados SQLite local para o dashboard ZeenTech VEV
 import os
 import sqlite3
 import pandas as pd

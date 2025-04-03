@@ -19,29 +19,29 @@ availability_data = {
 # Dados de utilização por tracks (mensal)
 tracks_utilization = {
     'track_type': ['UNPAVED TRACKS', 'PAVED TRACKS', 'HILL SECTION', 'SPECIAL TRACKS', 'INNER', 'NEW SPECIAL TRACKS', 'GRADED YARD'],
-    'hours': [425, 310, 117, 106, 50, 13, 11],
-    'percentage': ['41%', '30%', '11%', '10%', '5%', '1%', '1%']
+    'hours': [0, 0, 0, 0, 0, 0, 0],
+    'percentage': ['0%', '0%', '0%', '0%', '0%', '0%', '0%']
 }
 
 # Dados de utilização por tracks (YTD)
 tracks_utilization_ytd = {
     'track_type': ['UNPAVED TRACKS', 'PAVED TRACKS', 'SPECIAL TRACKS', 'HILL SECTION', 'INNER', 'NEW SPECIAL TRACKS', 'GRAVEL ROAD CIRCUIT', 'GRADED YARD', 'DIRTY ROAD'],
-    'hours': [3640, 3287, 1576, 594, 508, 308, 220, 159, 86],
-    'percentage': ['36%', '32%', '15%', '6%', '5%', '3%', '2%', '2%', '1%']
+    'hours': [0, 0, 0, 0, 0, 0, 0, 0, 0],
+    'percentage': ['0%', '0%', '0%', '0%', '0%', '0%', '0%', '0%', '0%']
 }
 
 # Dados de utilização por áreas (mensal)
 areas_utilization = {
     'area': ['Ford Land', 'VEV', 'FCSD', 'PD', 'TPG Commercial', 'Marketing', 'Press'],
-    'hours': [561, 339, 56, 34, 29, 13, 0],
-    'percentage': ['54%', '33%', '5%', '3%', '3%', '1%', '0%']
+    'hours': [0, 0, 0, 0, 0, 0, 0],
+    'percentage': ['0%', '0%', '0%', '0%', '0%', '0%', '0%']
 }
 
 # Dados de utilização por áreas (YTD)
 areas_utilization_ytd = {
     'area': ['Ford Land', 'VEV', 'PD', 'Press', 'Marketing', 'TPG Commercial', 'Ford GO', 'FCSD', 'Commercial Vehicles'],
-    'hours': [4432, 3399, 1331, 467, 338, 235, 81, 74, 29],
-    'percentage': ['43%', '33%', '13%', '4%', '3%', '2%', '1%', '1%', '0%']
+    'hours': [0, 0, 0, 0, 0, 0, 0, 0, 0],
+    'percentage': ['0%', '0%', '0%', '0%', '0%', '0%', '0%', '0%', '0%']
 }
 
 # Dados de utilização por programas
@@ -53,25 +53,25 @@ programs_utilization = {
 # Dados de outras equipes de habilidades
 other_skills_utilization = {
     'team': ['FCSD', 'Marketing', 'SVM Ranger', 'SVM Transit', 'Press'],
-    'hours': [106, 13, 6, 4, 1]
+    'hours': [0, 0, 0, 0, 0]
 }
 
 # Dados de usuários internos e vendas externas
 internal_users = {
     'department': ['TPG Support', 'Ford Land', 'TPG VEV Operation & Business'],
-    'hours': [561, 0, 217]
+    'hours': [0, 0, 0]
 }
 
 external_sales = {
     'company': ['Ediag', 'Dana', 'TPG Sales Team', 'Zeentech'],
-    'hours': [18, 10, 4, 2]
+    'hours': [0, 0, 0, 0]
 }
 
 # Dados de utilização por clientes (YTD)
 customers_utilization_ytd = {
     'customer_type': ['INTERNAL USERS', 'PROGRAMS', 'OTHER SKILL TEAMS', 'EXTERNAL SALES'],
-    'hours': [7156, 1521, 1366, 343],
-    'percentage': ['69%', '15%', '13%', '3%']
+    'hours': [0, 0, 0, 0],
+    'percentage': ['0%', '15%', '13%', '3%']
 }
 
 # Funções para obter DataFrames
@@ -151,10 +151,10 @@ def get_all_dataframes():
     periodo_info = {
         'current_month': dt.now().strftime('%B').upper(),
         'current_day': str(dt.now().day),
-        'ytd_utilization_percentage': '82.5%',
-        'ytd_availability_percentage': '88.2%',
-        'total_hours': '1032',
-        'total_hours_ytd': '10386'
+        'ytd_utilization_percentage': '0%',
+        'ytd_availability_percentage': '0%',
+        'total_hours': '0',
+        'total_hours_ytd': '0'
     }
 
     # Retornar os 4 valores esperados

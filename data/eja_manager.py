@@ -1,5 +1,4 @@
 # data/eja_manager.py
-# Gerenciador unificado de EJAs para o dashboard ZeenTech VEV
 import os
 import pandas as pd
 from utils.tracer import trace, report_exception

@@ -299,7 +299,6 @@ def check_and_process_if_needed(force=False):
         count = db_handler.cursor.fetchone()[0]
 
         if count == 0:
-            # Não há dados para a semana atual, processar
             trace(f"Dados da semana {week_number}/{year} não encontrados. Processando...", color="blue")
             return process_weekly_data()
         else:

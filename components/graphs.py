@@ -6,10 +6,38 @@ from plotly.subplots import make_subplots
 import numpy as np
 from config.config import colors, dashboard_constants  # Importar configurações de cores do projeto
 from config.layout_config import layout_config, calculate_chart_height
+import pandas as pd
+import traceback
 
 
 def create_utilization_graph(df, height=None):
     """Cria o gráfico de utilização mensal com design moderno e gradiente"""
+    if df is None or df.empty:
+        # Criar um gráfico vazio com a mensagem
+        fig = go.Figure()
+        fig.add_annotation(
+            text="Nenhum valor neste mês",
+            xref="paper", yref="paper",
+            x=0.5, y=0.5,
+            showarrow=False,
+            font=dict(size=16, color="#666666")
+        )
+
+        if height is None:
+            try:
+                height = layout_config.get('chart_md_height', 180)
+            except Exception:
+                height = 180
+
+        fig.update_layout(
+            height=height,
+            autosize=True,
+            margin={'l': 10, 'r': 10, 't': 10, 'b': 10},
+            plot_bgcolor='rgba(0,0,0,0)',
+            paper_bgcolor='rgba(0,0,0,0)'
+        )
+        return fig
+
     # Usar altura padrão se não for fornecida
     if height is None:
         height = layout_config.get('chart_sm_height', 180)
@@ -55,7 +83,7 @@ def create_utilization_graph(df, height=None):
             text=[f"{util:.1f}%"],
             textposition='auto',
             hoverinfo='text',
-            hovertext=f"<b>{month}</b><br>Utilização: {util:.1f}%",
+            hovertext=f"<b>{month}</b><br>Utilization: {util:.1f}%",
             showlegend=False
         ))
 
@@ -80,7 +108,7 @@ def create_utilization_graph(df, height=None):
         x=1,
         y=avg_util,
         xref="paper",
-        text=f"Média: {avg_util:.1f}%",
+        text=f"Target: {avg_util:.1f}%",
         showarrow=False,
         xanchor="right",
         yanchor="bottom",
@@ -116,7 +144,7 @@ def create_utilization_graph(df, height=None):
             linecolor='#E0E0E0',
             range=[0, max(df['utilization']) * 1.1],
             tickfont=dict(size=9),
-            title=dict(text='Utilização (%)', standoff=5),
+            title=dict(text='Utilization (%)', standoff=5),
             title_font=dict(size=10, color="#666"),
             fixedrange=True
         ),
@@ -136,9 +164,36 @@ def create_utilization_graph(df, height=None):
 
 def create_availability_graph(df, height=None):
     """Cria o gráfico de disponibilidade com design moderno usando áreas sombreadas"""
-    # Usar altura padrão se não for fornecida
-    if height is None:
-        height = layout_config.get('chart_sm_height', 180)
+
+    has_data = (df is not None
+                and not df.empty
+                and 'availability' in df.columns
+                and df['availability'].sum() > 0)
+
+    # Se não houver dados, mostrar mensagem
+    if not has_data:
+        fig = go.Figure()
+        fig.add_annotation(
+            text="Nenhum valor neste mês",
+            xref="paper", yref="paper",
+            x=0.5, y=0.5,
+            showarrow=False,
+            font=dict(size=16, color="#666666")
+        )
+
+        # Definir altura padrão se não especificada
+        if height is None:
+            from config.layout_config import layout_config
+            height = layout_config.get('chart_sm_height', 180)
+
+        fig.update_layout(
+            height=height,
+            autosize=True,
+            margin={'l': 10, 'r': 10, 't': 10, 'b': 10},
+            plot_bgcolor='rgba(0,0,0,0)',
+            paper_bgcolor='rgba(0,0,0,0)'
+        )
+        return fig
 
     target = dashboard_constants['target_availability']
 
@@ -169,7 +224,7 @@ def create_availability_graph(df, height=None):
             text=[f"{avail:.1f}%"],
             textposition='auto',
             hoverinfo='text',
-            hovertext=f"<b>{month}</b><br>Disponibilidade: {avail:.1f}%<br>{'Abaixo da meta' if avail < target else 'Acima da meta'}",
+            hovertext=f"<b>{month}</b><br>Availability: {avail:.1f}%<br>{'Below target' if avail < target else 'Above target'}",
             showlegend=False
         ))
 
@@ -179,7 +234,7 @@ def create_availability_graph(df, height=None):
         y=[target] * len(df['month']),
         mode='lines',
         line=dict(color=colors['target_line'], width=2, dash='dash'),
-        name=f'Meta ({target}%)',
+        name=f'Target ({target}%)',
         hoverinfo='skip'
     ))
 
@@ -206,7 +261,7 @@ def create_availability_graph(df, height=None):
             linecolor='#E0E0E0',
             range=[0, 110],
             tickfont=dict(size=9),
-            title=dict(text='Disponibilidade (%)', standoff=5),
+            title=dict(text='Availability (%)', standoff=5),
             title_font=dict(size=10, color="#666"),
         ),
         annotations=[
@@ -215,7 +270,7 @@ def create_availability_graph(df, height=None):
                 y=target,
                 xref="x",
                 yref="y",
-                text=f"META {target}%",
+                text=f"Target {target}%",
                 showarrow=False,
                 font=dict(size=9, color=colors['target_line'], family="Segoe UI, sans-serif"),
                 xanchor="right",
@@ -248,6 +303,32 @@ def create_availability_graph(df, height=None):
 def create_programs_graph(df, height=None):
     """Cria o gráfico de utilização por programas com barras horizontais e estilo moderno"""
     # Usar altura padrão se não for fornecida
+    if df is None or df.empty:
+        # Criar um gráfico vazio com a mensagem
+        fig = go.Figure()
+        fig.add_annotation(
+            text="Nenhum valor neste mês",
+            xref="paper", yref="paper",
+            x=0.5, y=0.5,
+            showarrow=False,
+            font=dict(size=16, color="#666666")
+        )
+
+        if height is None:
+            try:
+                height = layout_config.get('chart_md_height', 180)
+            except Exception:
+                height = 180
+
+        fig.update_layout(
+            height=height,
+            autosize=True,
+            margin={'l': 10, 'r': 10, 't': 10, 'b': 10},
+            plot_bgcolor='rgba(0,0,0,0)',
+            paper_bgcolor='rgba(0,0,0,0)'
+        )
+        return fig
+
     if height is None:
         height = layout_config.get('chart_sm_height', 180)
 
@@ -324,6 +405,32 @@ def create_programs_graph(df, height=None):
 def create_other_skills_graph(df, height=None):
     """Cria o gráfico de outras equipes de habilidades com barras horizontais e estilo moderno"""
     # Usar altura padrão se não for fornecida
+    if df is None or df.empty:
+        # Criar um gráfico vazio com a mensagem
+        fig = go.Figure()
+        fig.add_annotation(
+            text="Nenhum valor neste mês",
+            xref="paper", yref="paper",
+            x=0.5, y=0.5,
+            showarrow=False,
+            font=dict(size=16, color="#666666")
+        )
+
+        if height is None:
+            try:
+                height = layout_config.get('chart_md_height', 180)
+            except Exception:
+                height = 180
+
+        fig.update_layout(
+            height=height,
+            autosize=True,
+            margin={'l': 10, 'r': 10, 't': 10, 'b': 10},
+            plot_bgcolor='rgba(0,0,0,0)',
+            paper_bgcolor='rgba(0,0,0,0)'
+        )
+        return fig
+
     if height is None:
         height = layout_config.get('chart_sm_height', 180)
 
@@ -395,6 +502,32 @@ def create_other_skills_graph(df, height=None):
 
 def create_internal_users_graph(df, height=None):
     """Cria o gráfico de usuários internos com design moderno usando gráfico de pizza"""
+    if df is None or df.empty:
+        # Criar um gráfico vazio com a mensagem
+        fig = go.Figure()
+        fig.add_annotation(
+            text="Nenhum valor neste mês",
+            xref="paper", yref="paper",
+            x=0.5, y=0.5,
+            showarrow=False,
+            font=dict(size=16, color="#666666")
+        )
+
+        if height is None:
+            try:
+                height = layout_config.get('chart_md_height', 180)
+            except Exception:
+                height = 180
+
+        fig.update_layout(
+            height=height,
+            autosize=True,
+            margin={'l': 10, 'r': 10, 't': 10, 'b': 10},
+            plot_bgcolor='rgba(0,0,0,0)',
+            paper_bgcolor='rgba(0,0,0,0)'
+        )
+        return fig
+
     # Usar altura padrão se não for fornecida
     if height is None:
         height = layout_config.get('chart_md_height', 180)
@@ -403,8 +536,8 @@ def create_internal_users_graph(df, height=None):
     df_sorted = df.sort_values('hours', ascending=False)
 
     # Calcular percentuais
-    total = df_sorted['hours'].sum()
-    percentages = [f"{(val/total*100):.1f}%" for val in df_sorted['hours']]
+    # total = df_sorted['hours'].sum()
+    # percentages = [f"{(val/total*100):.1f}%" for val in df_sorted['hours']]
 
     # Definir cores mais atraentes
     colors_list = ['#1E88E5', '#42A5F5', '#64B5F6', '#90CAF9', '#BBDEFB',
@@ -558,6 +691,31 @@ def create_internal_users_graph(df, height=None):
 
 def create_external_sales_graph(df, height=None):
     """Cria o gráfico de vendas externas com design moderno usando gráfico de rosca"""
+    if df is None or df.empty:
+        # Criar um gráfico vazio com a mensagem
+        fig = go.Figure()
+        fig.add_annotation(
+            text="Nenhum valor neste mês",
+            xref="paper", yref="paper",
+            x=0.5, y=0.5,
+            showarrow=False,
+            font=dict(size=16, color="#666666")
+        )
+
+        if height is None:
+            try:
+                height = layout_config.get('chart_md_height', 180)
+            except Exception:
+                height = 180
+
+        fig.update_layout(
+            height=height,
+            autosize=True,
+            margin={'l': 10, 'r': 10, 't': 10, 'b': 10},
+            plot_bgcolor='rgba(0,0,0,0)',
+            paper_bgcolor='rgba(0,0,0,0)'
+        )
+        return fig
     # Usar altura padrão se não for fornecida
     if height is None:
         height = layout_config.get('chart_md_height', 180)
@@ -632,26 +790,15 @@ def create_external_sales_graph(df, height=None):
 
 
 def create_tracks_graph(tracks_dict, height=None, bottom_margin=None, max_items=None):
-    """Cria o gráfico de utilização por tracks com design moderno usando treemap"""
-    import pandas as pd
-    import plotly.express as px
-    import plotly.graph_objects as go
-    import traceback
-
     print("\n-------- DIAGNÓSTICO DO GRÁFICO DE TRACKS --------")
     print(f"tracks_dict tipo: {type(tracks_dict)}")
-    if tracks_dict is None:
-        print("tracks_dict é None")
-    elif isinstance(tracks_dict, dict):
-        print(f"tracks_dict tem {len(tracks_dict)} itens")
-        if len(tracks_dict) > 0:
-            print("Primeiros 3 itens:")
-            for i, (key, value) in enumerate(list(tracks_dict.items())[:3]):
-                print(f"  {key}: {value}")
-        else:
-            print("tracks_dict está vazio")
-    else:
-        print(f"tracks_dict não é um dicionário, é {type(tracks_dict)}")
+
+    has_data = False
+
+    if isinstance(tracks_dict, dict) and len(tracks_dict) > 0:
+        has_data = True
+    elif isinstance(tracks_dict, pd.DataFrame) and not tracks_dict.empty:
+        has_data = True
 
     if height is None:
         from config.layout_config import layout_config
@@ -660,14 +807,11 @@ def create_tracks_graph(tracks_dict, height=None, bottom_margin=None, max_items=
 
     try:
         # Verificar se tracks_dict é None ou vazio
-        if tracks_dict is None or not isinstance(tracks_dict, dict) or len(tracks_dict) == 0:
-            # Criar um gráfico vazio COM MENSAGEM
-            print("Criando gráfico vazio pois tracks_dict é inválido ou vazio")
+        if not has_data:
             fig = go.Figure()
 
-            # Adicionar texto indicando que não há dados
             fig.add_annotation(
-                text="Não há dados de tracks disponíveis para exibição",
+                text="Nenhum valor neste mês",
                 xref="paper", yref="paper",
                 x=0.5, y=0.5,
                 showarrow=False,
@@ -746,7 +890,7 @@ def create_tracks_graph(tracks_dict, height=None, bottom_margin=None, max_items=
         df = pd.DataFrame(tracks_data)
         print(f"DataFrame criado com {len(df)} linhas")
         print(f"Colunas: {list(df.columns)}")
-        print(f"Primeiras 3 linhas:")
+        print("Primeiras 3 linhas:")
         print(df.head(3).to_string())
 
         # Limitar para os top N itens, se solicitado
@@ -894,7 +1038,7 @@ def create_areas_graph(areas_df, height=None, bottom_margin=None):
 
             # Adicionar texto explicativo
             fig.add_annotation(
-                text="Não há dados de áreas disponíveis para exibição",
+                text="Nenhum valor neste mês",
                 xref="paper", yref="paper",
                 x=0.5, y=0.5,
                 showarrow=False,
@@ -1001,18 +1145,34 @@ def create_areas_graph(areas_df, height=None, bottom_margin=None):
 
 
 def create_customers_stacked_graph(df, height=None, use_cached_data=True):
-    """
-    Cria um gráfico de barras empilhadas para visualização de clientes usando dados
-    da tabela auxiliar clients_usage se disponível.
+    has_data = False
 
-    Args:
-        df (DataFrame): DataFrame com dados dos clientes (fallback)
-        height (int, opcional): Altura personalizada do gráfico
-        use_cached_data (bool): Se True, tenta usar os dados da tabela clients_usage
+    if isinstance(df, dict) and len(df) > 0:
+        has_data = True
+    elif isinstance(df, pd.DataFrame) and not df.empty:
+        has_data = True
 
-    Returns:
-        plotly.graph_objects.Figure: Figura do gráfico
-    """
+    if not has_data:
+        print("Criando gráfico vazio pois tracks_dict é inválido ou vazio")
+        fig = go.Figure()
+
+        fig.add_annotation(
+            text="Nenhum valor neste mês",
+            xref="paper", yref="paper",
+            x=0.5, y=0.5,
+            showarrow=False,
+            font=dict(size=14)
+        )
+
+        fig.update_layout(
+            height=height,
+            autosize=True,
+            margin={'l': 10, 'r': 10, 't': 10, 'b': 10},
+            plot_bgcolor='rgba(0,0,0,0)',
+            paper_bgcolor='rgba(0,0,0,0)'
+        )
+        return fig
+
     if height is None:
         height = layout_config.get('chart_md_height', 180)
 

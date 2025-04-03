@@ -1,4 +1,4 @@
-# Dashboard ZeenTech VEV
+# Dashboard Ford
 
 Dashboard interativo para visualização de utilização e disponibilidade de pistas de testes (tracks).
 
@@ -44,8 +44,6 @@ dashboard/
 
 1. Clone o repositório:
 ```
-git clone https://github.com/seu-usuario/dashboard-zeentech-vev.git
-cd dashboard-zeentech-vev
 ```
 
 2. Crie e ative um ambiente virtual (recomendado):

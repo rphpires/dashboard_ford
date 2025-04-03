@@ -98,13 +98,13 @@ def create_left_column(dfs, ytd_utilization_percentage, ytd_availability_percent
                             style={'marginBottom': '16px', 'justifyContent': 'space-between'},
                             children=[
                                 create_info_card('Programas', f"{int(programas_horas)} hr",
-                                                 f"{programas_perc_fmt} do total", color='#1E88E5'),
+                                                 f"{programas_perc_fmt} of total", color='#1E88E5'),
                                 create_info_card('Outras Equipes', f"{int(outras_equipes_horas)} hr",
-                                                 f"{outras_equipes_perc_fmt} do total", color='#673AB7'),
+                                                 f"{outras_equipes_perc_fmt} of total", color='#673AB7'),
                                 create_info_card('Uso Interno', f"{int(usuarios_internos_horas)} hr",
-                                                 f"{usuarios_internos_perc_fmt} do total", color='#2E7D32'),
+                                                 f"{usuarios_internos_perc_fmt} of total", color='#2E7D32'),
                                 create_info_card('Vendas Externas', f"{int(vendas_externas_horas)} hr",
-                                                 f"{vendas_externas_perc_fmt} do total", color='#F57C00')
+                                                 f"{vendas_externas_perc_fmt} of total", color='#F57C00')
                             ]
                         ),
                         # Gráfico expandido verticalmente
@@ -132,14 +132,14 @@ def create_left_column(dfs, ytd_utilization_percentage, ytd_availability_percent
 
             # Seção de Detalhamento de Utilização Mensal - MODIFICADA: Expandida verticalmente
             create_section_container([
-                create_section_header('DETALHAMENTO DE UTILIZAÇÃO MENSAL', f"{total_hours} hr"),
+                create_section_header('Monthly Utilization', f"{total_hours} hr"),
                 html.Div(
                     className='panel-content',
                     style={'minHeight': '600px'},  # Aumentando o espaço vertical
                     children=[
                         # Programas - Com gráfico moderno
                         create_bordered_container([
-                            create_metric_header('PROGRAMAS', f"{int(programas_horas)}", programas_perc_fmt),
+                            create_metric_header('Programs', f"{int(programas_horas)}", programas_perc_fmt),
                             create_graph_section(
                                 'programs-graph',
                                 create_programs_graph(dfs['programs'], height=240)
@@ -148,7 +148,7 @@ def create_left_column(dfs, ytd_utilization_percentage, ytd_availability_percent
 
                         # Other Skill Teams - Com gráfico moderno
                         create_bordered_container([
-                            create_metric_header('OUTRAS EQUIPES DE HABILIDADES', f"{int(outras_equipes_horas)}", outras_equipes_perc_fmt),
+                            create_metric_header('Other Skill Teams', f"{int(outras_equipes_horas)}", outras_equipes_perc_fmt),
                             create_graph_section(
                                 'other-skills-graph',
                                 create_other_skills_graph(dfs['other_skills'], height=240)
@@ -159,7 +159,7 @@ def create_left_column(dfs, ytd_utilization_percentage, ytd_availability_percent
                         create_side_by_side_container([
                             # Internal Users
                             create_flex_item([
-                                create_metric_header('USUÁRIOS INTERNOS', f"{int(usuarios_internos_horas)}", usuarios_internos_perc_fmt),
+                                create_metric_header('Internal Users', f"{int(usuarios_internos_horas)}", usuarios_internos_perc_fmt),
                                 create_graph_section(
                                     'internal-users-graph',
                                     create_internal_users_graph(dfs['internal_users'], height=250)
@@ -168,7 +168,7 @@ def create_left_column(dfs, ytd_utilization_percentage, ytd_availability_percent
 
                             # External Sales
                             create_flex_item([
-                                create_metric_header('VENDAS EXTERNAS', f"{int(vendas_externas_horas)}", vendas_externas_perc_fmt),
+                                create_metric_header('External Sales', f"{int(vendas_externas_horas)}", vendas_externas_perc_fmt),
                                 create_graph_section(
                                     'external-sales-graph',
                                     create_external_sales_graph(dfs['external_sales'], height=250)

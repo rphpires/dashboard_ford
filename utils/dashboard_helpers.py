@@ -104,13 +104,13 @@ def calculate_metrics(dfs, total_hours):
 #                         style={'marginBottom': '8px'},
 #                         children=[
 #                             create_info_card('Programas', f"{metrics['programas_horas']} hr",
-#                                              f"{metrics['programas_perc_fmt']} do total", color='#1E88E5'),
+#                                              f"{metrics['programas_perc_fmt']} of total", color='#1E88E5'),
 #                             create_info_card('Outras Equipes', f"{metrics['outras_equipes_horas']} hr",
-#                                              f"{metrics['outras_equipes_perc_fmt']} do total", color='#673AB7'),
+#                                              f"{metrics['outras_equipes_perc_fmt']} of total", color='#673AB7'),
 #                             create_info_card('Uso Interno', f"{metrics['usuarios_internos_horas']} hr",
-#                                              f"{metrics['usuarios_internos_perc_fmt']} do total", color='#2E7D32'),
+#                                              f"{metrics['usuarios_internos_perc_fmt']} of total", color='#2E7D32'),
 #                             create_info_card('Vendas Externas', f"{metrics['vendas_externas_horas']} hr",
-#                                              f"{metrics['vendas_externas_perc_fmt']} do total", color='#F57C00')
+#                                              f"{metrics['vendas_externas_perc_fmt']} of total", color='#F57C00')
 #                         ]
 #                     ),
 #                     # Gráfico - sem altura fixa para ajuste automático
@@ -153,15 +153,15 @@ def create_optimized_utilization_breakdown(dfs, total_hours, metrics):
                     style={'marginBottom': '8px'},
                     children=[
                         create_info_card('Programas', f"{metrics['programas_horas']} hr",
-                                         f"{metrics['programas_perc_fmt']} do total", color='#1E88E5'),
+                                         f"{metrics['programas_perc_fmt']} of total", color='#1E88E5'),
                         create_info_card('Outras Equipes', f"{metrics['outras_equipes_horas']} hr",
-                                         f"{metrics['outras_equipes_perc_fmt']} do total", color='#673AB'),
+                                         f"{metrics['outras_equipes_perc_fmt']} of total", color='#673AB'),
                         create_info_card('Outras Equipes', f"{metrics['outras_equipes_horas']} hr",
-                                         f"{metrics['outras_equipes_perc_fmt']} do total", color='#673AB7'),
+                                         f"{metrics['outras_equipes_perc_fmt']} of total", color='#673AB7'),
                         create_info_card('Uso Interno', f"{metrics['usuarios_internos_horas']} hr",
-                                         f"{metrics['usuarios_internos_perc_fmt']} do total", color='#2E7D32'),
+                                         f"{metrics['usuarios_internos_perc_fmt']} of total", color='#2E7D32'),
                         create_info_card('Vendas Externas', f"{metrics['vendas_externas_horas']} hr",
-                                         f"{metrics['vendas_externas_perc_fmt']} do total", color='#F57C00')
+                                         f"{metrics['vendas_externas_perc_fmt']} of total", color='#F57C00')
                     ]
                 ),
 

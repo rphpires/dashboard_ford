@@ -151,23 +151,56 @@ class ReportGenerator:
             print(f"Erro ao gerar relatório EJA: {str(e)}")
             return {"error": f"Erro ao processar dados: {str(e)}"}
 
-    def gerar_relatorio_tracks(self, top_n=7):
+    # def gerar_relatorio_tracks(self, top_n=7):
+    #     try:
+    #         dashboard_copy = self.dashboard_df.copy()
+    #         dashboard_copy['HorasDecimais'] = dashboard_copy['StayTime'].apply(self.converter_tempo_para_horas)
+
+    #         # Agrupar por LocalityName e somar as horas
+    #         tracks_horas = dashboard_copy.groupby('LocalityName')['HorasDecimais'].sum().to_dict()
+    #         tracks_horas_ordenado = dict(sorted(tracks_horas.items(), key=lambda item: item[1], reverse=True))
+
+    #         for key, item in tracks_horas_ordenado.items():
+    #             formated_dte = self.format_datetime(item)
+    #             tracks_horas_ordenado[key] = formated_dte
+
+    #     except Exception:
+    #         print('Error converting tracks')
+
+    #     return tracks_horas_ordenado
+
+    def gerar_relatorio_tracks(self, top_n=6):
         try:
             dashboard_copy = self.dashboard_df.copy()
+
+            # Verificar se há dados disponíveis
+            if dashboard_copy is None or dashboard_copy.empty or 'StayTime' not in dashboard_copy.columns:
+                return {}  # Retornar dicionário vazio se não houver dados
+
             dashboard_copy['HorasDecimais'] = dashboard_copy['StayTime'].apply(self.converter_tempo_para_horas)
+
+            # Verificar se há horas registradas
+            if dashboard_copy['HorasDecimais'].sum() == 0:
+                return {}  # Retornar dicionário vazio se o total de horas for zero
 
             # Agrupar por LocalityName e somar as horas
             tracks_horas = dashboard_copy.groupby('LocalityName')['HorasDecimais'].sum().to_dict()
+
+            # Verificar se há registros válidos
+            if not tracks_horas:
+                return {}
+
             tracks_horas_ordenado = dict(sorted(tracks_horas.items(), key=lambda item: item[1], reverse=True))
 
             for key, item in tracks_horas_ordenado.items():
                 formated_dte = self.format_datetime(item)
                 tracks_horas_ordenado[key] = formated_dte
 
+            return tracks_horas_ordenado
+
         except Exception:
             print('Error converting tracks')
-
-        return tracks_horas_ordenado
+            return {}  # Retornar dicionário vazio em caso de erro
 
 
 def get_db_connection():
@@ -259,8 +292,6 @@ def load_real_data(start_date=None, end_date=None):
 
         if not sql:
             print("Erro ao conectar ao banco de dados. Usando dados simulados.")
-            from .mock_data import get_all_dataframes
-            return get_all_dataframes()
 
         # Definir período de consulta
         if start_date is None or end_date is None:
@@ -292,9 +323,7 @@ def load_real_data(start_date=None, end_date=None):
 
         if dashboard_df is None or dashboard_df.empty:
             print("Não foi possível obter dados do banco. Usando dados simulados.")
-            from .mock_data import get_all_dataframes
-            return get_all_dataframes()
-
+            return {}, {}, {}, {}
         # Instanciar o gerador de relatórios
         report_gen = ReportGenerator(dashboard_df=dashboard_df)
 
@@ -340,8 +369,7 @@ def load_real_data(start_date=None, end_date=None):
 
     except Exception as e:
         print(f"Erro ao carregar dados reais: {e}")
-        from .mock_data import get_all_dataframes
-        return get_all_dataframes()
+        return {}, {}, {}, {}
 
 
 def get_available_months(limit=20):
@@ -451,8 +479,7 @@ def process_real_data_for_dashboard(dashboard_df, report_gen, programs_data, oth
     Processa os dados reais para o formato esperado pelo dashboard
     """
     # Importar dados simulados para manter a estrutura adequada
-    from .mock_data import get_all_dataframes
-    mock_dfs, _, _, _ = get_all_dataframes()
+    mock_dfs, _, _, _ = create_empty_data_structure()
 
     # Processar dados para o dashboard
     processed_data = {}
@@ -495,10 +522,33 @@ def process_real_data_for_dashboard(dashboard_df, report_gen, programs_data, oth
     return processed_data
 
 
+# def load_dashboard_data(start_date=None, end_date=None):
+#     """
+#     Função principal para carregar todos os dados do dashboard.
+#     Tenta carregar dados reais e, se falhar, usa os dados simulados.
+#     """
+#     try:
+#         # Tenta carregar dados reais com as datas especificadas
+#         result = load_real_data(start_date, end_date)
+
+#         # Verificar se o resultado tem 4 itens
+#         if isinstance(result, tuple) and len(result) == 4:
+#             return result
+#         else:
+#             print(f"Erro: load_real_data retornou {len(result) if isinstance(result, tuple) else type(result)} valores em vez de 4")
+#             # Usar dados simulados como fallback
+#             from .mock_data import get_all_dataframes
+#             return get_all_dataframes()
+
+#     except Exception as e:
+#         print(f"Erro ao carregar dados reais: {e}")
+#         # Em caso de falha, usar dados simulados
+#         from .mock_data import get_all_dataframes
+#         return get_all_dataframes()
+
 def load_dashboard_data(start_date=None, end_date=None):
     """
     Função principal para carregar todos os dados do dashboard.
-    Tenta carregar dados reais e, se falhar, usa os dados simulados.
     """
     try:
         # Tenta carregar dados reais com as datas especificadas
@@ -506,18 +556,98 @@ def load_dashboard_data(start_date=None, end_date=None):
 
         # Verificar se o resultado tem 4 itens
         if isinstance(result, tuple) and len(result) == 4:
-            return result
+            dfs, tracks_data, areas_data_df, periodo_info = result
+
+            # Verificar se há dados reais ou se são apenas estruturas vazias
+            has_real_data = False
+
+            # Verificar totais de horas para determinar se há dados reais
+            if 'total_hours' in periodo_info and periodo_info['total_hours']:
+                hours_str = periodo_info['total_hours']
+
+                # Se for formato HH:MM, converter para decimal
+                if ':' in hours_str:
+                    hours, minutes = map(int, hours_str.split(':'))
+                    total_hours = hours + (minutes / 60.0)
+                else:
+                    try:
+                        total_hours = float(hours_str)
+                    except (ValueError, TypeError):
+                        total_hours = 0
+
+                has_real_data = total_hours > 0
+
+            if not has_real_data:
+                # Manter a estrutura, mas limpar os dados
+                empty_dfs, _, _, _ = create_empty_data_structure()
+
+                # Preservar a estrutura, mas zerar os valores
+                for key in empty_dfs:
+                    if key in dfs and hasattr(dfs[key], 'copy'):
+                        # Para DataFrames, manter colunas mas zerar valores numéricos
+                        df = dfs[key].copy()
+                        for col in df.columns:
+                            if pd.api.types.is_numeric_dtype(df[col]):
+                                df[col] = 0
+                        dfs[key] = df
+
+                # Atualizar período info para indicar zero horas
+                periodo_info['total_hours'] = '0:00'
+                periodo_info['total_hours_ytd'] = '0:00'
+                periodo_info['ytd_utilization_percentage'] = '0%'
+                periodo_info['ytd_availability_percentage'] = '0%'
+
+                # Para tracks e áreas
+                if isinstance(tracks_data, pd.DataFrame) and not tracks_data.empty:
+                    tracks_data['hours'] = 0
+                    tracks_data['percentage'] = '0%'
+
+                if isinstance(areas_data_df, pd.DataFrame) and not areas_data_df.empty:
+                    areas_data_df['hours'] = 0
+
+            return dfs, tracks_data, areas_data_df, periodo_info
         else:
             print(f"Erro: load_real_data retornou {len(result) if isinstance(result, tuple) else type(result)} valores em vez de 4")
-            # Usar dados simulados como fallback
-            from .mock_data import get_all_dataframes
-            return get_all_dataframes()
+            # Criar estrutura vazia com dados zerados
+            return None
 
     except Exception as e:
         print(f"Erro ao carregar dados reais: {e}")
-        # Em caso de falha, usar dados simulados
-        from .mock_data import get_all_dataframes
-        return get_all_dataframes()
+        # Em caso de falha, usar estrutura vazia
+        return None
+
+
+def create_empty_data_structure():
+    from .mock_data import get_all_dataframes
+    empty_dfs, tracks_data, areas_data_df, periodo_info = get_all_dataframes()
+
+    # Zerar todos os valores nos DataFrames
+    for key in empty_dfs:
+        if hasattr(empty_dfs[key], 'copy'):
+            df = empty_dfs[key].copy()
+            for col in df.columns:
+                if pd.api.types.is_numeric_dtype(df[col]):
+                    df[col] = 0
+            empty_dfs[key] = df
+
+    # Zerar valores em tracks e areas
+    if isinstance(tracks_data, pd.DataFrame) and not tracks_data.empty:
+        tracks_data['hours'] = 0
+        if 'percentage' in tracks_data.columns:
+            tracks_data['percentage'] = '0%'
+
+    if isinstance(areas_data_df, pd.DataFrame) and not areas_data_df.empty:
+        areas_data_df['hours'] = 0
+        if 'percentage' in areas_data_df.columns:
+            areas_data_df['percentage'] = '0%'
+
+    # Atualizar período info para indicar zero horas
+    periodo_info['total_hours'] = '0:00'
+    periodo_info['total_hours_ytd'] = '0:00'
+    periodo_info['ytd_utilization_percentage'] = '0%'
+    periodo_info['ytd_availability_percentage'] = '0%'
+
+    return empty_dfs, tracks_data, areas_data_df, periodo_info
 
 
 def get_current_period_info():
