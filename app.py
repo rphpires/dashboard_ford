@@ -1,43 +1,30 @@
 # app.py
-import dash
-from dash import html, dcc, Input, Output, State, callback, no_update, callback_context
-import dash_bootstrap_components as dbc
-import pandas as pd
-from datetime import timedelta, datetime as dt
-from utils.tracer import *
-from utils.helpers import *
-from layouts.header import create_header
-from config.layout_config import layout_config, get_responsive_config
-from components.sections import (
-    create_section_container, create_section_header,
-    create_metric_header, create_graph_section,
-    create_bordered_container, create_side_by_side_container,
-    create_flex_item, create_info_card,
-    # create_compact_metric_box, create_summary_metrics
-)
-from components.graphs import (
-    create_utilization_graph, create_availability_graph,
-    create_programs_graph, create_other_skills_graph,
-    create_internal_users_graph, create_external_sales_graph,
-    create_tracks_graph, create_areas_graph,
-    create_customers_stacked_graph  # Nova função para gráfico de clientes
-)
-from layouts.eja_manager import create_eja_manager_layout
-# from layouts.left_column import create_left_column
-# from layouts.right_column import create_right_column
-
-from data.database import get_available_months, load_dashboard_data, get_current_period_info
-from data.eja_manager import get_eja_manager
-from data.tracks_manager import adjust_tracks_names
-from layouts.eja_manager import create_eja_table
 import os
 import base64
 import json
 import tempfile
-from dash.exceptions import PreventUpdate
-from data.weekly_processor import setup_scheduler, check_and_process_if_needed
 import threading
-from dateutil.relativedelta import relativedelta
+
+from datetime import datetime as dt
+
+import dash
+import dash_bootstrap_components as dbc
+import pandas as pd
+
+from dash import html, dcc, Input, Output, State, callback, no_update, callback_context
+from dash.exceptions import PreventUpdate
+
+from utils.tracer import *
+from utils.helpers import *
+
+from layouts.header import create_header
+from layouts.left_column import create_utilization_availability_column
+from layouts.center_column import create_tracks_areas_column
+from layouts.right_column import create_optimized_utilization_breakdown
+from layouts.eja_manager import create_eja_manager_layout, get_eja_manager, create_eja_table
+
+from data.database import get_available_months, load_dashboard_data
+from data.weekly_processor import setup_scheduler, check_and_process_if_needed
 
 
 # Inicializar a aplicação Dash com Bootstrap para melhor estilo
@@ -56,692 +43,15 @@ app = dash.Dash(
 )
 
 
-def init_weekly_processor():
-    # Verificar se é necessário processar dados
-    needs_processing = check_and_process_if_needed()
-    # Configurar agendamento semanal (executar imediatamente apenas se for necessário)
-    setup_scheduler(run_immediately=needs_processing)
-    trace("Inicialização do processador semanal concluída", color="green")
-
-
-threading.Thread(target=init_weekly_processor, daemon=True).start()
-
-
-available_months = get_available_months(20)
-
-
-# Modificar a inicialização para não carregar dados imediatamente
-dfs, tracks_data, areas_data_df, periodo_info = None, None, None, None
-
-# Inicializar variáveis globais
-current_month = ""
-current_day = ""
-ytd_utilization_percentage = ""
-ytd_availability_percentage = ""
-total_hours = ""
-total_hours_ytd = ""
-
-
-def create_utilization_availability_column(dfs, ytd_utilization_percentage, ytd_availability_percentage):
-    try:
-        from utils.helpers import safe_convert_to_float, safe_calculate_percentage
-    except ImportError:
-        # Definir funções inline se não puder importar
-        def safe_convert_to_float(value, default=0.0):
-            try:
-                if value is None:
-                    return default
-                if isinstance(value, str) and value.strip() == '':
-                    return default
-                return float(value)
-            except (ValueError, TypeError):
-                return default
-
-        def safe_calculate_percentage(part, total, format_str=True, default="0.0%"):
-            try:
-                part_float = safe_convert_to_float(part)
-                total_float = safe_convert_to_float(total)
-                if total_float <= 0:
-                    return default if format_str else 0.0
-                percentage = (part_float / total_float) * 100
-                if format_str:
-                    return f"{percentage:.1f}%"
-                else:
-                    return percentage
-            except Exception as e:
-                print(f"Erro ao calcular porcentagem: {e}")
-                return default if format_str else 0.0
-
-    # Calcular totais e percentuais para cada categoria
-    try:
-        # Extrair o valor numérico do total de horas
-        if isinstance(total_hours, str) and ':' in total_hours:
-            horas, minutos = map(int, total_hours.split(':'))
-            total_horas_decimal = horas + (minutos / 60.0)
-        else:
-            total_horas_decimal = safe_convert_to_float(total_hours)
-
-        # Calcular somas para cada categoria
-        programas_horas = safe_convert_to_float(dfs['programs']['hours'].sum() if 'hours' in dfs['programs'].columns else 0)
-        outras_equipes_horas = safe_convert_to_float(dfs['other_skills']['hours'].sum() if 'hours' in dfs['other_skills'].columns else 0)
-        usuarios_internos_horas = safe_convert_to_float(dfs['internal_users']['hours'].sum() if 'hours' in dfs['internal_users'].columns else 0)
-        vendas_externas_horas = safe_convert_to_float(dfs['external_sales']['hours'].sum() if 'hours' in dfs['external_sales'].columns else 0)
-
-        # Calcular percentuais com função segura
-        programas_perc_fmt = safe_calculate_percentage(programas_horas, total_horas_decimal)
-        outras_equipes_perc_fmt = safe_calculate_percentage(outras_equipes_horas, total_horas_decimal)
-        usuarios_internos_perc_fmt = safe_calculate_percentage(usuarios_internos_horas, total_horas_decimal)
-        vendas_externas_perc_fmt = safe_calculate_percentage(vendas_externas_horas, total_horas_decimal)
-
-    except Exception as e:
-        print(f"Erro ao calcular percentuais: {e}")
-        traceback.print_exc()
-        # Valores padrão em caso de erro
-        programas_horas = 89
-        outras_equipes_horas = 130
-        usuarios_internos_horas = 778
-        vendas_externas_horas = 34
-        programas_perc_fmt = "9%"
-        outras_equipes_perc_fmt = "13%"
-        usuarios_internos_perc_fmt = "75%"
-        vendas_externas_perc_fmt = "3%"
-
-    return [
-        # Seção de Utilização (%)
-        create_section_container([
-            create_section_header('Utilization (%)', ytd_utilization_percentage),
-            html.Div(
-                className='panel-content',
-                children=[
-                    # Cards de resumo agrupados
-                    html.Div(
-                        className='flex-container',
-                        style={'marginBottom': '2px'},
-                        children=[
-                            create_info_card('Programs', f"{int(programas_horas)} hr",
-                                             f"{programas_perc_fmt} of total", color='#1E88E5'),
-                            create_info_card('Other Skill Teams', f"{int(outras_equipes_horas)} hr",
-                                             f"{outras_equipes_perc_fmt} of total", color='#673AB7'),
-                            create_info_card('Internal Users', f"{int(usuarios_internos_horas)} hr",
-                                             f"{usuarios_internos_perc_fmt} of total", color='#2E7D32'),
-                            create_info_card('External Sales', f"{int(vendas_externas_horas)} hr",
-                                             f"{vendas_externas_perc_fmt} of total", color='#F57C00')
-                        ]
-                    ),
-                    # Gráfico - sem altura fixa para ajuste automático
-                    create_graph_section(
-                        'utilization-graph',
-                        create_utilization_graph(dfs['utilization'], height=None)
-                    )
-                ]
-            )
-        ], margin_bottom='2px'),
-
-        # Seção de Disponibilidade de Tracks (%)
-        create_section_container([
-            create_section_header('Tracks Availability (%)', ytd_availability_percentage),
-            html.Div(
-                className='panel-content',
-                children=[
-                    create_graph_section(
-                        'availability-graph',
-                        create_availability_graph(dfs['availability'], height=None)
-                    )
-                ]
-            )
-        ], margin_bottom='2px')
-    ]
-
-
-def create_optimized_utilization_breakdown(dfs, total_hours):
-    # Calcular totais e percentuais para cada categoria
-    try:
-        # Extrair o valor numérico do total de horas
-        if ':' in total_hours:
-            horas, minutos = map(int, total_hours.split(':'))
-            total_horas_decimal = horas + (minutos / 60.0)
-        else:
-            total_horas_decimal = float(total_hours)
-
-        # Calcular somas para cada categoria
-        programas_horas = dfs['programs']['hours'].sum() if 'hours' in dfs['programs'].columns else 0
-        outras_equipes_horas = dfs['other_skills']['hours'].sum() if 'hours' in dfs['other_skills'].columns else 0
-        usuarios_internos_horas = dfs['internal_users']['hours'].sum() if 'hours' in dfs['internal_users'].columns else 0
-        vendas_externas_horas = dfs['external_sales']['hours'].sum() if 'hours' in dfs['external_sales'].columns else 0
-
-        # Calcular percentuais
-        if total_horas_decimal > 0:
-            programas_perc = (programas_horas / total_horas_decimal) * 100
-            outras_equipes_perc = (outras_equipes_horas / total_horas_decimal) * 100
-            usuarios_internos_perc = (usuarios_internos_horas / total_horas_decimal) * 100
-            vendas_externas_perc = (vendas_externas_horas / total_horas_decimal) * 100
-        else:
-            programas_perc = outras_equipes_perc = usuarios_internos_perc = vendas_externas_perc = 0
-
-        # Formatação para exibição
-        programas_perc_fmt = f"{programas_perc:.1f}%"
-        outras_equipes_perc_fmt = f"{outras_equipes_perc:.1f}%"
-        usuarios_internos_perc_fmt = f"{usuarios_internos_perc:.1f}%"
-        vendas_externas_perc_fmt = f"{vendas_externas_perc:.1f}%"
-
-    except Exception as e:
-        print(f"Erro ao calcular percentuais: {e}")
-        # Valores padrão em caso de erro
-        programas_horas = 89
-        outras_equipes_horas = 130
-        usuarios_internos_horas = 778
-        vendas_externas_horas = 34
-        programas_perc_fmt = "9%"
-        outras_equipes_perc_fmt = "13%"
-        usuarios_internos_perc_fmt = "75%"
-        vendas_externas_perc_fmt = "3%"
-
-    return create_section_container([
-        create_section_header('Monthly Utilization', f"{total_hours} hr"),
-        html.Div(
-            className='panel-content',
-            children=[
-                # Indicadores de Resumo em linha compacta
-                html.Div(
-                    className='flex-container compact-info-cards',
-                    style={'marginBottom': '2px'},
-                    children=[
-                        create_info_card('Programs', f"{int(programas_horas)} hr",
-                                         f"{programas_perc_fmt} of total", color='#1E88E5'),
-                        create_info_card('Other Skill Teams', f"{int(outras_equipes_horas)} hr",
-                                         f"{outras_equipes_perc_fmt} of total", color='#673AB7'),
-                        create_info_card('Internal Users', f"{int(usuarios_internos_horas)} hr",
-                                         f"{usuarios_internos_perc_fmt} of total", color='#2E7D32'),
-                        create_info_card('External Sales', f"{int(vendas_externas_horas)} hr",
-                                         f"{vendas_externas_perc_fmt} of total", color='#F57C00')
-                    ]
-                ),
-
-                # Programas - altura flexível
-                create_bordered_container([
-                    create_metric_header('Programs', f"{int(programas_horas)}", programas_perc_fmt),
-                    create_graph_section(
-                        'programs-graph',
-                        create_programs_graph(dfs['programs'], height=None)
-                    )
-                ]),
-
-                # Other Skill Teams - altura flexível
-                create_bordered_container([
-                    create_metric_header('Other Skill Teams', f"{int(outras_equipes_horas)}", outras_equipes_perc_fmt),
-                    create_graph_section(
-                        'other-skills-graph',
-                        create_other_skills_graph(dfs['other_skills'], height=None)
-                    )
-                ]),
-
-                # Internal Users and External Sales (lado a lado)
-                create_side_by_side_container([
-                    # Internal Users
-                    create_flex_item([
-                        create_metric_header('Internal Users', f"{int(usuarios_internos_horas)}", usuarios_internos_perc_fmt),
-                        create_graph_section(
-                            'internal-users-graph',
-                            create_internal_users_graph(dfs['internal_users'], height=None)
-                        )
-                    ], margin_right='8px', min_width='38%'),
-
-                    # External Sales
-                    create_flex_item([
-                        create_metric_header('External Sales', f"{int(vendas_externas_horas)}", vendas_externas_perc_fmt),
-                        create_graph_section(
-                            'external-sales-graph',
-                            create_external_sales_graph(dfs['external_sales'], height=None)
-                        )
-                    ], min_width='38%')
-                ])
-            ]
-        )
-    ])
-
-
-def create_tracks_graph_safe(tracks_data, height=None, max_items=None):
-    """Versão segura da função create_tracks_graph que lida com diferentes tipos de entrada"""
-    try:
-        # Verificação simplificada para determinar se há dados
-        has_data = False
-
-        if isinstance(tracks_data, dict) and len(tracks_data) > 0:
-            has_data = True
-        elif isinstance(tracks_data, pd.DataFrame) and not tracks_data.empty:
-            has_data = True
-
-        if not has_data:
-            import plotly.graph_objects as go
-            fig = go.Figure()
-            fig.add_annotation(
-                text="Nenhum valor neste mês",
-                xref="paper", yref="paper",
-                x=0.5, y=0.5,
-                showarrow=False,
-                font=dict(size=16, color="#666666")
-            )
-
-            if height is None:
-                try:
-                    height = layout_config.get('chart_md_height', 180)
-                except Exception:
-                    height = 180
-
-            fig.update_layout(
-                height=height,
-                autosize=True,
-                margin={'l': 10, 'r': 10, 't': 10, 'b': 10},
-                plot_bgcolor='rgba(0,0,0,0)',
-                paper_bgcolor='rgba(0,0,0,0)'
-            )
-            return fig
-
-        # Chamar a função original se houver dados
-        return create_tracks_graph(tracks_data, height=height, max_items=max_items)
-    except Exception as e:
-        print(f"Erro em create_tracks_graph_safe: {e}")
-        # Criar um gráfico vazio com mensagem de erro
-        fig = go.Figure()
-        fig.add_annotation(
-            text="Nenhum valor neste mês",
-            xref="paper", yref="paper",
-            x=0.5, y=0.5,
-            showarrow=False,
-            font=dict(size=16, color="#666666")
-        )
-        if height is None:
-            try:
-                height = layout_config.get('chart_md_height', 180)
-            except Exception:
-                height = 180
-
-        fig.update_layout(
-            height=height,
-            autosize=True,
-            margin={'l': 10, 'r': 10, 't': 10, 'b': 10},
-            plot_bgcolor='rgba(0,0,0,0)',
-            paper_bgcolor='rgba(0,0,0,0)'
-        )
-        return fig
-
-
-def create_track_section(tracks_data, total_hours):
-    """
-    Cria a seção de visualização de Tracks.
-
-    Args:
-        tracks_data (dict): Dados de tracks processados
-        total_hours (str): Total de horas formatado
-
-    Returns:
-        html.Div: Container com a seção de tracks
-    """
-    try:
-        print("Criando gráfico de tracks...")
-        tracks_graph = create_tracks_graph_safe(tracks_data, height=None, max_items=8)
-        print("Gráfico de tracks criado!")
-
-        return create_section_container([
-            create_section_header('Tracks Utilization (monthly)', f"{total_hours} hr"),
-            html.Div(
-                className='panel-content',
-                children=[
-                    create_graph_section('monthly-tracks-graph', tracks_graph)
-                ]
-            )
-        ], margin_bottom='4px')
-    except Exception as e:
-        print(f"Erro ao criar seção de tracks: {e}")
-        return create_section_container([
-            create_section_header('Tracks Utilization', f"{total_hours} hr"),
-            html.Div(className='panel-content', children=[
-                html.Div("Erro ao carregar dados", className="error-message")
-            ])
-        ], margin_bottom='4px')
-
-
-def create_areas_section(areas_df, total_hours):
-    """
-    Cria a seção de visualização de Áreas.
-
-    Args:
-        areas_df (DataFrame): DataFrame com dados de áreas
-        total_hours (str): Total de horas formatado
-
-    Returns:
-        html.Div: Container com a seção de áreas
-    """
-    try:
-        print("Criando gráfico de áreas...")
-        areas_graph = create_areas_graph(areas_df, height=None)
-        print("Gráfico de áreas criado!")
-
-        return create_section_container([
-            create_section_header('Areas Utilization (monthly)', f"{total_hours} hr"),
-            html.Div(
-                className='panel-content',
-                children=[
-                    create_graph_section('monthly-areas-graph', areas_graph)
-                ]
-            )
-        ], margin_bottom='4px')
-    except Exception as e:
-        print(f"Erro ao criar seção de áreas: {e}")
-        return create_section_container([
-            create_section_header('Areas Utilization', f"{total_hours} hr"),
-            html.Div(className='panel-content', children=[
-                html.Div("Erro ao carregar dados", className="error-message")
-            ])
-        ], margin_bottom='4px')
-
-
-def create_customers_section(customers_df, total_hours_ytd):
-    try:
-        print("Criando gráfico de clientes...")
-        customers_graph = create_customers_stacked_graph(customers_df, height=None)
-        print("Gráfico de clientes criado!")
-
-        return create_section_container([
-            create_section_header('Clients Utilization (monthly)', total_hours_ytd),
-            html.Div(
-                className='panel-content',
-                children=[
-                    create_graph_section('ytd-customers-graph', customers_graph)
-                ]
-            )
-        ], margin_bottom='0px')
-    except Exception as e:
-        print(f"Erro ao criar seção de clientes: {e}")
-        return create_section_container([
-            create_section_header('Clients Utilization', total_hours_ytd),
-            html.Div(className='panel-content', children=[
-                html.Div("Erro ao carregar dados", className="error-message")
-            ])
-        ], margin_bottom='0px')
-
-
-# Função para criar a coluna com tracks, áreas e clientes (modificada)
-# def create_tracks_areas_column(dfs, total_hours, total_hours_ytd):
-#     try:
-#         # Extrair tracks_data do dicionário dfs
-#         tracks_dict = {}
-#         if 'tracks_data' in dfs and dfs['tracks_data'] is not None:
-#             # Verificar o tipo de tracks_data
-#             if isinstance(dfs['tracks_data'], pd.DataFrame):
-#                 print(f"tracks_data é um DataFrame com formato {dfs['tracks_data'].shape}")
-#                 print(f"Colunas disponíveis: {list(dfs['tracks_data'].columns)}")
-
-#                 # Converter o DataFrame para o formato de dicionário esperado
-#                 try:
-#                     # Verificar se o DataFrame tem as colunas necessárias
-#                     if 'LocalityName' in dfs['tracks_data'].columns and 'StayTime' in dfs['tracks_data'].columns:
-#                         # Converter para o formato esperado
-#                         print("Convertendo DataFrame tracks_data para dicionário...")
-#                         tracks_dict = {}
-#                         for _, row in dfs['tracks_data'].iterrows():
-#                             track_name = row['LocalityName']
-#                             track_time = row['StayTime']
-#                             # Usar índice como chave única
-#                             tracks_dict[str(track_name)] = {
-#                                 'track_name': str(track_name),
-#                                 'track_time': str(track_time)
-#                             }
-#                         print(f"Conversão concluída. Dicionário tem {len(tracks_dict)} itens.")
-#                     else:
-#                         # Se não tiver as colunas esperadas, usar dados simulados
-#                         print("DataFrame não tem as colunas esperadas. Criando dados simulados.")
-
-#                 except Exception as e:
-#                     print(f"Erro ao converter DataFrame para dicionário: {e}")
-#                     print(traceback.format_exc())
-#                     # Usar dados simulados em caso de erro
-
-#             else:
-#                 # Se já for um dicionário, usar diretamente
-#                 tracks_dict = dfs['tracks_data']
-#                 print("tracks_dict obtido de dfs['tracks_data']")
-#         else:
-#             print("Aviso: dfs['tracks_data'] não disponível, usando dicionário vazio")
-
-#         # Log do conteúdo de tracks_dict
-#         print(f"tracks_dict tipo: {type(tracks_dict)}")
-#         if isinstance(tracks_dict, dict):
-#             print(f"tracks_dict está vazio? {len(tracks_dict) == 0}")
-#             if len(tracks_dict) > 0:
-#                 print(f"Número de itens em tracks_dict: {len(tracks_dict)}")
-#                 # Mostrar os primeiros itens
-#                 print("Amostra de tracks_dict (até 3 itens):")
-#                 for i, (key, value) in enumerate(list(tracks_dict.items())[:3]):
-#                     print(f"  {key}: {value}")
-
-#         # Extrair areas_data_df do dicionário dfs
-#         areas_df = pd.DataFrame(columns=['area', 'hours'])
-#         if 'areas_data_df' in dfs and dfs['areas_data_df'] is not None:
-#             areas_df = dfs['areas_data_df']
-#             print("areas_df obtido de dfs['areas_data_df']")
-#             # Verificar se areas_df tem o formato correto
-#             if 'area' not in areas_df.columns or 'hours' not in areas_df.columns:
-#                 print("areas_df não tem as colunas necessárias. Recriando DataFrame...")
-#                 # Tentar reformatar o DataFrame se tiver outras colunas que possam ser usadas
-#                 if isinstance(areas_df, pd.DataFrame) and not areas_df.empty:
-#                     try:
-#                         # Verificar se há colunas que possam ser usadas
-#                         possible_area_cols = [col for col in areas_df.columns if 'area' in col.lower() or 'depart' in col.lower() or 'local' in col.lower()]
-#                         possible_hours_cols = [col for col in areas_df.columns if 'hour' in col.lower() or 'time' in col.lower() or 'stay' in col.lower()]
-
-#                         if possible_area_cols and possible_hours_cols:
-#                             print(f"Tentando usar colunas alternativas: {possible_area_cols[0]} e {possible_hours_cols[0]}")
-#                             areas_df = areas_df.rename(columns={
-#                                 possible_area_cols[0]: 'area',
-#                                 possible_hours_cols[0]: 'hours'
-#                             })
-#                         else:
-#                             # Criar dados simulados
-#                             print("Não foi possível identificar colunas adequadas.")
-
-#                     except Exception as e:
-#                         print(f"Erro ao tentar reformatar áreas: {e}")
-#         else:
-#             print("Aviso: dfs['areas_data_df'] não disponível, usando DataFrame vazio")
-
-#         # Log do conteúdo de areas_df
-#         print(f"areas_df tipo: {type(areas_df)}")
-#         if hasattr(areas_df, 'empty'):
-#             print(f"areas_df está vazio? {areas_df.empty}")
-#             if not areas_df.empty:
-#                 print(f"areas_df formato: {areas_df.shape}")
-#                 print(f"areas_df colunas: {list(areas_df.columns)}")
-#                 print("Primeiras 3 linhas de areas_df (se houver):")
-#                 try:
-#                     print(areas_df.head(3).to_string())
-#                 except Exception:
-#                     print("Não foi possível exibir as linhas de areas_df")
-
-#         # Log do customers_ytd DataFrame
-#         print("\nInformações sobre o DataFrame de clientes:")
-#         if 'customers_ytd' in dfs and dfs['customers_ytd'] is not None:
-#             customers_df = dfs['customers_ytd']
-#             print(f"customers_ytd tipo: {type(customers_df)}")
-#             if hasattr(customers_df, 'empty'):
-#                 print(f"customers_ytd está vazio? {customers_df.empty}")
-#                 if not customers_df.empty:
-#                     print(f"customers_ytd formato: {customers_df.shape}")
-#                     print(f"customers_ytd colunas: {list(customers_df.columns)}")
-#         else:
-#             print("Aviso: dfs['customers_ytd'] não está definido ou é None")
-#             dfs['customers_ytd'] = pd.DataFrame()
-
-#         # Tentar importar e usar a função adjust_tracks_names
-#         try:
-#             adjusted_tracks = adjust_tracks_names(tracks_dict)
-#             print("Tracks ajustados com adjust_tracks_names()")
-#             # Verificar se o ajuste afetou os dados
-#             if isinstance(adjusted_tracks, dict):
-#                 print(f"adjusted_tracks tem {len(adjusted_tracks)} itens")
-#                 if len(adjusted_tracks) > 0:
-#                     print("Amostra de adjusted_tracks (até 3 itens):")
-#                     for i, (key, value) in enumerate(list(adjusted_tracks.items())[:3]):
-#                         print(f"  {key}: {value}")
-#             else:
-#                 print(f"adjusted_tracks não é um dicionário, é {type(adjusted_tracks)}")
-#                 adjusted_tracks = tracks_dict  # fallback
-#         except Exception as e:
-#             print(f"Erro ao ajustar nomes de tracks: {e}")
-#             print(traceback.format_exc())
-#             adjusted_tracks = tracks_dict
-
-#         # Verificar que total_hours e total_hours_ytd são strings válidas
-#         if total_hours is None or not isinstance(total_hours, str):
-#             print("Aviso: total_hours não é uma string válida")
-#             total_hours = "0:00"
-
-#         if total_hours_ytd is None or not isinstance(total_hours_ytd, str):
-#             print("Aviso: total_hours_ytd não é uma string válida")
-#             total_hours_ytd = "0:00"
-
-#         # # Criar os gráficos com logs detalhados de cada etapa
-#         print("Criando gráfico de tracks...")
-#         tracks_graph = create_tracks_graph_safe(adjusted_tracks, height=None, max_items=8)
-#         print("Gráfico de tracks criado!")
-
-#         print("Criando gráfico de áreas...")
-#         areas_graph = create_areas_graph(areas_df, height=None)
-#         print("Gráfico de áreas criado!")
-
-#         print("Criando gráfico de clientes...")
-#         customers_graph = create_customers_stacked_graph(dfs['customers_ytd'], height=None)
-#         print("Gráfico de clientes criado!")
-
-#         # Retornar as seções com os gráficos
-#         return [
-#             # Seção de Utilização por Tracks
-#             create_section_container([
-#                 create_section_header('Tracks Utilization (monthly)', f"{total_hours} hr"),
-#                 html.Div(
-#                     className='panel-content',
-#                     children=[
-#                         create_graph_section('monthly-tracks-graph', tracks_graph)
-#                     ]
-#                 )
-#             ], margin_bottom='4px'),
-
-#             # Utilização por Áreas
-#             create_section_container([
-#                 create_section_header('Areas Utilization (monthly)', f"{total_hours} hr"),
-#                 html.Div(
-#                     className='panel-content',
-#                     children=[
-#                         create_graph_section('monthly-areas-graph', areas_graph)
-#                     ]
-#                 )
-#             ], margin_bottom='4px'),
-
-#             # Seção de Utilização por Clientes
-#             create_section_container([
-#                 create_section_header('Clients Utilization (monthly)', total_hours_ytd),
-#                 html.Div(
-#                     className='panel-content',
-#                     children=[
-#                         create_graph_section('ytd-customers-graph', customers_graph)
-#                     ]
-#                 )
-#             ], margin_bottom='0px')
-#         ]
-
-#     except Exception as e:
-#         print(f"ERRO em create_tracks_areas_column: {e}")
-#         print(traceback.format_exc())
-#         # Em caso de erro, retornar contêineres vazios
-#         return [
-#             create_section_container([
-#                 create_section_header('Tracks Utilization', f"{total_hours} hr"),
-#                 html.Div(className='panel-content', children=[
-#                     html.Div("Erro ao carregar dados", className="error-message")
-#                 ])
-#             ], margin_bottom='4px'),
-#             create_section_container([
-#                 create_section_header('Areas Utilization', f"{total_hours} hr"),
-#                 html.Div(className='panel-content', children=[
-#                     html.Div("Erro ao carregar dados", className="error-message")
-#                 ])
-#             ], margin_bottom='4px'),
-#             create_section_container([
-#                 create_section_header('Clients Utilization', total_hours_ytd),
-#                 html.Div(className='panel-content', children=[
-#                     html.Div("Erro ao carregar dados", className="error-message")
-#                 ])
-#             ], margin_bottom='0px')
-#         ]
-def create_tracks_areas_column(dfs, total_hours, total_hours_ytd):
-    try:
-        # Processar os diferentes tipos de dados
-        tracks_dict = process_tracks_data(dfs)
-        areas_df = process_areas_data(dfs)
-        customers_df = process_customers_data(dfs)
-
-        # Validar e ajustar as variáveis total_hours e total_hours_ytd
-        if total_hours is None or not isinstance(total_hours, str):
-            print("Aviso: total_hours não é uma string válida")
-            total_hours = "0:00"
-
-        if total_hours_ytd is None or not isinstance(total_hours_ytd, str):
-            print("Aviso: total_hours_ytd não é uma string válida")
-            total_hours_ytd = "0:00"
-
-        # Tentar ajustar os nomes dos tracks, se aplicável
-        adjusted_tracks = tracks_dict
-        try:
-            adjusted_tracks = adjust_tracks_names(tracks_dict)
-            print("Tracks ajustados com adjust_tracks_names()")
-            print_dict_info(adjusted_tracks, "adjusted_tracks")
-        except Exception as e:
-            print(f"Erro ao ajustar nomes de tracks: {e}")
-            print(traceback.format_exc())
-
-        # Criar seções para visualização
-        tracks_section = create_track_section(adjusted_tracks, total_hours)
-        areas_section = create_areas_section(areas_df, total_hours)
-        customers_section = create_customers_section(customers_df, total_hours_ytd)
-
-        return [tracks_section, areas_section, customers_section]
-
-    except Exception as e:
-        print(f"ERRO em create_tracks_areas_column: {e}")
-        print(traceback.format_exc())
-
-        # Em caso de erro, retornar contêineres vazios
-        return [
-            create_section_container([
-                create_section_header('Tracks Utilization', f"{total_hours} hr"),
-                html.Div(className='panel-content', children=[
-                    html.Div("Erro ao carregar dados", className="error-message")
-                ])
-            ], margin_bottom='4px'),
-            create_section_container([
-                create_section_header('Areas Utilization', f"{total_hours} hr"),
-                html.Div(className='panel-content', children=[
-                    html.Div("Erro ao carregar dados", className="error-message")
-                ])
-            ], margin_bottom='4px'),
-            create_section_container([
-                create_section_header('Clients Utilization', total_hours_ytd),
-                html.Div(className='panel-content', children=[
-                    html.Div("Erro ao carregar dados", className="error-message")
-                ])
-            ], margin_bottom='0px')
-        ]
-
-
 main_layout = html.Div(
     id='dashboard-container',
     className='dashboard-container full-screen',
     style={'height': '100vh', 'overflow': 'hidden'},
     children=[
-        # Cabeçalho com seletor de mês
-        create_header("", "", available_months),
+        # Header
+        create_header(get_available_months(20)),
 
-        # # Container para o conteúdo que será atualizado
+        # Body
         html.Div(
             id='dashboard-content',
             className='dashboard-content three-column-layout',
@@ -753,6 +63,7 @@ main_layout = html.Div(
             children=[html.Div("Selecione um mês para carregar os dados...", className="loading-message")]
         ),
 
+        # Footer
         html.Div(
             className='footer',
             style={
@@ -788,16 +99,6 @@ app.layout = html.Div([
     html.Div(id='eja-delete-refresh', style={'display': 'none'}),
     html.Div(id='import-refresh', style={'display': 'none'}),
     html.Div(id='resize-trigger', style={'display': 'none'}),
-    # html.Div([
-    #     dbc.Tabs(
-    #         id='tabs',
-    #         children=[
-    #             dbc.Tab(label='Dashboard', tab_id='tab-dashboard'),
-    #             dbc.Tab(label='Gerenciar EJAs', tab_id='tab-eja-manager'),
-    #         ],
-    #         active_tab='tab-dashboard',
-    #     ),
-    # ]),
     html.Div([
         dbc.Row([
             # Coluna da esquerda para as abas (ocupa 9/12 do espaço)
@@ -922,12 +223,6 @@ def update_dashboard_content(data):
             # Desempacotar o resultado
             dfs, tracks_data, areas_data_df, periodo_info = result
 
-            # Logs para depuração
-            print(f"DFs carregados: {list(dfs.keys() if isinstance(dfs, dict) else [])}")
-            print(f"Tracks data é None? {tracks_data is None}")
-            print(f"Áreas data é None? {areas_data_df is None}")
-            print(f"Periodo info é None? {periodo_info is None}")
-
         except Exception as e:
             # Capturar qualquer erro durante o carregamento de dados
             print(f"Erro ao carregar dados: {str(e)}")
@@ -967,16 +262,6 @@ def update_dashboard_content(data):
                 print(f"Aviso: chave '{key}' ausente em dfs, adicionando DataFrame vazio")
                 dfs[key] = pd.DataFrame()
 
-        print("\n-------- ANTES DE CRIAR A COLUNA DE TRACKS E ÁREAS --------")
-        print(f"tracks_data (tipo): {type(tracks_data)}")
-        print(f"tracks_data (tamanho): {len(tracks_data) if isinstance(tracks_data, dict) else 'não é um dicionário'}")
-        print(f"areas_data_df (tipo): {type(areas_data_df)}")
-        if hasattr(areas_data_df, 'shape'):
-            print(f"areas_data_df (formato): {areas_data_df.shape}")
-            print(f"areas_data_df (colunas): {list(areas_data_df.columns)}")
-            print(f"areas_data_df (vazio?): {areas_data_df.empty}")
-        print("--------------------------------------------------------\n")
-
         dfs['tracks_data'] = tracks_data
         dfs['areas_data_df'] = areas_data_df
 
@@ -984,7 +269,7 @@ def update_dashboard_content(data):
         return html.Div(
             className='dashboard-content three-column-layout',
             children=[
-                # Coluna 1: Utilização e Disponibilidade
+                # Coluna 1 [Left]: Utilização e Disponibilidade
                 html.Div(
                     className='column column-small',
                     style={
@@ -999,8 +284,7 @@ def update_dashboard_content(data):
                     )
                 ),
 
-                # Coluna 2: Utilização por Tracks, Áreas e Clientes
-                # Passando tracks_data e areas_data_df diretamente como argumentos
+                # Coluna 2 [Center]: Utilização por Tracks, Áreas e Clientes
                 html.Div(
                     className='column column-medium',
                     style={
@@ -1009,13 +293,13 @@ def update_dashboard_content(data):
                         'paddingBottom': '5px',
                     },
                     children=create_tracks_areas_column(
-                        dfs,  # dfs deve incluir tracks_data e areas_data_df
+                        dfs,
                         total_hours,
                         total_hours_ytd
                     )
                 ),
 
-                # Coluna 3: Detalhamento de Utilização
+                # Coluna 3 [Right]: Detalhamento de Utilização
                 html.Div(
                     className='column column-large',
                     style={
@@ -1024,7 +308,6 @@ def update_dashboard_content(data):
                         'paddingBottom': '5px',
                     },
                     children=[
-                        # Detalhamento da utilização mensal com layout otimizado e expandido
                         create_optimized_utilization_breakdown(
                             dfs,
                             total_hours
@@ -1926,6 +1209,14 @@ app.index_string = '''
 '''
 
 
-# Iniciar o servidor
+def init_weekly_processor():
+    # Verificar se é necessário processar dados
+    needs_processing = check_and_process_if_needed()
+    # Configurar agendamento semanal (executar imediatamente apenas se for necessário)
+    setup_scheduler(run_immediately=needs_processing)
+    trace("Inicialização do processador semanal concluída", color="green")
+
+
 if __name__ == '__main__':
+    threading.Thread(target=init_weekly_processor, daemon=True).start()
     app.run_server(debug=True)

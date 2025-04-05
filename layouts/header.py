@@ -1,10 +1,9 @@
 # layouts/header.py
 from dash import html, dcc
-from config.config import colors
 from data.database import get_available_months
 
 
-def create_header(current_month, current_day, available_months=None):
+def create_header(available_months=None):
     """
     Cria o layout do cabeçalho do dashboard com estilo moderno e seletor de mês
     """
@@ -58,12 +57,12 @@ def create_header(current_month, current_day, available_months=None):
                         clearable=False,
                         className='standard-dropdown',
                         style={
-                            'width': '180px', 
+                            'width': '180px',
                             'zIndex': 101,
                             'position': 'relative'
                         }
                     ),
-                    
+
                     # Display de data (invisível)
                     html.Div(
                         id='header-date-display',

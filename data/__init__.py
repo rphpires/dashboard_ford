@@ -8,4 +8,4 @@ from data.mock_data import (
     get_all_dataframes
 )
 
-from data.database import load_dashboard_data, get_current_period_info
+from data.database import load_dashboard_data

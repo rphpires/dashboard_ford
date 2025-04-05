@@ -2,82 +2,45 @@ import pandas as pd
 import traceback
 
 
-def safe_time_conversion(time_str):
-    """
-    Converte com segurança uma string de tempo no formato HH:MM para horas decimais.
-    Lida com valores vazios, None e formatos inválidos.
+# def safe_time_conversion(time_str):
+#     try:
+#         if time_str is None or time_str == "":
+#             return 0.0
 
-    Args:
-        time_str: String de tempo no formato HH:MM ou valor numérico
+#         # Se já for um número, retornar diretamente
+#         if isinstance(time_str, (int, float)):
+#             return float(time_str)
 
-    Returns:
-        float: Valor convertido para horas decimais ou 0.0 em caso de erro
-    """
-    try:
-        if time_str is None or time_str == "":
-            return 0.0
+#         # Verificar se é uma string no formato HH:MM
+#         if isinstance(time_str, str) and ':' in time_str:
+#             parts = time_str.split(':')
+#             if len(parts) == 2:
+#                 hours = int(parts[0])
+#                 minutes = int(parts[1])
+#                 return hours + (minutes / 60.0)
 
-        # Se já for um número, retornar diretamente
-        if isinstance(time_str, (int, float)):
-            return float(time_str)
+#         # Tentar converter diretamente para float
+#         return float(time_str)
 
-        # Verificar se é uma string no formato HH:MM
-        if isinstance(time_str, str) and ':' in time_str:
-            parts = time_str.split(':')
-            if len(parts) == 2:
-                hours = int(parts[0])
-                minutes = int(parts[1])
-                return hours + (minutes / 60.0)
+#     except (ValueError, TypeError, AttributeError) as e:
+#         print(f"Erro ao converter tempo '{time_str}': {e}")
+#         return 0.0
 
-        # Tentar converter diretamente para float
-        return float(time_str)
-
-    except (ValueError, TypeError, AttributeError) as e:
-        print(f"Erro ao converter tempo '{time_str}': {e}")
-        return 0.0
-
-
-# Adicione esta função ao seu arquivo utils/helpers.py ou similar
 
 def safe_convert_to_float(value, default=0.0):
-    """
-    Converte um valor para float de forma segura, lidando com strings vazias e outros casos problemáticos.
-
-    Args:
-        value: O valor a ser convertido para float
-        default: O valor padrão a retornar em caso de erro (padrão: 0.0)
-
-    Returns:
-        float: O valor convertido ou o valor padrão em caso de erro
-    """
     if value is None:
         return default
 
     try:
-        # Checar se é uma string vazia
         if isinstance(value, str) and value.strip() == '':
             return default
 
-        # Tentar converter para float
         return float(value)
     except (ValueError, TypeError):
-        # Em caso de erro, retornar o valor padrão
         return default
 
 
 def safe_calculate_percentage(part, total, format_str=True, default="0.0%"):
-    """
-    Calcula uma porcentagem de forma segura, lidando com divisão por zero e valores inválidos.
-
-    Args:
-        part: O valor parcial (numerador)
-        total: O valor total (denominador)
-        format_str: Se True, retorna uma string formatada, caso contrário retorna um número
-        default: O valor padrão a retornar em caso de erro (padrão: "0.0%")
-
-    Returns:
-        str ou float: A porcentagem calculada, formatada como string se format_str=True
-    """
     try:
         # Converter valores para float de forma segura
         part_float = safe_convert_to_float(part)
@@ -154,15 +117,6 @@ def process_tracks_data(dfs):
 
 
 def process_areas_data(dfs):
-    """
-    Processa os dados de áreas do dicionário dfs.
-
-    Args:
-        dfs (dict): Dicionário com os dados do dashboard
-
-    Returns:
-        DataFrame: DataFrame de áreas processado
-    """
     areas_df = pd.DataFrame(columns=['area', 'hours'])
 
     if 'areas_data_df' in dfs and dfs['areas_data_df'] is not None:

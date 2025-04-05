@@ -35,14 +35,14 @@ def get_connection_string():
 def get_active_sessions():
     """Retorna informações sobre as sessões ativas no SQL Server"""
     conn = pyodbc.connect(get_connection_string())
-    cursor = conn.cursor()
+    # cursor = conn.cursor()
 
     # Query para obter informações sobre sessões ativas
     query = """
-    SELECT 
-        s.session_id, 
-        s.login_name, 
-        s.host_name, 
+    SELECT
+        s.session_id,
+        s.login_name,
+        s.host_name,
         s.program_name,
         DB_NAME(s.database_id) AS database_name,
         s.status,
@@ -60,16 +60,16 @@ def get_active_sessions():
         r.wait_time / 1000.0 AS wait_time_sec,
         r.wait_resource,
         r.command
-    FROM 
+    FROM
         sys.dm_exec_sessions s
-    LEFT JOIN 
+    LEFT JOIN
         sys.dm_exec_requests r ON s.session_id = r.session_id
-    OUTER APPLY 
+    OUTER APPLY
         sys.dm_exec_sql_text(r.sql_handle) t
-    WHERE 
+    WHERE
         s.is_user_process = 1
         AND s.session_id <> @@SPID  -- Excluir a sessão atual
-    ORDER BY 
+    ORDER BY
         s.session_id
     """
 
@@ -228,10 +228,8 @@ def test_stored_procedure(procedure_name, params=None, timeout=60):
         try:
             conn.close()
             print("Conexão fechada")
-        except:
+        except Exception:
             print("Erro ao fechar conexão")
-
-# Função principal
 
 
 def main():

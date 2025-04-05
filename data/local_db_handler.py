@@ -133,17 +133,7 @@ class LocalDatabaseHandler:
             trace(f"Erro ao fazer select: {str(e)}", color="red")
             return None
 
-    def get_client_usage_data(self, weeks=12, classification=None):
-        """
-        Obtém dados de utilização por cliente das últimas semanas.
-
-        Args:
-            weeks (int): Número de semanas para recuperar (padrão: 12)
-            classification (str, opcional): Classificação específica para filtrar
-
-        Returns:
-            pd.DataFrame: DataFrame com os dados de utilização
-        """
+    def get_client_usage_data(self, weeks=52, classification=None):
         try:
             query = """
                 SELECT

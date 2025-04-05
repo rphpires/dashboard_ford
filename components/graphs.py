@@ -5,7 +5,7 @@ import plotly.express as px
 from plotly.subplots import make_subplots
 import numpy as np
 from config.config import colors, dashboard_constants  # Importar configurações de cores do projeto
-from config.layout_config import layout_config, calculate_chart_height
+from config.layout_config import layout_config
 import pandas as pd
 import traceback
 
@@ -1183,7 +1183,7 @@ def create_customers_stacked_graph(df, height=None, use_cached_data=True):
             db_handler = get_db_handler()
 
             # Recuperar dados de utilização de clientes das últimas 12 semanas
-            cached_df = db_handler.get_client_usage_data(weeks=12)
+            cached_df = db_handler.get_client_usage_data(weeks=52)
 
             # Se tiver dados no cache, usar eles
             if not cached_df.empty:
