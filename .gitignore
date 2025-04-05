@@ -1,7 +1,34 @@
-**/__pycache__/
-*.pyc
-*.pyo
+# Arquivos e diretórios do Git
+.git
+.gitignore
+
+# Ambientes virtuais Python
 venv/
-aux_files/
-Exemplo Dashboard completo.png
-exemplo.html
+env/
+ENV/
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Arquivos do PyInstaller
+build/
+dist/
+
+# Caches
+cache/
+cache-directory/
+*.db-shm
+*.db-wal
+
+# Backups e outros arquivos temporários
+backup/
+*.bak
+*.tmp
+*.swp
+*.swo
+
+# Exports que não precisam ser incluídos na imagem
+# Comentado porque queremos montar este diretório como volume
+exports/
+test/

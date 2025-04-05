@@ -1,5 +1,9 @@
 # config.py - Versão Moderna
 # Configurações globais para o dashboard
+import json
+
+from utils.tracer import *
+
 
 # Cores para os gráficos e componentes
 colors = {
@@ -53,10 +57,17 @@ chart_config = {
 }
 
 
-# Constantes do dashboard
-dashboard_constants = {
-    'target_availability': 80,  # Meta de disponibilidade em percentual
-    'target_utilization': 80,   # Meta de utilização em percentual
-    'decimal_places': 1,        # Casas decimais para percentuais
-    'animation_duration': 800,  # Duração das animações em ms
-}
+def dashboard_constants():
+    try:
+        with open("config/dashboard_constants", 'r', encoding='utf-8') as file:
+            data = json.load(file)
+        return data
+
+    except Exception as e:
+        error(f"Erro inesperado ao ler o arquivo JSON: {str(e)}")
+        # Constantes do dashboard
+        return {
+            'target_availability': 80,  # Meta de disponibilidade em percentual
+            'target_utilization': 80,   # Meta de utilização em percentual
+            'decimal_places': 1        # Casas decimais para percentuais
+        }

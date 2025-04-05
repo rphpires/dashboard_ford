@@ -1,0 +1,8 @@
+
+docker-compose -f setup/docker-compose.yml down
+docker-compose -f setup/docker-compose.yml build --no-cache
+docker-compose -f setup/docker-compose.yml up -d
+
+
+# Logs
+docker-compose -f setup/docker-compose.yml logs -f

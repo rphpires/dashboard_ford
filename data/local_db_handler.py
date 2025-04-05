@@ -12,13 +12,6 @@ class LocalDatabaseHandler:
     """
 
     def __init__(self, db_path=None):
-        """
-        Inicializa o gerenciador de banco de dados SQLite.
-
-        Args:
-            db_path (str, opcional): Caminho para o arquivo de banco de dados.
-                                    Se None, usa o caminho padrão.
-        """
         if db_path is None:
             # Caminho padrão no diretório de dados
             self.db_path = os.path.join(os.path.dirname(os.path.dirname(__file__)),
@@ -26,18 +19,14 @@ class LocalDatabaseHandler:
         else:
             self.db_path = db_path
 
-        # Garantir que o diretório existe
         os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
 
-        # Verificar se o banco precisa ser criado
         db_exists = os.path.exists(self.db_path)
 
-        # Conectar ao banco
         self.conn = None
         self.cursor = None
         self.connect()
 
-        # Criar tabelas se necessário
         if not db_exists:
             self.create_tables()
 
@@ -61,7 +50,6 @@ class LocalDatabaseHandler:
             self.cursor = None
 
     def create_tables(self):
-        """Cria as tabelas necessárias no banco de dados."""
         try:
             # Criar a tabela EJA
             self.cursor.execute('''
@@ -83,6 +71,26 @@ class LocalDatabaseHandler:
                 ponto TEXT,
                 pista TEXT,
                 track TEXT
+            )
+            ''')
+
+            # Criar a tabela Utilization(%)
+            self.cursor.execute('''
+            CREATE TABLE IF NOT EXISTS usage_percentage (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                year INTEGER NOT NULL,
+                month INTEGER NOT NULL,
+                value REAL NOT NULL,
+            )
+            ''')
+
+            # Criar a tabela Tracks Availability(%)
+            self.cursor.execute('''
+            CREATE TABLE IF NOT EXISTS tracks_availability (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                year INTEGER NOT NULL,
+                month INTEGER NOT NULL,
+                value REAL NOT NULL,
             )
             ''')
 

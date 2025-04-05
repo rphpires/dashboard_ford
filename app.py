@@ -112,7 +112,7 @@ app.layout = html.Div([
             # Coluna da direita para o logo (ocupa 3/12 do espaço)
             dbc.Col([
                 html.Img(
-                    src='/assets/r3s_logo.png',  # Caminho para seu logo
+                    src='/assets/r3s_logo.ico',  # Caminho para seu logo
                     height='60px',              # Altura aumentada
                     style={
                         'float': 'right',
@@ -1372,4 +1372,10 @@ def init_weekly_processor():
 
 if __name__ == '__main__':
     threading.Thread(target=init_weekly_processor, daemon=True).start()
-    app.run_server(debug=True)
+
+    debug_mode = os.environ.get('DASH_DEBUG', 'False').lower() == 'true'
+    host = os.environ.get('DASH_HOST', '0.0.0.0')  # 0.0.0.0 permite acesso externo
+    port = int(os.environ.get('DASH_PORT', 8050))
+
+    app.run_server(debug=debug_mode, host=host, port=port)
+    # app.run_server(debug=True)

@@ -1,30 +1,7 @@
 import pandas as pd
 import traceback
-
-
-# def safe_time_conversion(time_str):
-#     try:
-#         if time_str is None or time_str == "":
-#             return 0.0
-
-#         # Se já for um número, retornar diretamente
-#         if isinstance(time_str, (int, float)):
-#             return float(time_str)
-
-#         # Verificar se é uma string no formato HH:MM
-#         if isinstance(time_str, str) and ':' in time_str:
-#             parts = time_str.split(':')
-#             if len(parts) == 2:
-#                 hours = int(parts[0])
-#                 minutes = int(parts[1])
-#                 return hours + (minutes / 60.0)
-
-#         # Tentar converter diretamente para float
-#         return float(time_str)
-
-#     except (ValueError, TypeError, AttributeError) as e:
-#         print(f"Erro ao converter tempo '{time_str}': {e}")
-#         return 0.0
+import platform
+import os
 
 
 def safe_convert_to_float(value, default=0.0):
@@ -237,3 +214,21 @@ def print_dataframe_info(df, name):
                 print(df.head(3).to_string())
             except Exception:
                 print(f"Não foi possível exibir as linhas de {name}")
+
+
+def is_running_in_docker():
+    """Verifica se o código está rodando dentro de um container Docker"""
+    is_linux = platform.system().lower() == 'linux'
+
+    docker_env = os.path.exists('/.dockerenv')
+    docker_cgroup = False
+
+    try:
+        with open('/proc/1/cgroup', 'r') as f:
+            docker_cgroup = 'docker' in f.read()
+    except Exception:
+        pass
+
+    docker_env_var = os.environ.get('RUNNING_IN_DOCKER') == 'true'
+
+    return is_linux and (docker_env or docker_cgroup or docker_env_var)

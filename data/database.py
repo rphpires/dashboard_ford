@@ -13,10 +13,6 @@ sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 
 class ReportGenerator:
-    """
-    Classe para gerar relatórios de horas trabalhadas por classificação EJA.
-    """
-
     def __init__(self, dashboard_df=None, db_handler=None):
         """
         Inicializa o gerador de relatórios.
@@ -197,13 +193,6 @@ def get_db_connection():
 
 
 def load_real_data(start_date=None, end_date=None):
-    """
-    Carrega dados reais do banco de dados e processa com o EJAReportGenerator
-
-    Args:
-        start_date (str, optional): Data inicial no formato 'YYYY-MM-DD'
-        end_date (str, optional): Data final no formato 'YYYY-MM-DD'
-    """
     try:
         # Obter conexão com o banco
         sql = get_db_connection()

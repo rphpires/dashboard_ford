@@ -1,0 +1,27 @@
+# setup/docker-compose.yml
+version: '3'
+
+services:
+  dashboard:
+    container_name: dashboard-ford
+    build:
+      context: ..  # Aponta para a pasta raiz do projeto
+      dockerfile: setup/Dockerfile
+    ports:
+      - "8050:8050"
+    volumes:
+      - ../data:/app/data
+      - ../exports:/app/exports
+      - ../aux_files:/app/aux_files
+      - ../config:/app/config
+    environment:
+      - DB_SERVER=localhost,1433  # Servidor SQL Server
+      - DB_DATABASE=W_Access       # Nome do banco (use o nome correto)
+      - DB_USERNAME=sa              # Seu usuário
+      - DB_PASSWORD=#w_access_Adm#  # Sua senha
+      - DB_DRIVER=FreeTDS           # Driver a ser usado
+      - DASH_DEBUG=false
+      - DASH_HOST=0.0.0.0
+    restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
