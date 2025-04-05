@@ -13,6 +13,8 @@ import pandas as pd
 
 from dash import html, dcc, Input, Output, State, callback, no_update, callback_context
 from dash.exceptions import PreventUpdate
+from dash.long_callback import DiskcacheLongCallbackManager
+import diskcache
 
 from utils.tracer import *
 from utils.helpers import *
@@ -26,6 +28,9 @@ from layouts.eja_manager import create_eja_manager_layout, get_eja_manager, crea
 from data.database import get_available_months, load_dashboard_data
 from data.weekly_processor import setup_scheduler, check_and_process_if_needed
 
+
+cache = diskcache.Cache("./cache")
+long_callback_manager = DiskcacheLongCallbackManager(cache)
 
 # Inicializar a aplicação Dash com Bootstrap para melhor estilo
 app = dash.Dash(
@@ -43,6 +48,95 @@ app = dash.Dash(
 )
 
 
+# Definição inicial do layout com navegação por abas
+app.layout = html.Div([
+    dcc.Location(id='url', refresh=False),
+    dcc.Store(id='eja-store', data={}),
+    dcc.Store(id='eja-data-store', data={}),
+    html.Div(id='dummy-div-edit', style={'display': 'none'}),
+    html.Div(id='dummy-div-delete', style={'display': 'none'}),
+    html.Div(id='eja-delete-refresh', style={'display': 'none'}),
+    html.Div(id='import-refresh', style={'display': 'none'}),
+    html.Div(id='resize-trigger', style={'display': 'none'}),
+
+    # Overlay de carregamento global
+    html.Div(
+        id='loading-overlay',
+        style={
+            'display': 'none',
+            'position': 'fixed',
+            'width': '100%',
+            'height': '100%',
+            'top': '0',
+            'left': '0',
+            'backgroundColor': 'rgba(0, 0, 0, 0.5)',
+            'zIndex': '9999',
+            'alignItems': 'center',
+            'justifyContent': 'center'
+        },
+        children=[
+            html.Div(
+                style={
+                    'backgroundColor': 'white',
+                    'padding': '20px',
+                    'borderRadius': '5px',
+                    'textAlign': 'center'
+                },
+                children=[
+                    dcc.Loading(
+                        type="circle",
+                        color="#007bff",
+                        children=html.Div("Carregando dados...", style={'marginTop': '10px'})
+                    )
+                ]
+            )
+        ]
+    ),
+    html.Div(id='loading-trigger', style={'display': 'none'}),
+
+    # Header
+    html.Div([
+        dbc.Row([
+            # Coluna da esquerda para as abas (ocupa 9/12 do espaço)
+            dbc.Col([
+                dbc.Tabs(
+                    id='tabs',
+                    children=[
+                        dbc.Tab(label='Dashboard', tab_id='tab-dashboard'),
+                        dbc.Tab(label='Gerenciar EJAs', tab_id='tab-eja-manager'),
+                    ],
+                    active_tab='tab-dashboard',
+                ),
+            ], width=9),
+
+            # Coluna da direita para o logo (ocupa 3/12 do espaço)
+            dbc.Col([
+                html.Img(
+                    src='/assets/r3s_logo.png',  # Caminho para seu logo
+                    height='60px',              # Altura aumentada
+                    style={
+                        'float': 'right',
+                        'max-width': '100%'
+                    }
+                )
+            ], width=3, className='d-flex align-items-center justify-content-end'),
+        ], className='align-items-center'),  # Centraliza verticalmente os itens na linha
+    ]),
+
+    # Dashboard Content
+    html.Div(id='tab-content', className='tabs-content-container'),
+
+    # Footer
+    html.Div(
+        className='footer',
+        children=[
+            f"Dashboard • Atualizado em: {dt.now().strftime('%d/%m/%Y %H:%M')}"
+        ]
+    )
+])
+
+
+# Construção do layout principal do dashboard
 main_layout = html.Div(
     id='dashboard-container',
     className='dashboard-container full-screen',
@@ -89,66 +183,112 @@ main_layout = html.Div(
 )
 
 
-# Definir o layout com navegação por abas
-app.layout = html.Div([
-    dcc.Location(id='url', refresh=False),
-    dcc.Store(id='eja-store', data={}),
-    dcc.Store(id='eja-data-store', data={}),
-    html.Div(id='dummy-div-edit', style={'display': 'none'}),
-    html.Div(id='dummy-div-delete', style={'display': 'none'}),
-    html.Div(id='eja-delete-refresh', style={'display': 'none'}),
-    html.Div(id='import-refresh', style={'display': 'none'}),
-    html.Div(id='resize-trigger', style={'display': 'none'}),
-    html.Div([
-        dbc.Row([
-            # Coluna da esquerda para as abas (ocupa 9/12 do espaço)
-            dbc.Col([
-                dbc.Tabs(
-                    id='tabs',
-                    children=[
-                        dbc.Tab(label='Dashboard', tab_id='tab-dashboard'),
-                        dbc.Tab(label='Gerenciar EJAs', tab_id='tab-eja-manager'),
-                    ],
-                    active_tab='tab-dashboard',
-                ),
-            ], width=9),
+app.clientside_callback(
+    """
+    function() {
+        // Calcula a altura disponível quando a aba é carregada
+        var windowHeight = window.innerHeight;
+        var tableContainer = document.querySelector('.eja-table-container');
 
-            # Coluna da direita para o logo (ocupa 3/12 do espaço)
-            dbc.Col([
-                html.Img(
-                    src='/assets/r3s_logo.png',  # Caminho para seu logo
-                    height='60px',              # Altura aumentada
-                    style={
-                        'float': 'right',
-                        'max-width': '100%'
-                    }
-                )
-            ], width=3, className='d-flex align-items-center justify-content-end'),
-        ], className='align-items-center'),  # Centraliza verticalmente os itens na linha
-    ]),
+        if (tableContainer) {
+            var tableTop = tableContainer.offsetTop;
+            var paginationHeight = 100; // Espaço para paginação e outras informações
+            var availableHeight = windowHeight - tableTop - paginationHeight;
 
-    html.Div(id='tab-content', className='tabs-content-container'),
+            // Certifique-se de que a altura não seja muito pequena
+            availableHeight = Math.max(availableHeight, 300);
 
-    html.Div(
-        className='footer',
-        children=[
-            f"Dashboard • Atualizado em: {dt.now().strftime('%d/%m/%Y %H:%M')}"
-        ]
-    )
-])
+            // Define a variável CSS
+            document.documentElement.style.setProperty('--table-height', availableHeight + 'px');
+        }
+
+        return '';
+    }
+    """,
+    Output('resize-trigger', 'children'),
+    Input('tabs', 'active_tab')
+)
+
+
+app.clientside_callback(
+    """
+    function(value) {
+        if (value) {
+            document.getElementById('loading-overlay').style.display = 'flex';
+        }
+        return window.dash_clientside.no_update;
+    }
+    """,
+    Output('loading-trigger', 'children'),
+    Input('month-selector', 'value'),
+    prevent_initial_call=True
+)
+
+
+app.clientside_callback(
+    """
+    function(trigger) {
+        // Esta função é executada após o elemento dashboard-rendered-trigger ser adicionado ao DOM,
+        // o que significa que o dashboard foi completamente renderizado
+
+        // Definir um pequeno atraso para garantir que todos os gráficos tenham sido renderizados
+        setTimeout(function() {
+            // Esconder o overlay após o atraso
+            var overlay = document.getElementById('loading-overlay');
+            if (overlay) {
+                overlay.style.display = 'none';
+            }
+        }, 500); // 500ms de atraso para garantir que os gráficos foram renderizados
+
+        return '';
+    }
+    """,
+    Output('loading-trigger', 'children', allow_duplicate=True),
+    Input('dashboard-rendered-trigger', 'children'),
+    prevent_initial_call=True
+)
 
 
 @app.callback(
     [
         Output('dashboard-data-store', 'data'),
-        Output('header-date-display', 'children')
+        Output('header-date-display', 'children'),
+        Output('loading-overlay', 'style')
     ],
-    [Input('month-selector', 'value')],
+    [Input('month-selector', 'value')]
 )
 def load_month_data(selected_month_value):
     """Callback para carregar dados do mês selecionado"""
     # Para debugging
     print(f"Valor selecionado no dropdown: {selected_month_value}")
+
+    # Estilo para mostrar o overlay de carregamento
+    loading_style = {
+        'display': 'flex',
+        'position': 'fixed',
+        'width': '100%',
+        'height': '100%',
+        'top': '0',
+        'left': '0',
+        'backgroundColor': 'rgba(0, 0, 0, 0.5)',
+        'zIndex': '9999',
+        'alignItems': 'center',
+        'justifyContent': 'center'
+    }
+
+    # Estilo para esconder o overlay
+    hidden_style = {
+        'display': 'none',
+        'position': 'fixed',
+        'width': '100%',
+        'height': '100%',
+        'top': '0',
+        'left': '0',
+        'backgroundColor': 'rgba(0, 0, 0, 0.5)',
+        'zIndex': '9999',
+        'alignItems': 'center',
+        'justifyContent': 'center'
+    }
 
     if not selected_month_value:
         # Retornar dados vazios se nenhum valor for selecionado
@@ -156,7 +296,7 @@ def load_month_data(selected_month_value):
             'status': 'no_selection',
             'message': 'Nenhum mês selecionado'
         }
-        return empty_data, "Selecione um mês"
+        return empty_data, "Selecione um mês", hidden_style
 
     try:
         # Extrair datas do valor selecionado (formato: "YYYY-MM-DD|YYYY-MM-DD")
@@ -175,7 +315,7 @@ def load_month_data(selected_month_value):
         }
 
         print(f"Período selecionado: {start_date_str} até {end_date_str}")
-        return data, header_display
+        return data, header_display, loading_style
 
     except Exception as e:
         # Em caso de erro, retornar dados de erro
@@ -185,23 +325,41 @@ def load_month_data(selected_month_value):
             'status': 'error',
             'message': f'Erro: {error_message}'
         }
-        return error_data, f"Erro: {error_message[:20]}..."
+        return error_data, f"Erro: {error_message[:20]}...", hidden_style
 
 
 @app.callback(
-    Output('dashboard-content', 'children'),
+    [
+        Output('dashboard-content', 'children'),
+        Output('loading-overlay', 'style', allow_duplicate=True)
+    ],
     [Input('dashboard-data-store', 'data')],
-    prevent_initial_call=False
+    prevent_initial_call=True
 )
 def update_dashboard_content(data):
+    """Callback para atualizar o conteúdo do dashboard e controlar o overlay de carregamento"""
+    # Estilo para esconder o overlay
+    hidden_style = {
+        'display': 'none',
+        'position': 'fixed',
+        'width': '100%',
+        'height': '100%',
+        'top': '0',
+        'left': '0',
+        'backgroundColor': 'rgba(0, 0, 0, 0.5)',
+        'zIndex': '9999',
+        'alignItems': 'center',
+        'justifyContent': 'center'
+    }
+
     if not data:
         # Caso não haja dados, exibir mensagem
-        return html.Div("Selecione um mês para carregar os dados...", className="loading-message")
+        return html.Div("Selecione um mês para carregar os dados...", className="loading-message"), hidden_style
 
     # Verificar se há erro nos dados
     if 'status' in data and data['status'] == 'error':
         return html.Div(f"Erro ao carregar dados: {data.get('message', 'Erro desconhecido')}",
-                        className="error-message")
+                        className="error-message"), hidden_style
 
     tracks_data = {}
     periodo_info = {}
@@ -212,7 +370,7 @@ def update_dashboard_content(data):
 
         if not start_date or not end_date:
             return html.Div("Datas inválidas. Selecione um período válido.",
-                            className="error-message")
+                            className="error-message"), hidden_style
 
         print(f"Carregando dados para o período: {start_date} até {end_date}")
 
@@ -266,7 +424,7 @@ def update_dashboard_content(data):
         dfs['areas_data_df'] = areas_data_df
 
         # Criar o layout de três colunas
-        return html.Div(
+        dashboard_content = html.Div(
             className='dashboard-content three-column-layout',
             children=[
                 # Coluna 1 [Left]: Utilização e Disponibilidade
@@ -313,9 +471,16 @@ def update_dashboard_content(data):
                             total_hours
                         )
                     ]
-                )
+                ),
+
+                # pelo callback clientside para detectar quando o dashboard terminou de renderizar
+                html.Div(id='dashboard-rendered-trigger', style={'display': 'none'})
             ]
         )
+
+        # O overlay será escondido pelo callback clientside quando o dashboard estiver completamente renderizado
+        return dashboard_content, no_update
+
     except Exception as e:
         print(f"Erro ao atualizar conteúdo do dashboard: {e}")
         print(traceback.format_exc())
@@ -325,7 +490,7 @@ def update_dashboard_content(data):
             html.Hr(),
             html.P("Detalhes técnicos:"),
             html.Pre(traceback.format_exc())
-        ], className="error-message")
+        ], className="error-message"), hidden_style
 
 
 @app.callback(
@@ -354,33 +519,6 @@ def render_tab_content(active_tab):
 
         return layout
     return html.Div("Conteúdo não encontrado")
-
-
-app.clientside_callback(
-    """
-    function() {
-        // Calcula a altura disponível quando a aba é carregada
-        var windowHeight = window.innerHeight;
-        var tableContainer = document.querySelector('.eja-table-container');
-
-        if (tableContainer) {
-            var tableTop = tableContainer.offsetTop;
-            var paginationHeight = 100; // Espaço para paginação e outras informações
-            var availableHeight = windowHeight - tableTop - paginationHeight;
-
-            // Certifique-se de que a altura não seja muito pequena
-            availableHeight = Math.max(availableHeight, 300);
-
-            // Define a variável CSS
-            document.documentElement.style.setProperty('--table-height', availableHeight + 'px');
-        }
-
-        return '';
-    }
-    """,
-    Output('resize-trigger', 'children'),
-    Input('tabs', 'active_tab')
-)
 
 
 # Callback para abrir o modal de importação
@@ -1177,6 +1315,21 @@ app.index_string = '''
                 height: auto !important;
                 min-height: 0 !important;
                 overflow: visible !important;
+            }
+
+            /* Estilos para o overlay de carregamento */
+            .loading-message-container {
+                background-color: white;
+                padding: 20px;
+                border-radius: 5px;
+                text-align: center;
+                box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            }
+
+            .loading-text {
+                margin-top: 15px;
+                font-weight: bold;
+                color: #007bff;
             }
 
             /* Responsividade */
