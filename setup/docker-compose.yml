@@ -15,11 +15,11 @@ services:
       - ../aux_files:/app/aux_files
       - ../config:/app/config
     environment:
-      - DB_SERVER=localhost,1433  # Servidor SQL Server
-      - DB_DATABASE=W_Access       # Nome do banco (use o nome correto)
-      - DB_USERNAME=sa              # Seu usuário
-      - DB_PASSWORD=#w_access_Adm#  # Sua senha
-      - DB_DRIVER=FreeTDS           # Driver a ser usado
+      - DB_SERVER=host.docker.internal  # Para acessar o SQL Server no host
+      - DB_PORT=1433
+      - DB_DATABASE=W_Access
+      - DB_USERNAME=sa
+      - DB_PASSWORD=#w_access_Adm#
       - DASH_DEBUG=false
       - DASH_HOST=0.0.0.0
     restart: unless-stopped

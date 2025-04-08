@@ -6,28 +6,34 @@
 import threading
 import pyodbc
 import configparser
+import sys
 import os
 import pandas as pd
 from utils.helpers import is_running_in_docker
+from dotenv import load_dotenv
+
+
+load_dotenv()
 
 
 def get_appropriate_driver():
     if is_running_in_docker():
         return "FreeTDS"  # Ou "ODBC Driver 17 for SQL Server" se instalado no container
     else:
-        return "SQL Server"  # Driver padrão no Windows
+        return "{SQL Server}"  # Driver padrão no Windows
 
 
 class DatabaseReader:
     def __init__(self):
         # Usar valores fixos para usuário e senha, ou obter do arquivo de configuração
-        self.server = os.environ.get('DB_SERVER', 'localhost,1433')
+        self.server = os.environ.get('DB_SERVER', 'localhost')
         self.database = os.environ.get('DB_DATABASE', 'W_Access')
         self.username = os.environ.get('DB_USERNAME', 'sa')
         self.password = os.environ.get('DB_PASSWORD', '#w_access_Adm#')
+        self.port = os.environ.get('DB_PORT', '1433')
 
         # Obter o driver ODBC especificado nas variáveis de ambiente ou usar o padrão
-        self.driver = os.environ.get('DB_DRIVER', 'SQL Server')
+        self.driver = get_appropriate_driver()
 
         self.lock = threading.Lock()
 
@@ -35,27 +41,41 @@ class DatabaseReader:
         print(f"Configuração do banco carregada: Servidor={self.server}, DB={self.database}, Driver={self.driver}")
 
     def _create_connection(self):
-        # Tentar diferentes formatos de string de conexão
-        connection_string = None
-        connection = None
-        errors = []
-
-        if not connection:
-            try:
+        try:
+            # String de conexão específica para cada driver
+            if self.driver == "FreeTDS":
+                # Formato para FreeTDS
                 connection_string = (
-                    f"DRIVER={{SQL Server}};"
-                    f"SERVER={self.server};"
-                    f"DATABASE={self.database};"
-                    f"UID={self.username};"
-                    f"PWD={self.password};"
+                    f'DRIVER={{{self.driver}}};'
+                    f'SERVER={self.server};'
+                    f'PORT={self.port};'
+                    f'DATABASE={self.database};'
+                    f'UID={self.username};'
+                    f'PWD={self.password};'
+                    f'TDS_VERSION=8.0;'
                 )
-                connection = pyodbc.connect(connection_string)
-                return connection
-            except Exception as e:
-                errors.append(f"Erro com driver 'FreeTDS': {str(e)}")
+            else:
+                # Formato para SQL Server nativo no Windows
+                connection_string = (
+                    f'DRIVER={self.driver};'
+                    f'SERVER={self.server},{self.port};'
+                    f'DATABASE={self.database};'
+                    f'UID={self.username};'
+                    f'PWD={self.password}'
+                )
 
-        # Se chegou aqui, nenhuma tentativa funcionou
-        raise Exception(f"Falha ao conectar ao banco de dados. Erros: {'; '.join(errors)}")
+            # Tentar estabelecer conexão
+            print(f"Tentando conectar com: {connection_string.replace(self.password, '****')}")
+            print(f"Tentando conectar com: {connection_string}")
+            connection = pyodbc.connect(connection_string)
+
+            print(f"Conexão bem-sucedida com o driver: {self.driver}")
+            return connection
+
+        except pyodbc.Error as e:
+            error_msg = f"Falha ao conectar com o driver {self.driver}: {str(e)}"
+            print(error_msg)
+            raise Exception(error_msg)
 
     def _execute_query(self, query):
         connection = self._create_connection()

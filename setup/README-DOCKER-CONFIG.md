@@ -35,7 +35,8 @@ Este guia orienta você na instalação e configuração do Dashboard Ford usand
 2. Modifique as configurações conforme necessário:
    ```
    [DATABASE]
-   SERVER = seu_servidor,1433
+   SERVER = seu_servidor
+   PORT = 1433
    DATABASE = seu_banco
    DRIVER = ODBC Driver 17 for SQL Server
    TRUSTED_CONNECTION = no

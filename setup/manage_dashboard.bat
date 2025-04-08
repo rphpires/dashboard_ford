@@ -63,7 +63,7 @@ goto MENU
 echo.
 echo ===== CONFIGURACAO DO BANCO DE DADOS =====
 echo.
-set /p servidor="Servidor (ex: localhost,1433): "
+set /p servidor="Servidor (ex: localhost): "
 set /p banco="Nome do Banco de Dados: "
 set /p usuario="Usuario: "
 set /p senha="Senha: "
@@ -86,7 +86,7 @@ if /i "%confirma%"=="S" (
     echo DB_DATABASE=%banco%>> .env
     echo DB_USERNAME=%usuario%>> .env
     echo DB_PASSWORD=%senha%>> .env
-    
+    echo DB_PORT=1433>> .env    
     echo.
     echo Configuracoes salvas. Reiniciando o Dashboard...
     
