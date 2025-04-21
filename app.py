@@ -1202,7 +1202,30 @@ def delete_track(confirm_click, track_id):
         return True, "Erro ao excluir o track availability.", "Erro", "danger", False, dash.no_update
 
 
+@app.callback(
+    Output("track-table-container", "children", allow_duplicate=True),
+    Input("tab-content", "children"),  # Este é acionado quando o conteúdo da tab é carregado
+    State("tabs", "active_tab"),
+    prevent_initial_call=True
+)
+def load_initial_metrics_data(tab_content, active_tab):
+    """
+    Carrega os dados iniciais de track availability quando a aba "Gerenciar Métricas" é aberta
+    """
+    if active_tab != "tab-metrics-manager":
+        raise PreventUpdate
+
+    # Carregar todos os tracks
+    from data.tracks_usage_manager import get_tracks_usage_manager
+    manager = get_tracks_usage_manager()
+    all_tracks = manager.get_all_tracks()
+
+    # Criar tabela
+    from layouts.tracks_usage_manager import create_tracks_table
+    return create_tracks_table(all_tracks, page_current=0)
+
 # Callbacks para Usage Percentage
+
 
 @app.callback(
     Output("usage-table-container", "children"),

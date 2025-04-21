@@ -59,18 +59,18 @@ def create_utilization_graph(df, height=None):
     # Adicionar brilho e profundidade
     fig = go.Figure()
 
-    # Adicionar linha de tendência suave
-    x_smooth = np.linspace(0, len(df['month']) - 1, 100)
-    y_smooth = np.interp(x_smooth, np.arange(len(df['utilization'])), df['utilization'])
+    # # Adicionar linha de tendência suave
+    # x_smooth = np.linspace(0, len(df['month']) - 1, 100)
+    # y_smooth = np.interp(x_smooth, np.arange(len(df['utilization'])), df['utilization'])
 
-    fig.add_trace(go.Scatter(
-        x=[df['month'][int(i)] if i.is_integer() and int(i) < len(df['month']) else df['month'][int(i)] for i in x_smooth],
-        y=y_smooth,
-        mode='lines',
-        line=dict(color='rgba(30, 136, 229, 0.3)', width=3, shape='spline'),
-        hoverinfo='skip',
-        showlegend=False
-    ))
+    # fig.add_trace(go.Scatter(
+    #     x=[df['month'][int(i)] if i.is_integer() and int(i) < len(df['month']) else df['month'][int(i)] for i in x_smooth],
+    #     y=y_smooth,
+    #     mode='lines',
+    #     line=dict(color='rgba(30, 136, 229, 0.3)', width=3, shape='spline'),
+    #     hoverinfo='skip',
+    #     showlegend=False
+    # ))
 
     # Adicionar barras com gradiente
     for i, (month, util, color) in enumerate(zip(df['month'], df['utilization'], bar_colors)):
@@ -108,7 +108,7 @@ def create_utilization_graph(df, height=None):
         x=1,
         y=avg_util,
         xref="paper",
-        text=f"Target: {avg_util:.1f}%",
+        text=f"Average: {avg_util:.1f}%",
         showarrow=False,
         xanchor="right",
         yanchor="bottom",
@@ -195,7 +195,7 @@ def create_availability_graph(df, height=None):
         )
         return fig
 
-    target = dashboard_constants['target_availability']
+    target = dashboard_constants().get('target_availability')
 
     # Criar figura
     fig = go.Figure()
