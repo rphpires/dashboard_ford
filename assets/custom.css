@@ -471,6 +471,14 @@ body {
     flex: 1 !important;
     display: flex;
     flex-direction: column;
+    margin-bottom: 0 !important;
+    padding-bottom: 0 !important;
+    overflow: hidden !important;
+}
+
+.js-plotly-plot .plot-container {
+    margin-bottom: 0 !important;
+    padding-bottom: 0 !important;
 }
 
 .js-plotly-plot .plotly .main-svg {
@@ -638,7 +646,8 @@ body {
 /* Utilização % */
 .utilization-graph .js-plotly-plot,
 .availability-graph .js-plotly-plot {
-    height: 100% !important;
+    margin-bottom: 0 !important;
+    height: auto !important;
     min-height: 0 !important;
 }
 
