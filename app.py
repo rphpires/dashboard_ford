@@ -24,6 +24,7 @@ from layouts.left_column import create_utilization_availability_column
 from layouts.center_column import create_tracks_areas_column
 from layouts.right_column import create_optimized_utilization_breakdown
 from layouts.eja_manager import create_eja_manager_layout, get_eja_manager, create_eja_table
+from layouts.tracks_usage_manager import create_tracks_usage_manager_layout
 
 from data.database import get_available_months, load_dashboard_data
 from data.weekly_processor import setup_scheduler, check_and_process_if_needed
@@ -104,6 +105,7 @@ app.layout = html.Div([
                     children=[
                         dbc.Tab(label='Dashboard', tab_id='tab-dashboard'),
                         dbc.Tab(label='Gerenciar EJAs', tab_id='tab-eja-manager'),
+                        dbc.Tab(label='Gerenciar Métricas', tab_id='tab-metrics-manager'),
                     ],
                     active_tab='tab-dashboard',
                 ),
@@ -518,6 +520,9 @@ def render_tab_content(active_tab):
                                 body_child.children = create_eja_table(all_ejas)
 
         return layout
+    elif active_tab == 'tab-metrics-manager':
+        return create_tracks_usage_manager_layout()
+
     return html.Div("Conteúdo não encontrado")
 
 
@@ -904,6 +909,590 @@ def save_eja_form(n_clicks, form_mode, edit_eja_id, eja_code, title, classificat
     except Exception as e:
         # Erro - mostrar mensagem mas manter modal aberto
         return True, f"Erro: {str(e)}", "Erro", "danger", True, no_update
+
+
+@app.callback(
+    Output("track-table-container", "children"),
+    Output("track-data-store", "data"),
+    [
+        Input({"type": "track-search-button", "action": "search"}, "n_clicks"),
+        Input("track-delete-refresh", "children"),
+        Input("track-pagination", "active_page")
+    ],
+    [
+        State("track-search-year", "value"),
+        State("track-search-month", "value"),
+        State("track-data-store", "data")
+    ],
+    prevent_initial_call=True
+)
+def update_track_table(
+    search_clicks, delete_refresh, active_page,
+    search_year, search_month, data_store
+):
+    """Callback para atualizar a tabela de track availability"""
+    # Determinar qual input acionou o callback
+    ctx = callback_context
+    if not ctx.triggered:
+        raise PreventUpdate
+
+    # Identificar o acionador
+    trigger_id = ctx.triggered[0]['prop_id'].split('.')[0]
+
+    # Carregar o gerenciador
+    from data.tracks_usage_manager import get_tracks_usage_manager
+    manager = get_tracks_usage_manager()
+
+    # Processar com base no acionador
+    if trigger_id == '{"type":"track-search-button","action":"search"}' and search_clicks:
+        # Buscar tracks
+        filtered_tracks = manager.search_tracks(
+            year=int(search_year) if search_year else None,
+            month=int(search_month) if search_month else None
+        )
+
+        # Atualizar o data store
+        data_store['filtered_tracks'] = filtered_tracks
+        data_store['page_current'] = 0
+
+        from layouts.tracks_usage_manager import create_tracks_table
+        return create_tracks_table(filtered_tracks, page_current=0), data_store
+
+    elif trigger_id == "track-delete-refresh":
+        # Atualizar após exclusão
+        all_tracks = manager.get_all_tracks()
+
+        # Atualizar o data store
+        data_store['filtered_tracks'] = all_tracks
+        data_store['page_current'] = 0
+
+        from layouts.tracks_usage_manager import create_tracks_table
+        return create_tracks_table(all_tracks, page_current=0), data_store
+
+    elif trigger_id == "track-pagination":
+        # Atualização de paginação
+        if not active_page:
+            raise PreventUpdate
+
+        # Ajustar página (UI é base 1, código é base 0)
+        page_current = active_page - 1
+        data_store['page_current'] = page_current
+
+        # Usar os dados filtrados atuais
+        filtered_tracks = data_store.get('filtered_tracks', [])
+        if not filtered_tracks:
+            filtered_tracks = manager.get_all_tracks()
+            data_store['filtered_tracks'] = filtered_tracks
+
+        from layouts.tracks_usage_manager import create_tracks_table
+        return create_tracks_table(filtered_tracks, page_current=page_current), data_store
+
+    # Caso padrão
+    raise PreventUpdate
+
+
+@app.callback(
+    Output("track-table-container", "children", allow_duplicate=True),
+    Input("tracks-usage-tabs", "active_tab"),
+    prevent_initial_call=True
+)
+def load_initial_track_data(active_tab):
+    """Carrega os dados iniciais quando a aba de track availability é selecionada"""
+    if active_tab != "tab-track-availability":
+        raise PreventUpdate
+
+    # Carregar todos os tracks
+    from data.tracks_usage_manager import get_tracks_usage_manager
+    manager = get_tracks_usage_manager()
+    all_tracks = manager.get_all_tracks()
+
+    # Criar tabela
+    from layouts.tracks_usage_manager import create_tracks_table
+    return create_tracks_table(all_tracks, page_current=0)
+
+
+@app.callback(
+    [
+        Output("track-form-modal", "is_open"),
+        Output("track-form-title", "children"),
+        Output("track-form-mode", "value"),
+        Output("track-year-input", "value"),
+        Output("track-month-input", "value"),
+        Output("track-value-input", "value"),
+        Output("track-edit-id", "value")
+    ],
+    [
+        Input("add-track-button", "n_clicks"),
+        Input("track-cancel-form-button", "n_clicks"),
+        Input({"type": "track-edit-button", "index": dash.ALL}, "n_clicks"),
+    ],
+    [
+        State("track-form-modal", "is_open"),
+    ],
+    prevent_initial_call=True
+)
+def toggle_track_form_modal(add_clicks, cancel_clicks, edit_clicks, is_open):
+    """Toggle o modal de formulário de track availability"""
+    ctx = dash.callback_context
+
+    if not ctx.triggered:
+        raise PreventUpdate
+
+    trigger_id = ctx.triggered[0]['prop_id'].split('.')[0]
+
+    # Adicionar novo track
+    if trigger_id == "add-track-button":
+        return True, "Adicionar Novo Track Availability", "add", None, None, None, ""
+
+    # Cancelar
+    if trigger_id == "track-cancel-form-button":
+        return False, "", "", None, None, None, ""
+
+    # Editar track existente
+    if isinstance(trigger_id, dict) and trigger_id.get("type") == "track-edit-button":
+        track_id = trigger_id.get("index")
+        if track_id:
+            # Obter os dados do track para edição
+            from data.tracks_usage_manager import get_tracks_usage_manager
+            manager = get_tracks_usage_manager()
+            track = manager.get_track_by_id(track_id)
+
+            if track:
+                return True, f"Editar Track Availability #{track_id}", "edit", track['year'], track['month'], track['value'], track_id
+
+    # Caso padrão
+    return is_open, "", "", None, None, None, ""
+
+
+@app.callback(
+    [
+        Output("track-operation-status", "is_open"),
+        Output("track-operation-status", "children"),
+        Output("track-operation-status", "header"),
+        Output("track-operation-status", "color"),
+        Output("track-form-modal", "is_open", allow_duplicate=True),
+        Output("track-delete-refresh", "children", allow_duplicate=True)
+    ],
+    Input("track-save-form-button", "n_clicks"),
+    [
+        State("track-form-mode", "value"),
+        State("track-edit-id", "value"),
+        State("track-year-input", "value"),
+        State("track-month-input", "value"),
+        State("track-value-input", "value"),
+    ],
+    prevent_initial_call=True
+)
+def save_track_form(n_clicks, form_mode, edit_track_id, year, month, value):
+    """Salva o formulário de track availability"""
+    if not n_clicks:
+        raise PreventUpdate
+
+    # Validar campos obrigatórios
+    if not year or not month or value is None:
+        return True, "Preencha todos os campos obrigatórios.", "Erro", "danger", True, dash.no_update
+
+    try:
+        # Preparar os dados
+        track_data = {
+            "year": year,
+            "month": month,
+            "value": value
+        }
+
+        # Obter gerenciador
+        from data.tracks_usage_manager import get_tracks_usage_manager
+        manager = get_tracks_usage_manager()
+
+        # Adicionar ou atualizar o track
+        if form_mode == "add":
+            result = manager.add_track(track_data)
+            success_message = "Track availability adicionado com sucesso!"
+            error_prefix = "Erro ao adicionar track availability:"
+        else:  # mode == "edit"
+            result = manager.update_track(edit_track_id, track_data)
+            success_message = "Track availability atualizado com sucesso!"
+            error_prefix = "Erro ao atualizar track availability:"
+
+        # Verificar resultado
+        if isinstance(result, dict) and result.get('error'):
+            return True, f"{error_prefix} {result['error']}", "Erro", "danger", True, dash.no_update
+
+        # Gerar timestamp para atualizar a tabela
+        import time
+        refresh_time = str(time.time())
+
+        # Sucesso
+        return True, success_message, "Sucesso", "success", False, refresh_time
+
+    except Exception as e:
+        return True, f"Erro: {str(e)}", "Erro", "danger", True, dash.no_update
+
+
+@app.callback(
+    Output("track-delete-modal", "is_open"),
+    Output("track-delete-confirmation-message", "children"),
+    Output("track-delete-id", "value"),
+    Input({"type": "track-delete-button", "index": dash.ALL, "action": "delete"}, "n_clicks"),
+    Input("track-cancel-delete-button", "n_clicks"),
+    prevent_initial_call=True
+)
+def show_track_delete_confirmation(delete_clicks, cancel_click):
+    """Exibe a confirmação de exclusão de track availability"""
+    ctx = callback_context
+    if not ctx.triggered:
+        raise PreventUpdate
+
+    trigger_id = ctx.triggered[0]['prop_id'].split('.')[0]
+
+    # Botão cancelar
+    if "track-cancel-delete-button" in trigger_id:
+        return False, "", ""
+
+    # Botões de exclusão
+    if delete_clicks and any(click for click in delete_clicks if click):
+        # Identificar qual botão foi clicado
+        triggered_id = json.loads(trigger_id)
+        row_id = triggered_id["index"]
+
+        # Obter informações do track
+        from data.tracks_usage_manager import get_tracks_usage_manager
+        manager = get_tracks_usage_manager()
+        track = manager.get_track_by_id(row_id)
+
+        if track:
+            # Criar mensagem de confirmação
+            message = f"Tem certeza que deseja excluir o track availability #{row_id} ({track['year']}-{track['month']})?"
+            return True, message, row_id
+
+    # Caso padrão
+    return False, "", ""
+
+
+@app.callback(
+    [
+        Output("track-operation-status", "is_open", allow_duplicate=True),
+        Output("track-operation-status", "children", allow_duplicate=True),
+        Output("track-operation-status", "header", allow_duplicate=True),
+        Output("track-operation-status", "color", allow_duplicate=True),
+        Output("track-delete-modal", "is_open", allow_duplicate=True),
+        Output("track-delete-refresh", "children", allow_duplicate=True)
+    ],
+    Input("track-confirm-delete-button", "n_clicks"),
+    State("track-delete-id", "value"),
+    prevent_initial_call=True
+)
+def delete_track(confirm_click, track_id):
+    """Exclui um track availability"""
+    if not confirm_click or not track_id:
+        raise PreventUpdate
+
+    # Realizar a exclusão
+    from data.tracks_usage_manager import get_tracks_usage_manager
+    manager = get_tracks_usage_manager()
+    success = manager.delete_track(track_id)
+
+    # Gerar timestamp único para atualização da tabela
+    import time
+    refresh_time = str(time.time())
+
+    if success:
+        return True, "Track availability excluído com sucesso!", "Exclusão Concluída", "success", False, refresh_time
+    else:
+        return True, "Erro ao excluir o track availability.", "Erro", "danger", False, dash.no_update
+
+
+# Callbacks para Usage Percentage
+
+@app.callback(
+    Output("usage-table-container", "children"),
+    Output("usage-data-store", "data"),
+    [
+        Input({"type": "usage-search-button", "action": "search"}, "n_clicks"),
+        Input("usage-delete-refresh", "children"),
+        Input("usage-pagination", "active_page")
+    ],
+    [
+        State("usage-search-year", "value"),
+        State("usage-search-month", "value"),
+        State("usage-data-store", "data")
+    ],
+    prevent_initial_call=True
+)
+def update_usage_table(
+    search_clicks, delete_refresh, active_page,
+    search_year, search_month, data_store
+):
+    """Callback para atualizar a tabela de usage percentage"""
+    # Determinar qual input acionou o callback
+    ctx = callback_context
+    if not ctx.triggered:
+        raise PreventUpdate
+
+    # Identificar o acionador
+    trigger_id = ctx.triggered[0]['prop_id'].split('.')[0]
+
+    # Carregar o gerenciador
+    from data.tracks_usage_manager import get_tracks_usage_manager
+    manager = get_tracks_usage_manager()
+
+    # Processar com base no acionador
+    if trigger_id == '{"type":"usage-search-button","action":"search"}' and search_clicks:
+        # Buscar usage percentages
+        filtered_usage = manager.search_usage(
+            year=int(search_year) if search_year else None,
+            month=int(search_month) if search_month else None
+        )
+
+        # Atualizar o data store
+        data_store['filtered_usage'] = filtered_usage
+        data_store['page_current'] = 0
+
+        from layouts.tracks_usage_manager import create_usage_table
+        return create_usage_table(filtered_usage, page_current=0), data_store
+
+    elif trigger_id == "usage-delete-refresh":
+        # Atualizar após exclusão
+        all_usage = manager.get_all_usage()
+
+        # Atualizar o data store
+        data_store['filtered_usage'] = all_usage
+        data_store['page_current'] = 0
+
+        from layouts.tracks_usage_manager import create_usage_table
+        return create_usage_table(all_usage, page_current=0), data_store
+
+    elif trigger_id == "usage-pagination":
+        # Atualização de paginação
+        if not active_page:
+            raise PreventUpdate
+
+        # Ajustar página (UI é base 1, código é base 0)
+        page_current = active_page - 1
+        data_store['page_current'] = page_current
+
+        # Usar os dados filtrados atuais
+        filtered_usage = data_store.get('filtered_usage', [])
+        if not filtered_usage:
+            filtered_usage = manager.get_all_usage()
+            data_store['filtered_usage'] = filtered_usage
+
+        from layouts.tracks_usage_manager import create_usage_table
+        return create_usage_table(filtered_usage, page_current=page_current), data_store
+
+    # Caso padrão
+    raise PreventUpdate
+
+
+@app.callback(
+    Output("usage-table-container", "children", allow_duplicate=True),
+    Input("tracks-usage-tabs", "active_tab"),
+    prevent_initial_call=True
+)
+def load_initial_usage_data(active_tab):
+    """Carrega os dados iniciais quando a aba de usage percentage é selecionada"""
+    if active_tab != "tab-usage-percentage":
+        raise PreventUpdate
+
+    # Carregar todos os usage percentages
+    from data.tracks_usage_manager import get_tracks_usage_manager
+    manager = get_tracks_usage_manager()
+    all_usage = manager.get_all_usage()
+
+    # Criar tabela
+    from layouts.tracks_usage_manager import create_usage_table
+    return create_usage_table(all_usage, page_current=0)
+
+
+@app.callback(
+    [
+        Output("usage-form-modal", "is_open"),
+        Output("usage-form-title", "children"),
+        Output("usage-form-mode", "value"),
+        Output("usage-year-input", "value"),
+        Output("usage-month-input", "value"),
+        Output("usage-value-input", "value"),
+        Output("usage-edit-id", "value")
+    ],
+    [
+        Input("add-usage-button", "n_clicks"),
+        Input("usage-cancel-form-button", "n_clicks"),
+        Input({"type": "usage-edit-button", "index": dash.ALL}, "n_clicks"),
+    ],
+    [
+        State("usage-form-modal", "is_open"),
+    ],
+    prevent_initial_call=True
+)
+def toggle_usage_form_modal(add_clicks, cancel_clicks, edit_clicks, is_open):
+    """Toggle o modal de formulário de usage percentage"""
+    ctx = dash.callback_context
+
+    if not ctx.triggered:
+        raise PreventUpdate
+
+    trigger_id = ctx.triggered[0]['prop_id'].split('.')[0]
+
+    # Adicionar novo usage
+    if trigger_id == "add-usage-button":
+        return True, "Adicionar Novo Usage Percentage", "add", None, None, None, ""
+
+    # Cancelar
+    if trigger_id == "usage-cancel-form-button":
+        return False, "", "", None, None, None, ""
+
+    # Editar usage existente
+    if isinstance(trigger_id, dict) and trigger_id.get("type") == "usage-edit-button":
+        usage_id = trigger_id.get("index")
+        if usage_id:
+            # Obter os dados do usage para edição
+            from data.tracks_usage_manager import get_tracks_usage_manager
+            manager = get_tracks_usage_manager()
+            usage = manager.get_usage_by_id(usage_id)
+
+            if usage:
+                return True, f"Editar Usage Percentage #{usage_id}", "edit", usage['year'], usage['month'], usage['value'], usage_id
+
+    # Caso padrão
+    return is_open, "", "", None, None, None, ""
+
+
+@app.callback(
+    [
+        Output("usage-operation-status", "is_open"),
+        Output("usage-operation-status", "children"),
+        Output("usage-operation-status", "header"),
+        Output("usage-operation-status", "color"),
+        Output("usage-form-modal", "is_open", allow_duplicate=True),
+        Output("usage-delete-refresh", "children", allow_duplicate=True)
+    ],
+    Input("usage-save-form-button", "n_clicks"),
+    [
+        State("usage-form-mode", "value"),
+        State("usage-edit-id", "value"),
+        State("usage-year-input", "value"),
+        State("usage-month-input", "value"),
+        State("usage-value-input", "value"),
+    ],
+    prevent_initial_call=True
+)
+def save_usage_form(n_clicks, form_mode, edit_usage_id, year, month, value):
+    """Salva o formulário de usage percentage"""
+    if not n_clicks:
+        raise PreventUpdate
+
+    # Validar campos obrigatórios
+    if not year or not month or value is None:
+        return True, "Preencha todos os campos obrigatórios.", "Erro", "danger", True, dash.no_update
+
+    try:
+        # Preparar os dados
+        usage_data = {
+            "year": year,
+            "month": month,
+            "value": value
+        }
+
+        # Obter gerenciador
+        from data.tracks_usage_manager import get_tracks_usage_manager
+        manager = get_tracks_usage_manager()
+
+        # Adicionar ou atualizar o usage
+        if form_mode == "add":
+            result = manager.add_usage(usage_data)
+            success_message = "Usage percentage adicionado com sucesso!"
+            error_prefix = "Erro ao adicionar usage percentage:"
+        else:  # mode == "edit"
+            result = manager.update_usage(edit_usage_id, usage_data)
+            success_message = "Usage percentage atualizado com sucesso!"
+            error_prefix = "Erro ao atualizar usage percentage:"
+
+        # Verificar resultado
+        if isinstance(result, dict) and result.get('error'):
+            return True, f"{error_prefix} {result['error']}", "Erro", "danger", True, dash.no_update
+
+        # Gerar timestamp para atualizar a tabela
+        import time
+        refresh_time = str(time.time())
+
+        # Sucesso
+        return True, success_message, "Sucesso", "success", False, refresh_time
+
+    except Exception as e:
+        return True, f"Erro: {str(e)}", "Erro", "danger", True, dash.no_update
+
+
+@app.callback(
+    Output("usage-delete-modal", "is_open"),
+    Output("usage-delete-confirmation-message", "children"),
+    Output("usage-delete-id", "value"),
+    Input({"type": "usage-delete-button", "index": dash.ALL, "action": "delete"}, "n_clicks"),
+    Input("usage-cancel-delete-button", "n_clicks"),
+    prevent_initial_call=True
+)
+def show_usage_delete_confirmation(delete_clicks, cancel_click):
+    """Exibe a confirmação de exclusão de usage percentage"""
+    ctx = callback_context
+    if not ctx.triggered:
+        raise PreventUpdate
+
+    trigger_id = ctx.triggered[0]['prop_id'].split('.')[0]
+
+    # Botão cancelar
+    if "usage-cancel-delete-button" in trigger_id:
+        return False, "", ""
+
+    # Botões de exclusão
+    if delete_clicks and any(click for click in delete_clicks if click):
+        # Identificar qual botão foi clicado
+        triggered_id = json.loads(trigger_id)
+        row_id = triggered_id["index"]
+
+        # Obter informações do usage
+        from data.tracks_usage_manager import get_tracks_usage_manager
+        manager = get_tracks_usage_manager()
+        usage = manager.get_usage_by_id(row_id)
+
+        if usage:
+            # Criar mensagem de confirmação
+            message = f"Tem certeza que deseja excluir o usage percentage #{row_id} ({usage['year']}-{usage['month']})?"
+            return True, message, row_id
+
+    # Caso padrão
+    return False, "", ""
+
+
+@app.callback(
+    [
+        Output("usage-operation-status", "is_open", allow_duplicate=True),
+        Output("usage-operation-status", "children", allow_duplicate=True),
+        Output("usage-operation-status", "header", allow_duplicate=True),
+        Output("usage-operation-status", "color", allow_duplicate=True),
+        Output("usage-delete-modal", "is_open", allow_duplicate=True),
+        Output("usage-delete-refresh", "children", allow_duplicate=True)
+    ],
+    Input("usage-confirm-delete-button", "n_clicks"),
+    State("usage-delete-id", "value"),
+    prevent_initial_call=True
+)
+def delete_usage(confirm_click, usage_id):
+    """Exclui um usage percentage"""
+    if not confirm_click or not usage_id:
+        raise PreventUpdate
+
+    # Realizar a exclusão
+    from data.tracks_usage_manager import get_tracks_usage_manager
+    manager = get_tracks_usage_manager()
+    success = manager.delete_usage(usage_id)
+
+    # Gerar timestamp único para atualização da tabela
+    import time
+    refresh_time = str(time.time())
+
+    if success:
+        return True, "Usage percentage excluído com sucesso!", "Exclusão Concluída", "success", False, refresh_time
+    else:
+        return True, "Erro ao excluir o usage percentage.", "Erro", "danger", False, dash.no_update
 
 
 # Callback for handling CSV export
