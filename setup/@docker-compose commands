@@ -1,7 +1,11 @@
-
+# Comandos para criar o container
 docker-compose -f setup/docker-compose.yml down
 docker-compose -f setup/docker-compose.yml build --no-cache
 docker-compose -f setup/docker-compose.yml up -d
+
+
+# Exportar a imagem para distribuição
+docker save dashboard-ford:latest -o setup/dist/dashboard_ford.tar
 
 
 # Logs

@@ -26,14 +26,15 @@ def get_appropriate_driver():
 class DatabaseReader:
     def __init__(self):
         # Usar valores fixos para usuário e senha, ou obter do arquivo de configuração
-        self.server = os.environ.get('DB_SERVER', 'localhost')
+        self.server = os.environ.get('DB_SERVER', r'localhost\W_Access')
         self.database = os.environ.get('DB_DATABASE', 'W_Access')
         self.username = os.environ.get('DB_USERNAME', 'sa')
         self.password = os.environ.get('DB_PASSWORD', '#w_access_Adm#')
         self.port = os.environ.get('DB_PORT', '1433')
+        self.driver = os.environ.get('DRIVER', '{SQL Server}')
 
         # Obter o driver ODBC especificado nas variáveis de ambiente ou usar o padrão
-        self.driver = get_appropriate_driver()
+        # self.driver = get_appropriate_driver()
 
         self.lock = threading.Lock()
 
@@ -53,12 +54,15 @@ class DatabaseReader:
                     f'UID={self.username};'
                     f'PWD={self.password};'
                     f'TDS_VERSION=8.0;'
+                    f"Trusted_Connection=no;"
+                    f"Encrypt=no;"  # Pode ajudar em alguns casos
+                    f"Connection Timeout=30;"  # Aumentar o timeout
                 )
             else:
                 # Formato para SQL Server nativo no Windows
                 connection_string = (
                     f'DRIVER={self.driver};'
-                    f'SERVER={self.server},{self.port};'
+                    f'SERVER={self.server};'
                     f'DATABASE={self.database};'
                     f'UID={self.username};'
                     f'PWD={self.password}'
@@ -66,7 +70,7 @@ class DatabaseReader:
 
             # Tentar estabelecer conexão
             print(f"Tentando conectar com: {connection_string.replace(self.password, '****')}")
-            print(f"Tentando conectar com: {connection_string}")
+            # print(f"Tentando conectar com: {connection_string}")
             connection = pyodbc.connect(connection_string)
 
             print(f"Conexão bem-sucedida com o driver: {self.driver}")

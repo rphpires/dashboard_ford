@@ -249,8 +249,8 @@ def setup_scheduler(run_immediately=False):
     import threading
 
     # Agendar para todas as segundas-feiras às 00:15
-    job = schedule.every().monday.at("00:15").do(process_weekly_data)
-    trace("Agendamento configurado: Processamento de dados de cliente toda segunda-feira às 00:15", color="green")
+    job = schedule.every().day.at("00:15").do(process_weekly_data)
+    trace("Agendamento configurado: Processamento de dados de cliente todos os dias às 00:15", color="green")
 
     # Executar imediatamente se solicitado
     if run_immediately:

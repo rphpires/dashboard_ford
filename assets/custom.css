@@ -1,7 +1,9 @@
 /* assets/custom.css - Versão Otimizada para Dashboard sem Rolagem */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
+/* ==================== Variáveis Globais ==================== */
 :root {
+    /* Cores primárias */
     --primary-color: #2196F3;
     --primary-dark: #1976D2;
     --primary-light: #BBDEFB;
@@ -10,9 +12,13 @@
     --accent-color: #FF5722;
     --accent-light: #FFCCBC;
     --warning-color: #FFC107;
+    
+    /* Cores de texto */
     --text-color: #263238;
     --text-light: #546E7A;
     --text-lighter: #78909C;
+    
+    /* Cores de fundo e cartões */
     --background-color: #F5F7FA;
     --card-bg: #FFFFFF;
     --card-border: rgba(0, 0, 0, 0.05);
@@ -39,6 +45,7 @@
     --chart-orange-5: #EF6C00;
 }
 
+/* ==================== Estilos Base ==================== */
 body {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
     margin: 0;
@@ -56,21 +63,41 @@ body {
 }
 
 /* ==================== Layout do Dashboard ==================== */
-
-/* Container principal - layout de tela cheia sem rolagem */
 .dashboard-container {
     width: 100vw;
-    height: calc(100vh - 35px) !important; /* Reserva espaço para o footer */
+    height: calc(100vh - 35px) !important;
     max-height: calc(100vh - 35px) !important;
+    padding: 8px;
     padding-bottom: 35px !important;
     margin: 0;
-    padding: 8px;
     display: flex !important;
     flex-direction: column !important;
     overflow: hidden !important;
 }
 
-/* Header Styling - Moderno e compacto */
+/* Dashboard Content */
+.dashboard-content {
+    display: flex;
+    flex: 1 !important;
+    gap: 8px;
+    overflow: hidden !important;
+    height: calc(100vh - 80px);
+    max-height: calc(100vh - 80px) !important;
+    padding-bottom: 5px !important;
+    margin-bottom: 0 !important;
+}
+
+#tab-content, 
+.tabs-content-container {
+    padding-bottom: 5px !important;
+    overflow: hidden !important;
+}
+
+#dashboard-content > div {
+    padding-bottom: 5px !important;
+}
+
+/* ==================== Header Styling ==================== */
 .header {
     display: flex;
     justify-content: space-between;
@@ -106,197 +133,80 @@ body {
     z-index: 1;
 }
 
-.header-left .logo {
-    height: 20px;
-    margin-right: 8px;
-}
-
 .header-right {
     display: flex;
     align-items: center;
     height: 32px;
-}
-
-.standard-dropdown {
-    width: 180px;
-    margin: 0;
-    padding: 0;
-}
-
-.logo {
-    height: 24px; /* Reduzido de 28px */
-    margin-right: 12px; /* Reduzido de 15px */
-    filter: brightness(0) invert(1);
+    overflow: visible !important;
 }
 
 .header-title {
-    font-size: 14px; /* Reduzido de 18px */
+    font-size: 14px;
     font-weight: 600;
     letter-spacing: 0.02em;
 }
 
 .header-subtitle {
-    font-size: 11px; /* Reduzido de 14px */
+    font-size: 11px;
     font-weight: 500;
-    margin-left: 16px; /* Reduzido de 20px */
+    margin-left: 16px;
     letter-spacing: 0.01em;
     opacity: 0.9;
 }
 
 .header-date {
-    font-size: 14px; /* Reduzido de 16px */
+    font-size: 14px;
     font-weight: 500;
     background-color: rgba(255, 255, 255, 0.2);
-    padding: 4px 8px; /* Reduzido de 5px 10px */
+    padding: 4px 8px;
     border-radius: 16px;
     z-index: 1;
+    margin-top: 5px;
+}
+
+.logo {
+    height: 24px;
+    margin-right: 12px;
+    filter: brightness(0) invert(1);
 }
 
 /* ==================== Layout de 3 Colunas ==================== */
-
-#tab-content, .tabs-content-container {
-    padding-bottom: 5px !important;
-    overflow: hidden !important;
-}
-
-#dashboard-content > div {
-    padding-bottom: 5px !important; /* Garante que o conteúdo termina antes do footer */
-}
-
-/* Layout de conteúdo principal - 3 colunas */
-.dashboard-content {
-    display: flex;
-    flex: 1 !important;
-    gap: 8px; /* Reduzido de 10px */
-    overflow: hidden !important;
-    height: calc(100vh - 80px); /* Ajustado para cabeçalho e rodapé menores */
-    max-height: calc(100vh - 80px) !important; /* Reservar espaço para header (45px) e footer (35px) */
-    padding-bottom: 5px !important;
-    margin-bottom: 0 !important; /* Margem extra no final */
-}
-
-/* Definições para layout de três colunas */
 .three-column-layout {
     display: flex;
     flex: 1;
-    gap: 8px; /* Reduzido de 10px */
+    gap: 8px;
     overflow: hidden;
     height: auto !important;
     max-height: calc(100vh - 85px) !important;
-    padding-bottom: 5 !important;
+    padding-bottom: 5px !important;
 }
 
-/* Tamanhos específicos para as 3 colunas */
-.column-small, .column-medium, .column-large {
-    flex: 1 !important;  /* Todas as colunas têm o mesmo flex */
+.column-small, 
+.column-medium, 
+.column-large {
+    flex: 1 !important;
     min-width: 200px;
-    width: 33.33% !important;  /* Todas as colunas têm a mesma largura */
+    width: 33.33% !important;
 }
 
-/* Ajuste para a terceira coluna */
-.column-large .panel-content {
-    min-height: 0; /* Alterado de 200px para permitir flexibilidade */
-}
-
-/* Propriedades comuns para todas as colunas */
 .column {
     min-width: 0;
     display: flex;
     flex-direction: column;
-    gap: 8px; /* Reduzido de 10px */
-    overflow: hidden; /* Alterado de overflow-y: auto para hidden */
+    gap: 8px;
+    overflow: hidden;
     height: 100% !important;
     max-height: calc(100vh - 90px) !important;
-    padding-right: 0; /* Removido padding à direita */
+    padding-right: 0;
     padding-bottom: 0 !important;
 }
 
-/* Remover estilos de scrollbar já que não teremos rolagem */
 .column::-webkit-scrollbar {
     width: 0;
     display: none;
 }
 
-/* Estilo para a tabela com cabeçalho fixo */
-.eja-table-container {
-    max-height: var(--table-height, 500px);
-    overflow-y: auto;
-    position: relative;
-}
-
-/* Fixa o cabeçalho da tabela */
-.eja-table thead {
-    position: sticky;
-    top: 0;
-    z-index: 10;
-    background-color: #f8f9fa; /* Cor de fundo para o cabeçalho */
-}
-
-/* Garante que o cabeçalho tenha uma borda apropriada */
-.eja-table thead th {
-    border-top: 1px solid #dee2e6;
-    border-bottom: 2px solid #dee2e6;
-    background-color: #f8f9fa; /* Repetido para garantir a cobertura */
-}
-
-/* Melhora a aparência do cabeçalho */
-.eja-table thead th {
-    font-weight: bold;
-    padding: 12px 15px;
-    vertical-align: middle;
-}
-
-/* Cores alternadas nas linhas para melhor legibilidade */
-.eja-table tbody tr:nth-of-type(odd) {
-    background-color: rgba(0, 0, 0, 0.05);
-}
-
-/* Estilo para hover nas linhas */
-.eja-table tbody tr:hover {
-    background-color: rgba(0, 123, 255, 0.1);
-}
-
-/* Garante que a tabela ocupe a largura total */
-.eja-table {
-    width: 100%;
-    margin-bottom: 0;
-}
-
-/* Ajuste de altura para células de dados */
-.eja-table tbody td {
-    padding: 8px 15px;
-    vertical-align: middle;
-}
-
-@media (max-height: 768px) {
-    .eja-table-container {
-        max-height: 350px;
-    }
-    
-    .eja-table td, .eja-table th {
-        padding: 6px 10px;
-    }
-    .dashboard-container {
-        height: calc(100vh - 30px) !important;
-        max-height: calc(100vh - 30px) !important;
-    }
-    
-    .dashboard-content, .column {
-        max-height: calc(100vh - 75px) !important;
-    }
-    
-    .three-column-layout {
-        max-height: calc(100vh - 75px) !important;
-    }
-    
-    .footer {
-        height: 25px !important;
-    }
-}
-
-/* ==================== Componentes de UI ==================== */
-
-/* Painéis e Cartões */
+/* ==================== Painéis e Cartões ==================== */
 .panel {
     background-color: var(--card-bg);
     border-radius: 12px;
@@ -306,21 +216,36 @@ body {
     transition: transform 0.2s ease, box-shadow 0.2s ease;
     display: flex;
     flex-direction: column;
-    margin-bottom: 4px; /* Reduzido de 10px */
+    margin-bottom: 4px;
     flex: 1;
-    min-height: 0; /* Importante para flexbox */
+    min-height: 0;
 }
 
 .panel:hover {
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
 }
 
-/* Título das seções */
+.panel-content {
+    padding: 6px;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    height: auto !important;
+    min-height: 0;
+    max-height: none !important;
+    overflow: visible !important;
+}
+
+.column-large .panel-content {
+    min-height: 0;
+}
+
+/* ==================== Títulos e Seções ==================== */
 .section-title {
     background: linear-gradient(90deg, var(--primary-dark), var(--primary-color));
     color: white;
-    padding: 6px 10px; /* Reduzido de 8px 12px */
-    font-size: 11px; /* Reduzido de 12px */
+    padding: 6px 10px;
+    font-size: 11px;
     font-weight: 600;
     letter-spacing: 0.5px;
     display: flex;
@@ -331,7 +256,7 @@ body {
     overflow: hidden;
     border-bottom: 1px solid rgba(0, 0, 0, 0.05);
     flex-shrink: 0;
-    min-height: 0; /* Removido min-height fixo */
+    min-height: 0;
 }
 
 .section-title::after {
@@ -346,7 +271,7 @@ body {
 }
 
 .card-title {
-    font-size: 12px !important; /* Reduzido de 13px */
+    font-size: 12px !important;
     letter-spacing: 0.2px;
     position: relative;
     z-index: 1;
@@ -357,46 +282,40 @@ body {
     z-index: 1;
     font-weight: 600;
     background-color: rgba(255, 255, 255, 0.2);
-    padding: 2px 6px; /* Reduzido de 3px 8px */
+    padding: 2px 6px;
     border-radius: 14px;
-    font-size: 12px !important; /* Reduzido de 13px */
+    font-size: 12px !important;
     letter-spacing: 0.2px;
 }
 
-.panel-content {
-    padding: 6px; /* Reduzido de 8px */
-    display: flex;
-    flex-direction: column;
-    flex: 1;
-    height: auto !important;
-    min-height: 0; /* Importante para flexbox */
-    max-height: none !important;
-    overflow: visible !important; /* Alterado de visible para hidden */
-}
-
-/* Caixas de métricas */
+/* ==================== Métricas e Indicadores ==================== */
 .metric-box {
     display: flex;
     justify-content: space-between;
     align-items: center;
     background-color: var(--background-color);
     border: 1px solid var(--card-border);
-    padding-left: 8px; /* Reduzido de 6px para 4px 6px */
+    padding-left: 8px;
     border-radius: 4px;
     transition: all 0.2s ease;
     flex-direction: row;
-    align-items: center; /* Alterado de flex-start para center */
+    align-items: center;
     background: #f8f9fa;
     flex-shrink: 0;
-    min-height: auto; /* Adicionado para evitar altura mínima */
-    height: auto; /* Adicionado para ajustar altura automaticamente */
+    min-height: auto;
+    height: auto;
 }
-
 
 .metric-box:hover {
     transform: translateY(-2px);
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
     border-color: var(--primary-light);
+}
+
+.chart-container .metric-box,
+.flex-item .metric-box {
+    flex: 0;
+    padding: 4px !important;
 }
 
 .metric-title {
@@ -405,8 +324,8 @@ body {
     color: var(--text-light);
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    margin: 0; /* Remover margens */
-    padding: 0; /* Remover padding */
+    margin: 0;
+    padding: 0;
 }
 
 .metric-value {
@@ -415,14 +334,13 @@ body {
     color: var(--primary-color);
     display: flex;
     align-items: center;
-    margin: 0; /* Remover margens */
-    padding: 0; /* Remover padding */
+    margin: 0;
+    padding: 0;
 }
 
-/* Versão compacta para caixas de métricas */
 .compact-metric-box {
-    padding: 4px 6px; /* Reduzido de 6px 8px */
-    margin-bottom: 4px; /* Reduzido de 6px */
+    padding: 4px 6px;
+    margin-bottom: 4px;
     background-color: var(--background-color);
     border: 1px solid var(--card-border);
     border-radius: 8px;
@@ -431,39 +349,38 @@ body {
     align-items: center;
 }
 
-.chart-container > div {
-    flex: 1;
-    height: 100% !important;
-}
-
-/* Containers de gráficos */
+/* ==================== Containers de Gráficos ==================== */
 .chart-container {
     background-color: var(--card-bg);
     border-radius: 4px;
-    padding: 2px !important; ; /* Reduzido de 8px */
+    padding: 2px !important;
     box-shadow: 0 1px 3px rgba(0,0,0,0.05);
     border: 1px solid var(--card-border);
     display: flex;
     flex-direction: column;
     position: relative;
-    overflow: hidden; /* Alterado de visible para hidden */
+    overflow: hidden;
     flex: 1;
-    min-height: 0 !important; /* Removido min-height fixo */
+    min-height: 0 !important;
     max-height: none !important;
     height: 100% !important;
 }
 
-.chart-container .metric-box {
-    flex: 0;
-    padding: 4px !important; /* Reduzido de 8px */
+.chart-container > div {
+    flex: 1;
+    height: 100% !important;
 }
 
-.flex-item .metric-box {
-    flex: 0;
-    padding: 4px !important; /* Reduzido de 8px */
+.chart-md, 
+.chart-sm, 
+.chart-lg {
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    flex: 1;
 }
 
-/* Plotly personalização */
+/* ==================== Plotly Customizações ==================== */
 .js-plotly-plot {
     width: 100% !important;
     height: 100% !important;
@@ -479,6 +396,8 @@ body {
 .js-plotly-plot .plot-container {
     margin-bottom: 0 !important;
     padding-bottom: 0 !important;
+    margin-left: 0 !important;
+    padding-left: 0 !important;
 }
 
 .js-plotly-plot .plotly .main-svg {
@@ -486,48 +405,55 @@ body {
     width: 100% !important;
     height: 100% !important;
     max-height: 100% !important;
+    overflow: visible !important;
 }
 
-.js-plotly-plot .plotly .bars .points path {
+.js-plotly-plot .bars .points path {
     shape-rendering: crispEdges;
 }
 
 .js-plotly-plot .ytick text, 
 .js-plotly-plot .xtick text {
-    font-size: 9px !important; /* Reduzido de 10px */
+    font-size: 9px !important;
 }
 
-/* Layouts Flexíveis */
-.flex-container {
-    display: flex;
-    padding: 6px;
-    gap: 8px; /* Reduzido de 10px */
-    margin-bottom: 4px; /* Reduzido de 10px */
-    flex-wrap: wrap;
-    justify-content: space-between;
-    width: 100%;
+.js-plotly-plot .ytick text {
+    text-anchor: end !important;
+    dominant-baseline: middle !important;
 }
 
-.flex-item {
-    flex: 1;
-    min-width: 48%;
-    margin-bottom: 4px; /* Reduzido de 10px */
+/* Ajustar o espaço no lado esquerdo dos gráficos */
+.js-plotly-plot .plot-container.plotly {
+    margin-left: 0 !important;
+    padding-left: 0 !important;
+    overflow: visible !important;
 }
 
-/* Tamanhos específicos de gráficos - alterados para uso relativo */
-.chart-md, .chart-sm, .chart-lg {
-    width: 100%;
-    height: 100%;
-    min-height: 0;
-    flex: 1;
+/* Otimizar o posicionamento dos gráficos de barras horizontais */
+.js-plotly-plot .barlayer .bars {
+    transform: translateX(-5px) !important;
 }
 
-/* Cards de resumo para números importantes */
+/* Reduzir o espaço do eixo Y */
+.js-plotly-plot .ytitle {
+    margin-left: -15px !important;
+}
+
+.js-plotly-plot .yaxislayer-above {
+    transform: translateX(-5px) !important;
+}
+
+/* Ajustar a visualização de texto nas barras */
+.js-plotly-plot .textpoint {
+    margin-left: 5px !important;
+}
+
+/* ==================== Cards de Resumo ==================== */
 .summary-card {
     background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
     color: white;
     border-radius: 8px;
-    padding: 10px; /* Reduzido de 12px */
+    padding: 10px;
     display: flex;
     flex-direction: column;
     text-align: center;
@@ -548,51 +474,68 @@ body {
 }
 
 .summary-title {
-    font-size: 10px; /* Reduzido de 11px */
+    font-size: 10px;
     font-weight: 500;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    margin-bottom: 6px; /* Reduzido de 8px */
+    margin-bottom: 6px;
     opacity: 0.9;
 }
 
 .summary-value {
-    font-size: 22px; /* Reduzido de 24px */
+    font-size: 22px;
     font-weight: 700;
-    margin-bottom: 2px; /* Reduzido de 3px */
+    margin-bottom: 2px;
 }
 
 .summary-subtitle {
-    font-size: 9px; /* Reduzido de 10px */
+    font-size: 9px;
     opacity: 0.8;
 }
 
 /* Cards de resumo compactos */
 .compact-info-cards {
-    gap: 4px; /* Reduzido de 5px */
+    gap: 4px;
 }
 
 .compact-info-cards .summary-card {
-    padding: 8px; /* Reduzido de 10px */
+    padding: 8px;
 }
 
 .compact-info-cards .summary-title {
-    font-size: 9px; /* Reduzido de 10px */
-    margin-bottom: 4px; /* Reduzido de 5px */
+    font-size: 9px;
+    margin-bottom: 4px;
 }
 
 .compact-info-cards .summary-value {
-    font-size: 16px; /* Reduzido de 18px */
+    font-size: 16px;
     margin-bottom: 2px;
 }
 
 .compact-info-cards .summary-subtitle {
-    font-size: 8px; /* Reduzido de 9px */
+    font-size: 8px;
 }
 
-/* Containers com bordas */
+/* ==================== Layouts Flexíveis ==================== */
+.flex-container {
+    display: flex;
+    padding: 6px;
+    gap: 8px;
+    margin-bottom: 4px;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    width: 100%;
+}
+
+.flex-item {
+    flex: 1;
+    min-width: 48%;
+    margin-bottom: 4px;
+}
+
+/* ==================== Containers com Bordas ==================== */
 .bordered-container {
-    margin-bottom: 4px; /* Reduzido de 10px */
+    margin-bottom: 4px;
     border: 1px solid var(--card-border);
     border-radius: 8px;
     overflow: hidden;
@@ -602,15 +545,32 @@ body {
     min-height: 0;
 }
 
-/* Tooltips personalizados */
+/* ==================== Tooltips Personalizados ==================== */
 .custom-tooltip {
     background-color: white;
     border-radius: 6px;
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
-    padding: 6px 10px; /* Reduzido de 8px 12px */
-    font-size: 11px; /* Reduzido de 12px */
+    padding: 6px 10px;
+    font-size: 11px;
     color: var(--text-color);
     border: 1px solid var(--card-border);
+}
+
+/* ==================== Rodapé ==================== */
+.footer {
+    position: fixed !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 30px !important;
+    background-color: #f8f9fa !important;
+    text-align: center !important;
+    padding: 5px 0 !important;
+    font-size: 12px !important;
+    color: #666 !important;
+    border-top: 1px solid #e9ecef !important;
+    z-index: 9999 !important;
+    box-shadow: 0 -2px 5px rgba(0,0,0,0.05) !important;
 }
 
 .footer::before {
@@ -624,24 +584,39 @@ body {
     z-index: 9998;
 }
 
-/* Rodapé compacto */
-.footer {
-    position: fixed !important;
-    bottom: 0 !important;
-    left: 0 !important;
-    width: 100% !important;
-    height: 30px !important;
-    background-color: #f8f9fa !important;
-    text-align: center !important;
-    padding: 5px 0 !important;
-    font-size: 12px !important;
-    color: #666 !important;
-    border-top: 1px solid #e9ecef !important;
-    z-index: 9999 !important; /* Valor alto para garantir que fique por cima */
-    box-shadow: 0 -2px 5px rgba(0,0,0,0.05) !important; /* Sombra sutil */
+/* ==================== Estilos Específicos para Gráficos ==================== */
+/* Especificamente para o gráfico "Areas Utilization" */
+#monthly-areas-graph .plot-container.plotly {
+    margin-left: -10px !important;
 }
 
-/* ==================== Estilos específicos para gráficos ==================== */
+/* Ajustar a margem esquerda do SVG para dar mais espaço */
+#ytd-customers-graph .main-svg {
+    margin-left: 15px !important;
+}
+
+/* Garantir que a área do gráfico seja grande o suficiente */
+#ytd-customers-graph .chart-container,
+#ytd-customers-graph .plot-container.plotly {
+    min-width: 400px !important;
+    overflow: visible !important;
+}
+
+/* Dar mais espaço para o texto do eixo Y específico para o gráfico de clientes */
+#ytd-customers-graph .user-select-none.svg-container {
+    padding-left: 20px !important;
+    padding-bottom: 0px !important;
+}
+
+/* Ajuste para os gráficos da coluna direita */
+#ytd-customers-graph, 
+#monthly-areas-graph, 
+#monthly-tracks-graph {
+    min-height: 0 !important;
+    height: 100% !important;
+    visibility: visible !important;
+    display: block !important;
+}
 
 /* Utilização % */
 .utilization-graph .js-plotly-plot,
@@ -663,14 +638,12 @@ body {
     min-height: 0 !important;
 }
 
-/* ==================== Novos Estilos para o Layout Modificado ==================== */
-
-/* Estilos específicos para os cards dentro da utilização */
+/* ==================== Estilos para Cards de Utilização ==================== */
 .utilization-cards {
     display: flex;
     flex-wrap: wrap;
-    gap: 6px; /* Reduzido de 8px */
-    margin-bottom: 4px; /* Reduzido de 10px */
+    gap: 6px;
+    margin-bottom: 4px;
     justify-content: space-between;
 }
 
@@ -679,11 +652,52 @@ body {
     min-width: 120px;
     background-color: white;
     border-radius: 8px;
-    padding: 6px; /* Reduzido de 8px */
+    padding: 6px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.05);
 }
 
-/* Estilos para o gráfico de clientes com barras e indicadores */
+/* ==================== Estilo para Tabelas ==================== */
+.eja-table-container {
+    max-height: var(--table-height, 500px);
+    overflow-y: auto;
+    position: relative;
+}
+
+.eja-table {
+    width: 100%;
+    margin-bottom: 0;
+}
+
+.eja-table thead {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background-color: #f8f9fa;
+}
+
+.eja-table thead th {
+    border-top: 1px solid #dee2e6;
+    border-bottom: 2px solid #dee2e6;
+    background-color: #f8f9fa;
+    font-weight: bold;
+    padding: 12px 15px;
+    vertical-align: middle;
+}
+
+.eja-table tbody tr:nth-of-type(odd) {
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+.eja-table tbody tr:hover {
+    background-color: rgba(0, 123, 255, 0.1);
+}
+
+.eja-table tbody td {
+    padding: 8px 15px;
+    vertical-align: middle;
+}
+
+/* ==================== Estilos para Gráficos de Clientes ==================== */
 .customer-stacked-chart {
     position: relative;
 }
@@ -698,24 +712,189 @@ body {
 .customer-stacked-chart .gauge-indicator {
     display: flex;
     align-items: center;
-    margin-bottom: 6px; /* Reduzido de 8px */
+    margin-bottom: 6px;
 }
 
 .customer-stacked-chart .gauge-value {
-    width: 26px; /* Reduzido de 30px */
-    height: 26px; /* Reduzido de 30px */
+    width: 26px;
+    height: 26px;
     border-radius: 50%;
     display: flex;
     justify-content: center;
     align-items: center;
     color: white;
     font-weight: bold;
-    font-size: 10px; /* Reduzido de 11px */
-    margin-left: 8px; /* Reduzido de 10px */
+    font-size: 10px;
+    margin-left: 8px;
+}
+
+/* ==================== Estilos para o Seletor de Data ==================== */
+.standard-dropdown {
+    width: 180px;
+    margin: 0;
+    padding: 0;
+}
+
+#month-selector {
+    position: relative !important;
+    z-index: 1001 !important;
+}
+
+#month-selector .Select-control {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    height: 30px;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    background-color: white;
+    border-radius: 4px;
+    color: #333;
+    cursor: pointer;
+    padding: 0 8px;
+}
+
+#month-selector .Select-multi-value-wrapper {
+    flex: 1;
+    display: flex;
+    align-items: center;
+}
+
+#month-selector .Select-arrow-zone {
+    padding-right: 5px;
+    padding-left: 5px;
+    display: flex;
+    align-items: center;
+    align-self: stretch;
+}
+
+#month-selector .Select-arrow {
+    border-color: #888 transparent transparent;
+    border-style: solid;
+    border-width: 5px 5px 2.5px;
+    display: inline-block;
+}
+
+#month-selector .Select-value {
+    display: flex;
+    align-items: center;
+    height: 28px;
+    padding-left: 8px;
+}
+
+#month-selector .Select-menu-outer {
+    position: absolute !important;
+    z-index: 1002 !important;
+    top: 100% !important;
+    left: 0;
+    right: 0;
+    width: 100%;
+    border: 1px solid #ddd;
+    border-radius: 0 0 4px 4px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    background-color: white;
+    margin-top: -1px;
+}
+
+#month-selector .Select-menu {
+    max-height: 200px;
+}
+
+#month-selector .Select-option {
+    color: #333 !important;
+    background-color: white;
+    padding: 8px 10px;
+    font-size: 12px;
+}
+
+#month-selector .Select-option:hover, 
+#month-selector .Select-option.is-focused {
+    background-color: #f0f5ff;
+    color: #333 !important;
+}
+
+#month-selector .Select-option.is-selected {
+    background-color: #e6f0ff;
+    color: #333 !important;
+    font-weight: bold;
+}
+
+#month-selector .Select-value-label {
+    color: #333 !important;
+    padding-left: 5px;
+}
+
+#month-selector * {
+    color: #333 !important;
+}
+
+/* ==================== Dropdown Customizações ==================== */
+.dash-dropdown .Select-menu-outer {
+    z-index: 1000 !important;
+    position: relative !important;
+}
+
+.dash-dropdown {
+    position: relative !important;
+}
+
+.dash-dropdown .Select-menu {
+    max-height: 300px !important;
+    overflow-y: auto !important;
+}
+
+.dash-dropdown .VirtualizedSelectFocusedOption {
+    z-index: 1001 !important;
+}
+
+.dash-dropdown .Select.is-open .Select-menu-outer {
+    display: block !important;
+    visibility: visible !important;
+}
+
+.dash-dropdown.is-open {
+    overflow: visible !important;
+}
+
+/* ==================== Mensagens de Estado ==================== */
+.loading-message {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+    width: 100%;
+    font-size: 1.5rem;
+    color: #666;
+    text-align: center;
+}
+
+.error-message {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+    width: 100%;
+    font-size: 1.5rem;
+    color: #dc3545;
+    text-align: center;
+    padding: 20px;
+    background-color: rgba(220, 53, 69, 0.1);
+    border: 1px solid rgba(220, 53, 69, 0.3);
+    border-radius: 4px;
+}
+
+.no-data-message {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100px;
+    font-size: 14px;
+    color: #666;
+    background-color: #f9f9f9;
+    border-radius: 4px;
+    margin: 10px 0;
 }
 
 /* ==================== Responsividade ==================== */
-
 @media (min-width: 1201px) {
     /* Ajustes para telas grandes */
     .dashboard-container {
@@ -836,6 +1015,8 @@ body {
     /* Para telas com menor altura */
     .dashboard-container {
         padding: 4px;
+        height: calc(100vh - 30px) !important;
+        max-height: calc(100vh - 30px) !important;
     }
     
     .header {
@@ -847,10 +1028,16 @@ body {
     .dashboard-content {
         gap: 4px;
         height: calc(100vh - 60px);
+        max-height: calc(100vh - 75px) !important;
     }
     
     .column {
         gap: 4px;
+        max-height: calc(100vh - 75px) !important;
+    }
+    
+    .three-column-layout {
+        max-height: calc(100vh - 75px) !important;
     }
     
     .panel {
@@ -864,12 +1051,19 @@ body {
     .footer {
         margin-top: 2px;
         max-height: 16px;
+        height: 25px !important;
     }
     
+    .eja-table-container {
+        max-height: 350px;
+    }
+    
+    .eja-table td, .eja-table th {
+        padding: 6px 10px;
+    }
 }
 
 /* ==================== Estilos para Impressão ==================== */
-
 @media print {
     body {
         width: 297mm;
@@ -892,229 +1086,19 @@ body {
         border: 1px solid var(--card-border);
     }
     
-    .header {
-        background: var(--primary-color) !important;
-        -webkit-print-color-adjust: exact !important;
-        print-color-adjust: exact !important;
+    /* Garantir que os gradientes sejam exibidos na impressão */
+    .header, 
+    .section-title, 
+    .summary-card {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+        forced-color-adjust: none;
     }
     
+    .header, 
     .section-title {
         background: var(--primary-color) !important;
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
     }
-    
-    /* Garantir que os gradientes sejam exibidos na impressão */
-    .header, .section-title, .summary-card {
-        -webkit-print-color-adjust: exact;
-        print-color-adjust: exact;
-        forced-color-adjust: none;
-    }
-}
-
-/* Ajuste para os gráficos da coluna direita */
-#ytd-customers-graph, 
-#monthly-areas-graph, 
-#monthly-tracks-graph {
-    min-height: 0 !important;
-    height: 100% !important;
-    visibility: visible !important;
-    display: block !important;
-}
-
-
-
-/* ==================== Seletor de data do Header ==================== */
-
-.header-date {
-    margin-top: 5px;
-    font-size: 14px;
-}
-
-.loading-message {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100%;
-    width: 100%;
-    font-size: 1.5rem;
-    color: #666;
-    text-align: center;
-}
-
-.error-message {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100%;
-    width: 100%;
-    font-size: 1.5rem;
-    color: #dc3545;
-    text-align: center;
-    padding: 20px;
-    background-color: rgba(220, 53, 69, 0.1);
-    border: 1px solid rgba(220, 53, 69, 0.3);
-    border-radius: 4px;
-}
-
-
-
-/* Adicione esse CSS ao seu arquivo de estilos ou como um estilo inline */
-
-/* Aumentar o z-index do dropdown para garantir que fique acima de outros elementos */
-.dash-dropdown .Select-menu-outer {
-    z-index: 1000 !important; /* Um valor alto para garantir que fique acima de outros elementos */
-    position: relative !important;
-}
-
-/* Garantir que o container do dropdown tenha posição relativa */
-.dash-dropdown {
-    position: relative !important;
-}
-
-/* Garantir que o dropdown não seja cortado por containers com overflow hidden */
-.header-container {
-    overflow: visible !important;
-}
-
-/* Ajustar a altura máxima da lista de opções e adicionar rolagem se necessário */
-.dash-dropdown .Select-menu {
-    max-height: 300px !important; /* Ajuste conforme necessário */
-    overflow-y: auto !important;
-}
-
-/* Garantir que o dropdown fique acima de todos os outros elementos */
-.dash-dropdown .VirtualizedSelectFocusedOption {
-    z-index: 1001 !important;
-}
-
-
-#month-selector {
-    position: relative !important;
-    z-index: 1001 !important;
-}
-
-#month-selector .Select-control {
-    display: flex;
-    justify-content: space-between; /* Espaço entre o conteúdo e a seta */
-    align-items: center;
-    height: 30px;
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    background-color: white;
-    border-radius: 4px;
-    color: #333;
-    cursor: pointer;
-    padding: 0 8px;
-}
-
-#month-selector .Select-multi-value-wrapper {
-    flex: 1;
-    display: flex;
-    align-items: center;
-}
-
-#month-selector .Select-arrow-zone {
-    padding-right: 5px;
-    padding-left: 5px;
-    display: flex;
-    align-items: center;
-    align-self: stretch;
-}
-
-/* Estilizar a seta propriamente dita */
-#month-selector .Select-arrow {
-    border-color: #888 transparent transparent;
-    border-style: solid;
-    border-width: 5px 5px 2.5px;
-    display: inline-block;
-}
-
-/* O texto selecionado no dropdown */
-#month-selector .Select-value {
-    display: flex;
-    align-items: center;
-    height: 28px;
-    padding-left: 8px;
-}
-
-/* Garantir que o menu dropdown apareça acima de outros elementos */
-#month-selector .Select-menu-outer {
-    position: absolute !important;
-    z-index: 1002 !important;
-    top: 100% !important;
-    left: 0;
-    right: 0;
-    width: 100%;
-    border: 1px solid #ddd;
-    border-radius: 0 0 4px 4px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-    background-color: white;
-    margin-top: -1px;
-}
-
-/* Ajustes para o menu dropdown e opções */
-#month-selector .Select-menu {
-    max-height: 200px;
-}
-
-#month-selector .Select-option {
-    color: #333 !important; /* Cinza escuro, quase preto */
-    background-color: white;
-    padding: 8px 10px;
-    font-size: 12px;
-}
-
-/* Hover nas opções do dropdown */
-#month-selector .Select-option:hover, 
-#month-selector .Select-option.is-focused {
-    background-color: #f0f5ff; /* Azul bem claro */
-    color: #333 !important;
-}
-
-/* Opção selecionada no dropdown */
-#month-selector .Select-option.is-selected {
-    background-color: #e6f0ff; /* Azul claro */
-    color: #333 !important;
-    font-weight: bold;
-}
-
-.dash-dropdown .Select.is-open .Select-menu-outer {
-    display: block !important;
-    visibility: visible !important;
-}
-
-.header-right, 
-#dashboard-container, 
-.dashboard-container,
-.tabs-content-container,
-#tab-content {
-    overflow: visible !important;
-}
-
-.dash-dropdown.is-open {
-    overflow: visible !important;
-}
-
-/* Melhorar o visual do texto selecionado */
-#month-selector .Select-value-label {
-    color: #333 !important;
-    padding-left: 5px;
-}
-
-
-#month-selector * {
-    color: #333 !important;
-}
-
-
-.no-data-message {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100px;
-    font-size: 14px;
-    color: #666;
-    background-color: #f9f9f9;
-    border-radius: 4px;
-    margin: 10px 0;
 }

@@ -28,5 +28,13 @@ COPY . .
 # Porta na qual o Dash irá rodar
 EXPOSE 8050
 
+ENV DB_SERVER=localhost \
+    DB_PORT=1433 \
+    DB_DATABASE=W_Access \
+    DB_USERNAME=sa \
+    DB_PASSWORD=#w_access_Adm# \
+    DASH_DEBUG=false \
+    DASH_HOST=0.0.0.0
+
 # Comando para iniciar a aplicação
 CMD ["python", "app.py"]

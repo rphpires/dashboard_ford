@@ -1,21 +1,11 @@
-# setup/docker-compose.yml
-version: '3'
-
 services:
   dashboard:
     container_name: dashboard-ford
-    build:
-      context: ..  # Aponta para a pasta raiz do projeto
-      dockerfile: setup/Dockerfile
+    image: dashboard-ford:latest
     ports:
       - "8050:8050"
-    volumes:
-      - ../data:/app/data
-      - ../exports:/app/exports
-      - ../aux_files:/app/aux_files
-      - ../config:/app/config
     environment:
-      - DB_SERVER=host.docker.internal  # Para acessar o SQL Server no host
+      - DB_SERVER=host.docker.internal
       - DB_PORT=1433
       - DB_DATABASE=W_Access
       - DB_USERNAME=sa
