@@ -1,0 +1,6 @@
+@echo off
+echo Importando imagem Docker...
+docker load -i dashboard_ford.tar
+
+echo Subindo container...
+docker-compose up -d

@@ -24,8 +24,24 @@ def create_track_section(tracks_data, total_hours):
         tracks_graph = create_tracks_graph_safe(tracks_data, height=None, max_items=8)
         print("Gráfico de tracks criado!")
 
+        # Calcular o total real para tracks
+        tracks_total = "0:00"
+        if isinstance(tracks_data, dict) and tracks_data:
+            total_minutes = 0
+            for track_info in tracks_data.values():
+                if isinstance(track_info, dict) and 'track_time' in track_info:
+                    track_time = track_info['track_time']
+                    if track_time and ':' in track_time:
+                        hours, minutes = map(int, track_time.split(':'))
+                        total_minutes += hours * 60 + minutes
+
+            # Converter minutos totais para formato HH:MM
+            tracks_hours = total_minutes // 60
+            # tracks_minutes = total_minutes % 60
+            tracks_total = f"{tracks_hours} hr"
+
         return create_section_container([
-            create_section_header('Tracks Utilization (monthly)', f"{total_hours} hr"),
+            create_section_header('Tracks Utilization (monthly)', tracks_total),
             html.Div(
                 className='panel-content',
                 children=[
@@ -36,7 +52,7 @@ def create_track_section(tracks_data, total_hours):
     except Exception as e:
         print(f"Erro ao criar seção de tracks: {e}")
         return create_section_container([
-            create_section_header('Tracks Utilization', f"{total_hours} hr"),
+            create_section_header('Tracks Utilization', f"{tracks_total} hr"),
             html.Div(className='panel-content', children=[
                 html.Div("Erro ao carregar dados", className="error-message")
             ])
@@ -49,8 +65,16 @@ def create_areas_section(areas_df, total_hours):
         areas_graph = create_areas_graph(areas_df, height=None)
         print("Gráfico de áreas criado!")
 
+        # Calcular o total real para áreas
+        areas_total = "0:00"
+        if isinstance(areas_df, pd.DataFrame) and not areas_df.empty and 'hours' in areas_df.columns:
+            total_hours_decimal = areas_df['hours'].sum()
+            areas_hours = int(total_hours_decimal)
+            # areas_minutes = int((total_hours_decimal - areas_hours) * 60)
+            areas_total = f"{areas_hours} hr"
+
         return create_section_container([
-            create_section_header('Areas Utilization (monthly)', f"{total_hours} hr"),
+            create_section_header('Areas Utilization (monthly)', areas_total),
             html.Div(
                 className='panel-content',
                 children=[
@@ -61,7 +85,7 @@ def create_areas_section(areas_df, total_hours):
     except Exception as e:
         print(f"Erro ao criar seção de áreas: {e}")
         return create_section_container([
-            create_section_header('Areas Utilization', f"{total_hours} hr"),
+            create_section_header('Areas Utilization', f"{areas_total} hr"),
             html.Div(className='panel-content', children=[
                 html.Div("Erro ao carregar dados", className="error-message")
             ])
@@ -71,13 +95,15 @@ def create_areas_section(areas_df, total_hours):
 def create_customers_section(customers_df, total_hours_ytd):
     try:
         print("Criando gráfico de clientes...")
-        customers_graph, new_df = create_customers_stacked_graph(customers_df, height=None)
+        customers_graph, df_sorted = create_customers_stacked_graph(customers_df, height=None)
         print("Gráfico de clientes criado!")
-        # print(new_df)
-        total_hours = str(new_df["hours_int"].sum())
+
+        # Calcular o total real para clientes
+        total_hours = str(df_sorted["hours_int"].sum())
+        clients_total = f"{str(total_hours)} hr"
 
         return create_section_container([
-            create_section_header('Clients Utilization (Last 12 Months)', f'{total_hours} hr'),
+            create_section_header('Clients Utilization (Last 12 Months)', clients_total),
             html.Div(
                 className='panel-content',
                 children=[
@@ -85,10 +111,11 @@ def create_customers_section(customers_df, total_hours_ytd):
                 ]
             )
         ], margin_bottom='0px')
+
     except Exception as e:
         print(f"Erro ao criar seção de clientes: {e}")
         return create_section_container([
-            create_section_header('Clients Utilization', total_hours_ytd),
+            create_section_header('Clients Utilization', clients_total),
             html.Div(className='panel-content', children=[
                 html.Div("Erro ao carregar dados", className="error-message")
             ])

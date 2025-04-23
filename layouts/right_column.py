@@ -29,6 +29,12 @@ def create_optimized_utilization_breakdown(dfs, total_hours):
         usuarios_internos_horas = dfs['internal_users']['hours'].sum() if 'hours' in dfs['internal_users'].columns else 0
         vendas_externas_horas = dfs['external_sales']['hours'].sum() if 'hours' in dfs['external_sales'].columns else 0
 
+        # Calcular o total real para utilização mensal
+        total_utilization_decimal = programas_horas + outras_equipes_horas + usuarios_internos_horas + vendas_externas_horas
+        monthly_hours = int(total_utilization_decimal)
+        # monthly_minutes = int((total_utilization_decimal - monthly_hours) * 60)
+        monthly_total = f"{monthly_hours} hr"
+
         # Calcular percentuais
         if total_horas_decimal > 0:
             programas_perc = (programas_horas / total_horas_decimal) * 100
@@ -57,7 +63,7 @@ def create_optimized_utilization_breakdown(dfs, total_hours):
         vendas_externas_perc_fmt = "3%"
 
     return create_section_container([
-        create_section_header('Monthly Utilization', f"{total_hours} hr"),
+        create_section_header('Monthly Utilization', monthly_total),
         html.Div(
             className='panel-content',
             children=[

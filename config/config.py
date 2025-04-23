@@ -59,7 +59,7 @@ chart_config = {
 
 def dashboard_constants():
     try:
-        with open("config/dashboard_constants", 'r', encoding='utf-8') as file:
+        with open("config/dashboard_constants.json", 'r', encoding='utf-8') as file:
             data = json.load(file)
         return data
 

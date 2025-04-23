@@ -415,6 +415,7 @@ body {
 .js-plotly-plot .ytick text, 
 .js-plotly-plot .xtick text {
     font-size: 9px !important;
+    
 }
 
 .js-plotly-plot .ytick text {
@@ -605,6 +606,7 @@ body {
 /* Dar mais espaço para o texto do eixo Y específico para o gráfico de clientes */
 #ytd-customers-graph .user-select-none.svg-container {
     padding-left: 20px !important;
+    height: auto !important;
 }
 
 /* Ajuste para os gráficos da coluna direita */
@@ -960,6 +962,11 @@ body {
     .js-plotly-plot .ytick text, 
     .js-plotly-plot .xtick text {
         font-size: 8px !important;
+        transform: translateY(-2px);
+    }
+    /* Ajustar posição do título do eixo X para não ocupar espaço extra */
+    .js-plotly-plot .g-xtitle {
+        transform: translateY(-10px);
     }
 }
 
