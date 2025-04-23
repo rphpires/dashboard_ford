@@ -1324,4 +1324,4 @@ def create_customers_stacked_graph(df, height=None, use_cached_data=True):
         )
     )
 
-    return fig
+    return fig, df_sorted

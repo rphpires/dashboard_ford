@@ -71,11 +71,13 @@ def create_areas_section(areas_df, total_hours):
 def create_customers_section(customers_df, total_hours_ytd):
     try:
         print("Criando gráfico de clientes...")
-        customers_graph = create_customers_stacked_graph(customers_df, height=None)
+        customers_graph, new_df = create_customers_stacked_graph(customers_df, height=None)
         print("Gráfico de clientes criado!")
+        # print(new_df)
+        total_hours = str(new_df["hours_int"].sum())
 
         return create_section_container([
-            create_section_header('Clients Utilization (Last 12 Months)', total_hours_ytd),
+            create_section_header('Clients Utilization (Last 12 Months)', f'{total_hours} hr'),
             html.Div(
                 className='panel-content',
                 children=[
