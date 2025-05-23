@@ -25,9 +25,11 @@ from layouts.center_column import create_tracks_areas_column
 from layouts.right_column import create_optimized_utilization_breakdown
 from layouts.eja_manager import create_eja_manager_layout, get_eja_manager, create_eja_table
 from layouts.tracks_usage_manager import create_tracks_usage_manager_layout
+from layouts.eja_analysis import create_eja_analysis_layout, create_eja_analysis_table
 
 from data.database import get_available_months, load_dashboard_data
 from data.weekly_processor import setup_scheduler, check_and_process_if_needed
+from data.database import ReportGenerator
 
 
 cache = diskcache.Cache("./cache")
@@ -106,6 +108,7 @@ app.layout = html.Div([
                         dbc.Tab(label='Dashboard', tab_id='tab-dashboard'),
                         dbc.Tab(label='Gerenciar EJAs', tab_id='tab-eja-manager'),
                         dbc.Tab(label='Gerenciar Métricas', tab_id='tab-metrics-manager'),
+                        dbc.Tab(label='Análise de EJAs', tab_id='tab-eja-analysis'),
                     ],
                     active_tab='tab-dashboard',
                 ),
@@ -500,6 +503,7 @@ def update_dashboard_content(data):
     Input('tabs', 'active_tab')
 )
 def render_tab_content(active_tab):
+    print(f"Aba ativa: {active_tab}")  # Debug
     if active_tab == 'tab-dashboard':
         return main_layout
     elif active_tab == 'tab-eja-manager':
@@ -522,7 +526,8 @@ def render_tab_content(active_tab):
         return layout
     elif active_tab == 'tab-metrics-manager':
         return create_tracks_usage_manager_layout()
-
+    elif active_tab == 'tab-eja-analysis':
+        return create_eja_analysis_layout()
     return html.Div("Conteúdo não encontrado")
 
 
@@ -1980,6 +1985,326 @@ def init_weekly_processor():
     # Configurar agendamento semanal (executar imediatamente apenas se for necessário)
     setup_scheduler(run_immediately=needs_processing)
     trace("Inicialização do processador semanal concluída", color="green")
+
+
+@app.callback(
+    [
+        Output("analysis-month-selector", "options"),
+        Output("analysis-month-selector", "value"),
+        Output("analysis-classification-filter", "options")
+    ],
+    [
+        Input("tabs", "active_tab"),
+        Input("month-selector", "value")
+    ]
+)
+def populate_analysis_filters(active_tab, dashboard_month_value):
+    """Popula os filtros quando a aba de análise é aberta"""
+    if active_tab != "tab-eja-analysis":
+        # Retornar valores vazios se não estiver na aba de análise
+        return [], None, [{"label": "Todas", "value": "ALL"}]
+
+    # Obter períodos disponíveis
+    periods = get_available_months(20)
+    period_options = [{"label": p["display"], "value": p["value"]} for p in periods]
+
+    # Usar o valor do mês selecionado no dashboard se disponível
+    selected_month = dashboard_month_value if dashboard_month_value else None
+
+    # Obter classificações disponíveis
+    eja_manager = get_eja_manager()
+    classifications = eja_manager.get_all_classifications()
+
+    classification_options = [{"label": "Todas", "value": "ALL"}]
+    classification_options.extend([{"label": c, "value": c} for c in classifications if c])
+
+    return period_options, selected_month, classification_options
+
+
+@app.callback(
+    Output("analyze-button", "disabled"),
+    Input("analysis-month-selector", "value")
+)
+def enable_analyze_button(month_value):
+    """Habilita o botão de análise quando um mês é selecionado"""
+    return month_value is None or month_value == ""
+
+
+@app.callback(
+    [
+        Output("eja-analysis-table-container", "children"),
+        Output("eja-analysis-data-store", "data"),
+        Output("analysis-status", "is_open"),
+        Output("analysis-status", "children"),
+        Output("analysis-status", "color"),
+        Output("export-analysis-button", "disabled")
+    ],
+    Input("analyze-button", "n_clicks"),
+    [
+        State("analysis-month-selector", "value"),
+        State("analysis-classification-filter", "value")
+    ],
+    prevent_initial_call=True
+)
+def analyze_eja_usage(n_clicks, month_value, classification_filter):
+    """Analisa a utilização de EJAs para o período selecionado"""
+    if not n_clicks or not month_value:
+        raise PreventUpdate
+
+    print('######### button clicked #########')
+    try:
+        # Extrair datas do período
+        start_date, end_date = month_value.split('|')
+
+        # Obter conexão com o banco
+        from data.database import get_db_connection
+        sql = get_db_connection()
+
+        if not sql:
+            return (
+                html.Div("Erro ao conectar ao banco de dados.", className="text-center text-danger my-4"),
+                {},
+                True,
+                "Erro ao conectar ao banco de dados",
+                "danger",
+                True
+            )
+
+        # Formatar datas para a stored procedure
+        start_date_formatted = f"{start_date} 00:00:00.000"
+        end_date_formatted = f"{end_date} 23:59:59.999"
+
+        # Obter dados do banco
+        dashboard_df = sql.execute_stored_procedure_df("sp_VehicleAccessReport",
+                                                       [start_date_formatted, end_date_formatted])
+
+        if dashboard_df is None or dashboard_df.empty:
+            return (
+                html.Div("Nenhum dado encontrado para o período selecionado.",
+                         className="text-center text-warning my-4"),
+                {},
+                True,
+                "Nenhum dado encontrado para o período",
+                "warning",
+                True
+            )
+
+        # Processar dados
+        report_gen = ReportGenerator(dashboard_df=dashboard_df)
+
+        # Converter tempo para horas decimais
+        dashboard_df['HorasDecimais'] = dashboard_df['StayTime'].apply(report_gen.converter_tempo_para_horas)
+
+        # Obter todos os EJAs do banco
+        eja_manager = get_eja_manager()
+        all_ejas = eja_manager.get_all_ejas()
+
+        # Criar dicionário de EJAs para lookup rápido
+        eja_dict = {str(eja['eja_code']): eja for eja in all_ejas}
+
+        # Agrupar por EJA
+        eja_usage = dashboard_df.groupby('EJA')['HorasDecimais'].sum().reset_index()
+
+        # Calcular total de horas
+        total_hours = eja_usage['HorasDecimais'].sum()
+
+        # Processar dados para análise
+        analysis_data = []
+        # cumulative_percentage = 0
+
+        # Aplicar filtro de classificação primeiro
+        if classification_filter != "ALL":
+            # Filtrar EJAs pela classificação
+            filtered_eja_codes = [
+                str(eja['eja_code']) for eja in all_ejas
+                if eja.get('new_classification') == classification_filter
+            ]
+            eja_usage = eja_usage[eja_usage['EJA'].isin(filtered_eja_codes)]
+            # Recalcular total após filtro
+            total_hours = eja_usage['HorasDecimais'].sum()
+
+        # Reordenar após filtro
+        eja_usage = eja_usage.sort_values('HorasDecimais', ascending=False)
+
+        for _, row in eja_usage.iterrows():
+            eja_code = str(row['EJA'])
+            hours = row['HorasDecimais']
+            percentage = (hours / total_hours * 100) if total_hours > 0 else 0
+            # cumulative_percentage += percentage
+
+            # Obter informações do EJA
+            eja_info = eja_dict.get(eja_code, {})
+
+            # Se não encontrar o título, usar o código EJA
+            if eja_info:
+                title = eja_info.get('title', f'EJA {eja_code} - Não cadastrado')
+            else:
+                title = f'EJA {eja_code} - Não cadastrado'
+
+            analysis_data.append({
+                'eja_code': eja_code,
+                'title': title,
+                'classification': eja_info.get('new_classification', 'Não classificado'),
+                'hours_decimal': hours,
+                'hours_formatted': report_gen.format_datetime(hours),
+                'percentage': percentage
+            })
+
+        # Se não houver dados após o filtro
+        if not analysis_data:
+            return (
+                html.Div("Nenhum EJA encontrado com os filtros selecionados.",
+                         className="text-center text-warning my-4"),
+                {},
+                True,
+                "Nenhum EJA encontrado com os filtros aplicados",
+                "warning",
+                True
+            )
+
+        # Criar tabela
+        table = create_eja_analysis_table(analysis_data, page_current=0)
+
+        # Armazenar dados para exportação
+        store_data = {
+            'analysis_data': analysis_data,
+            'period': month_value,
+            'filter': classification_filter
+        }
+
+        # Formatar total de horas para o header
+        total_hours_formatted = report_gen.format_datetime(total_hours)
+
+        return (
+            table,
+            store_data,
+            True,
+            f"Análise concluída: {len(analysis_data)} EJAs processados",
+            "success",
+            False
+        )
+
+    except Exception as e:
+        trace(f"Erro na análise de EJAs: {str(e)}", color="red")
+        return (
+            html.Div(f"Erro ao processar análise: {str(e)}", className="text-center text-danger my-4"),
+            {},
+            True,
+            f"Erro ao processar análise: {str(e)}",
+            "danger",
+            True
+        )
+
+
+@app.callback(
+    Output("eja-analysis-table-container", "children", allow_duplicate=True),
+    Input("eja-analysis-pagination", "active_page"),
+    State("eja-analysis-data-store", "data"),
+    prevent_initial_call=True
+)
+def update_analysis_pagination(active_page, store_data):
+    """Atualiza a tabela quando a página muda"""
+    if not active_page or not store_data or 'analysis_data' not in store_data:
+        raise PreventUpdate
+
+    # Ajustar página (UI é base 1, código é base 0)
+    page_current = active_page - 1
+
+    # Recriar tabela com a nova página
+    table = create_eja_analysis_table(store_data['analysis_data'], page_current=page_current)
+
+    return table
+
+
+@app.callback(
+    Input("export-analysis-button", "n_clicks"),
+    State("eja-analysis-data-store", "data"),
+    prevent_initial_call=True
+)
+def export_analysis(n_clicks, store_data):
+    """Exporta a análise para CSV"""
+    if not n_clicks or not store_data or 'analysis_data' not in store_data:
+        raise PreventUpdate
+
+    try:
+        import os
+        from datetime import datetime
+
+        # Criar DataFrame com os dados
+        df = pd.DataFrame(store_data['analysis_data'])
+
+        # Reorganizar colunas para exportação
+        export_df = df[[
+            'eja_code', 'title', 'classification',
+            'hours_formatted', 'percentage'
+        ]].copy()
+
+        # Renomear colunas
+        export_df.columns = [
+            'EJA CODE', 'TÍTULO', 'CLASSIFICAÇÃO',
+            'HORAS', 'PERCENTUAL (%)'
+        ]
+
+        # Formatar percentuais
+        export_df['PERCENTUAL (%)'] = export_df['PERCENTUAL (%)'].apply(lambda x: f"{x:.2f}")
+
+        # Gerar nome do arquivo
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        export_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "exports")
+        os.makedirs(export_dir, exist_ok=True)
+        file_path = os.path.join(export_dir, f"eja_analysis_{timestamp}.csv")
+
+        # Exportar para CSV
+        export_df.to_csv(file_path, index=False, encoding='latin-1')
+
+    except Exception as e:
+        report_exception(e)
+
+
+@app.callback(
+    Output("download-analysis-csv", "data"),
+    Input("export-analysis-button", "n_clicks"),
+    State("eja-analysis-data-store", "data"),
+    prevent_initial_call=True
+)
+def export_analysis_to_csv(n_clicks, store_data):
+    """Exporta a análise de EJAs para CSV com download direto"""
+    if not n_clicks or not store_data or 'analysis_data' not in store_data:
+        raise PreventUpdate
+
+    try:
+        # Obter dados da análise
+        analysis_data = store_data['analysis_data']
+
+        # Criar DataFrame
+        df = pd.DataFrame(analysis_data)
+
+        # Renomear colunas para português
+        df = df.rename(columns={
+            'eja_code': 'Código EJA',
+            'title': 'Título',
+            'classification': 'Classificação',
+            'hours_formatted': 'Horas',
+            'percentage': 'Percentual (%)'
+        })
+
+        # Formatar percentuais
+        df['Percentual (%)'] = df['Percentual (%)'].round(2)
+
+        # Remover coluna hours_decimal (não necessária no export)
+        if 'hours_decimal' in df.columns:
+            df = df.drop('hours_decimal', axis=1)
+
+        # Gerar nome do arquivo com timestamp
+        timestamp = dt.now().strftime('%Y%m%d_%H%M%S')
+        filename = f'analise_eja_{timestamp}.csv'
+
+        # Retornar o download
+        return dcc.send_data_frame(df.to_csv, filename, index=False, encoding='latin-1')
+
+    except Exception as e:
+        trace(f"Erro ao exportar análise: {str(e)}", color="red")
+        return None
 
 
 if __name__ == '__main__':

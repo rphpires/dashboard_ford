@@ -734,12 +734,14 @@ body {
     padding: 0;
 }
 
-#month-selector {
+#month-selector,
+#analysis-month-selector {
     position: relative !important;
     z-index: 1001 !important;
 }
 
-#month-selector .Select-control {
+#month-selector .Select-control,
+#analysis-month-selector .Select-control {
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -752,13 +754,15 @@ body {
     padding: 0 8px;
 }
 
-#month-selector .Select-multi-value-wrapper {
+#month-selector .Select-multi-value-wrapper,
+#analysis-month-selector .Select-multi-value-wrapper {
     flex: 1;
     display: flex;
     align-items: center;
 }
 
-#month-selector .Select-arrow-zone {
+#month-selector .Select-arrow-zone,
+#analysis-month-selector .Select-arrow-zone {
     padding-right: 5px;
     padding-left: 5px;
     display: flex;
@@ -766,21 +770,24 @@ body {
     align-self: stretch;
 }
 
-#month-selector .Select-arrow {
+#month-selector .Select-arrow,
+#analysis-month-selector .Select-arrow {
     border-color: #888 transparent transparent;
     border-style: solid;
     border-width: 5px 5px 2.5px;
     display: inline-block;
 }
 
-#month-selector .Select-value {
+#month-selector .Select-value,
+#analysis-month-selector .Select-value {
     display: flex;
     align-items: center;
     height: 28px;
     padding-left: 8px;
 }
 
-#month-selector .Select-menu-outer {
+#month-selector .Select-menu-outer,
+#analysis-month-selector .Select-menu-outer {
     position: absolute !important;
     z-index: 1002 !important;
     top: 100% !important;
@@ -794,11 +801,13 @@ body {
     margin-top: -1px;
 }
 
-#month-selector .Select-menu {
+#month-selector .Select-menu,
+#analysis-month-selector .Select-menu {
     max-height: 200px;
 }
 
-#month-selector .Select-option {
+#month-selector .Select-option,
+#analysis-month-selector .Select-option {
     color: #333 !important;
     background-color: white;
     padding: 8px 10px;
@@ -806,23 +815,28 @@ body {
 }
 
 #month-selector .Select-option:hover, 
-#month-selector .Select-option.is-focused {
+#month-selector .Select-option.is-focused,
+#analysis-month-selector .Select-option:hover,
+#analysis-month-selector .Select-option.is-focused {
     background-color: #f0f5ff;
     color: #333 !important;
 }
 
-#month-selector .Select-option.is-selected {
+#month-selector .Select-option.is-selected,
+#analysis-month-selector .Select-option.is-selected {
     background-color: #e6f0ff;
     color: #333 !important;
     font-weight: bold;
 }
 
-#month-selector .Select-value-label {
+#month-selector .Select-value-label,
+#analysis-month-selector .Select-value-label {
     color: #333 !important;
     padding-left: 5px;
 }
 
-#month-selector * {
+#month-selector *,
+#analysis-month-selector * {
     color: #333 !important;
 }
 
@@ -1101,3 +1115,39 @@ body {
         print-color-adjust: exact !important;
     }
 }
+
+.card-metric {
+    background: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 20px;
+    text-align: center;
+    height: 100%;
+    transition: all 0.3s ease;
+}
+
+.card-metric:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.card-metric .metric-title {
+    font-size: 12px;
+    color: #666;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.card-metric .metric-value {
+    font-size: 24px;
+    font-weight: 600;
+    color: #0066cc;
+}
+
+/* Ajuste para o body da análise */
+.dashboard-container .dashboard-body {
+    background-color: #f5f5f5;
+    min-height: calc(100vh - 80px);
+}
+
