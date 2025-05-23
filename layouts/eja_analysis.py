@@ -129,80 +129,128 @@ def create_eja_analysis_layout():
                 style={'padding': '20px'},
                 children=[
                     dbc.Card([
+                        # dbc.CardBody([
+                        #     # Filtros
+                        #     dbc.Row([dbc.Label("Classificação:")]),
+                        #     dbc.Row([
+                        #         dbc.Col([
+                        #             # dbc.Label("Classificação:", className="mb-1"),
+                        #             dcc.Dropdown(
+                        #                 id="analysis-classification-filter",
+                        #                 options=[{"label": "Todas", "value": "ALL"}],
+                        #                 value="ALL",
+                        #                 placeholder="Filtrar por classificação...",
+                        #                 className="w-100"
+                        #             )
+                        #         ], md=6),
+
+                        #         dbc.Col(
+                        #             dbc.Button(
+                        #                 "Analisar",
+                        #                 id="analyze-button",
+                        #                 color="primary",
+                        #                 className="me-2"
+                        #             ),
+                        #             md="auto",
+                        #             className="d-flex align-items-center"
+                        #         ),
+
+                        #         dbc.Col(
+                        #             dbc.Button(
+                        #                 "Exportar Análise",
+                        #                 id="export-analysis-button",
+                        #                 color="success"
+                        #             ),
+                        #             md="auto",
+                        #             className="d-flex align-items-center"
+                        #         )
+                        #     ], className="mb-3 align-items-center"),
+
+                        #     # Container para a tabela
+                        #     html.Div(
+                        #         id="eja-analysis-table-container",
+                        #         className="table-responsive",
+                        #         style={
+                        #             "maxHeight": "calc(100vh - 300px)",
+                        #             "overflowY": "auto"
+                        #         },
+                        #         children=[
+                        #             html.Div(
+                        #                 "Selecione um mês e clique em 'Analisar' para visualizar os dados.",
+                        #                 className="text-center text-muted my-5"
+                        #             )
+                        #         ]
+                        #     ),
+                        # ])
                         dbc.CardBody([
-                            # Filtros
-                            # dbc.Row([
-                            #     dbc.Col([
-                            #         dbc.Label("Classificação:"),
-                            #         dcc.Dropdown(
-                            #             id="analysis-classification-filter",
-                            #             options=[{"label": "Todas", "value": "ALL"}],
-                            #             value="ALL",
-                            #             placeholder="Filtrar por classificação...",
-                            #             className="mb-2"
-                            #         )
-                            #     ], md=4),
+                            # Container com altura fixa para filtros
+                            html.Div(
+                                className="analysis-filters-container",
+                                children=[
+                                    # Label separado
+                                    dbc.Row([
+                                        dbc.Col([
+                                            dbc.Label("Classificação:", className="mb-2")
+                                        ], width=12)
+                                    ]),
+                                    
+                                    # Linha com dropdown e botões
+                                    dbc.Row([
+                                        # Coluna para o dropdown
+                                        dbc.Col([
+                                            html.Div(
+                                                className="filter-dropdown-container",
+                                                children=[
+                                                    dcc.Dropdown(
+                                                        id="analysis-classification-filter",
+                                                        options=[{"label": "Todas", "value": "ALL"}],
+                                                        value="ALL",
+                                                        placeholder="Filtrar por classificação...",
+                                                        className="w-100",
+                                                        style={
+                                                            'position': 'relative',
+                                                            'zIndex': 100
+                                                        }
+                                                    )
+                                                ]
+                                            )
+                                        ], md=6, className="pe-3"),
 
-                            #     dbc.Col([
-                            #         html.Div([
-                            #             dbc.Button(
-                            #                 "Analisar",
-                            #                 id="analyze-button",
-                            #                 color="primary",
-                            #                 className="me-2",
-                            #                 disabled=False
-                            #             ),
-                            #             dbc.Button(
-                            #                 "Exportar Análise",
-                            #                 id="export-analysis-button",
-                            #                 color="success",
-                            #                 disabled=True
-                            #             )
-                            #         ], className="d-flex align-items-end h-100")
-                            #     ], md=8)
-                            # ], className="mb-3"),
-                            dbc.Row([dbc.Label("Classificação:")]),
-                            dbc.Row([
-                                dbc.Col([
-                                    # dbc.Label("Classificação:", className="mb-1"),
-                                    dcc.Dropdown(
-                                        id="analysis-classification-filter",
-                                        options=[{"label": "Todas", "value": "ALL"}],
-                                        value="ALL",
-                                        placeholder="Filtrar por classificação...",
-                                        className="w-100"
-                                    )
-                                ], md=6),
+                                        # Coluna para os botões
+                                        dbc.Col([
+                                            html.Div(
+                                                className="analysis-buttons-container",
+                                                children=[
+                                                    dbc.Button(
+                                                        "Analisar",
+                                                        id="analyze-button",
+                                                        color="primary",
+                                                        className="me-2"
+                                                    ),
+                                                    dbc.Button(
+                                                        "Exportar Análise",
+                                                        id="export-analysis-button",
+                                                        color="success"
+                                                    )
+                                                ]
+                                            )
+                                        ], md=6, className="text-end")
+                                    ], className="align-items-end")
+                                ]
+                            ),
 
-                                dbc.Col(
-                                    dbc.Button(
-                                        "Analisar",
-                                        id="analyze-button",
-                                        color="primary",
-                                        className="me-2"
-                                    ),
-                                    md="auto",
-                                    className="d-flex align-items-center"
-                                ),
-
-                                dbc.Col(
-                                    dbc.Button(
-                                        "Exportar Análise",
-                                        id="export-analysis-button",
-                                        color="success"
-                                    ),
-                                    md="auto",
-                                    className="d-flex align-items-center"
-                                )
-                            ], className="mb-3 align-items-center"),
+                            # Espaçamento antes da tabela
+                            html.Hr(className="my-3"),
 
                             # Container para a tabela
                             html.Div(
                                 id="eja-analysis-table-container",
                                 className="table-responsive",
                                 style={
-                                    "maxHeight": "calc(100vh - 300px)",
-                                    "overflowY": "auto"
+                                    "maxHeight": "calc(100vh - 350px)",
+                                    "overflowY": "auto",
+                                    "position": "relative",
+                                    "zIndex": 1
                                 },
                                 children=[
                                     html.Div(

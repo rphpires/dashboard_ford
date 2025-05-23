@@ -1995,15 +1995,17 @@ def init_weekly_processor():
     ],
     [
         Input("tabs", "active_tab"),
-        Input("month-selector", "value")
+        Input("analysis-month-selector", "value")
     ]
 )
 def populate_analysis_filters(active_tab, dashboard_month_value):
+    trace('######### populating analysis filters #########')
     """Popula os filtros quando a aba de análise é aberta"""
     if active_tab != "tab-eja-analysis":
         # Retornar valores vazios se não estiver na aba de análise
         return [], None, [{"label": "Todas", "value": "ALL"}]
 
+    trace('######### populating analysis filters 2 #########')
     # Obter períodos disponíveis
     periods = get_available_months(20)
     period_options = [{"label": p["display"], "value": p["value"]} for p in periods]
