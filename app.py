@@ -183,7 +183,27 @@ main_layout = html.Div(
         ),
 
         # Armazenamento de dados
-        dcc.Store(id='dashboard-data-store')
+        dcc.Store(id='dashboard-data-store'),
+        dcc.Store(id='missing-ejas-store', data=[]),
+        dbc.Toast(
+            id="eja-not-found-notification",
+            header="⚠️ EJAs Não Cadastrados Encontrados",
+            icon="warning",
+            dismissable=True,
+            is_open=False,
+            duration=None,  # Não fecha automaticamente
+            style={
+                "position": "fixed",
+                "top": "80px",
+                "right": "20px",
+                "zIndex": "9999",
+                "width": "400px",
+                "maxHeight": "500px",
+                "overflowY": "auto"
+            },
+            className="border-warning",
+            children=[]
+        )
     ]
 )
 
@@ -1965,6 +1985,93 @@ app.index_string = '''
                     max-height: calc(100vh - 30px);
                 }
             }
+
+            /* Estilo para notificação de EJAs não cadastrados */
+            .toast-warning {
+                border-left: 5px solid #ffc107 !important;
+                box-shadow: 0 4px 12px rgba(255, 193, 7, 0.3) !important;
+                animation: slideInRight 0.5s ease-out;
+            }
+
+            .toast-warning .toast-header {
+                background-color: #fff3cd !important;
+                border-bottom: 1px solid #ffeaa7 !important;
+                font-weight: bold !important;
+            }
+
+            .border-left-warning {
+                border-left: 4px solid #ffc107 !important;
+                background-color: #fefefe !important;
+            }
+
+            @keyframes slideInRight {
+                from {
+                    transform: translateX(100%);
+                    opacity: 0;
+                }
+                to {
+                    transform: translateX(0);
+                    opacity: 1;
+                }
+            }
+
+            @media (max-width: 768px) {
+                .toast-warning {
+                    width: calc(100vw - 40px) !important;
+                    right: 20px !important;
+                    left: 20px !important;
+                    max-width: none !important;
+                }
+            }
+
+            /* Estilos adicionais para a nova notificação */
+            .border-left-danger {
+                border-left: 4px solid #dc3545 !important;
+                background-color: #fff5f5 !important;
+            }
+
+            .border-left-danger:hover {
+                background-color: #ffe6e6 !important;
+            }
+
+            .border-left-warning {
+                border-left: 4px solid #ffc107 !important;
+                background-color: #fefefe !important;
+            }
+
+            .border-left-warning:hover {
+                background-color: #fff9e6 !important;
+            }
+
+            .text-danger {
+                color: #dc3545 !important;
+            }
+
+            .text-warning {
+                color: #856404 !important;
+            }
+
+            /* Melhorar espaçamento dos ícones */
+            .me-2 {
+                margin-right: 0.5rem !important;
+            }
+
+            /* Estilo para seções diferentes */
+            .notification-section {
+                border-radius: 8px;
+                padding: 12px;
+                margin-bottom: 16px;
+            }
+
+            .notification-section.danger {
+                background-color: #fff5f5;
+                border: 1px solid #fecaca;
+            }
+
+            .notification-section.warning {
+                background-color: #fffbeb;
+                border: 1px solid #fed7aa;
+            }
         </style>
     </head>
     <body>
@@ -2307,6 +2414,472 @@ def export_analysis_to_csv(n_clicks, store_data):
     except Exception as e:
         trace(f"Erro ao exportar análise: {str(e)}", color="red")
         return None
+
+
+# Substitua o callback no app.py por esta versão corrigida:
+
+@app.callback(
+    [
+        Output("eja-not-found-notification", "is_open"),
+        Output("eja-not-found-notification", "children"),
+        Output("missing-ejas-store", "data")
+    ],
+    [Input('dashboard-data-store', 'data')],
+    prevent_initial_call=True
+)
+def check_missing_ejas_with_vehicle_fixed(dashboard_data):
+    """Versão corrigida - cria HorasDecimais ANTES de usar"""
+    if not dashboard_data or 'status' in dashboard_data:
+        return False, [], []
+
+    try:
+        # Extrair datas
+        start_date = dashboard_data.get('start_date')
+        end_date = dashboard_data.get('end_date')
+
+        if not start_date or not end_date:
+            return False, [], []
+
+        # Carregar dados do banco
+        from data.database import get_db_connection
+        sql = get_db_connection()
+
+        if not sql:
+            return False, [], []
+
+        # Formatar datas
+        start_date_formatted = f"{start_date} 00:00:00.000"
+        end_date_formatted = f"{end_date} 23:59:59.999"
+
+        # Obter dados
+        dashboard_df = sql.execute_stored_procedure_df("sp_VehicleAccessReport",
+                                                       [start_date_formatted, end_date_formatted])
+
+        if dashboard_df is None or dashboard_df.empty:
+            return False, [], []
+
+        print(f"DEBUG: Processando {len(dashboard_df)} registros")
+        print(f"DEBUG: Colunas disponíveis: {list(dashboard_df.columns)}")
+
+        # Verificar se as colunas necessárias existem
+        if 'Vehicle' not in dashboard_df.columns:
+            print("AVISO: Coluna 'Vehicle' não encontrada nos dados")
+            return False, [], []
+
+        # ====== CRIAR COLUNA HorasDecimais PRIMEIRO ======
+        from data.database import ReportGenerator
+        report_gen = ReportGenerator(dashboard_df=dashboard_df)
+        dashboard_df['HorasDecimais'] = dashboard_df['StayTime'].apply(report_gen.converter_tempo_para_horas)
+
+        print(f"DEBUG: Coluna HorasDecimais criada com {dashboard_df['HorasDecimais'].sum():.2f} horas totais")
+
+        # ====== ANÁLISE DE EJA E VEHICLE ======
+        def analyze_eja_vehicle(row):
+            """Analisa cada linha e determina o tipo de problema"""
+            eja_val = row['EJA']
+            vehicle_val = row['Vehicle']
+
+            # Processar valor do EJA
+            eja_is_empty = False
+            eja_clean = None
+
+            if eja_val is None or pd.isna(eja_val):
+                eja_is_empty = True
+            else:
+                try:
+                    eja_str = str(eja_val).strip()
+                    if not eja_str or eja_str.lower() in ['nan', 'none', 'null', '']:
+                        eja_is_empty = True
+                    else:
+                        eja_clean = eja_str
+                except:
+                    eja_is_empty = True
+
+            # Processar valor do Vehicle
+            vehicle_clean = "N/A"
+            if vehicle_val is not None and not pd.isna(vehicle_val):
+                try:
+                    vehicle_str = str(vehicle_val).strip()
+                    if vehicle_str and vehicle_str.lower() not in ['nan', 'none', 'null', '']:
+                        vehicle_clean = vehicle_str
+                except:
+                    pass
+
+            return pd.Series({
+                'eja_is_empty': eja_is_empty,
+                'eja_clean': eja_clean,
+                'vehicle_clean': vehicle_clean
+            })
+
+        # Aplicar análise (usando apply com result_type='expand' para criar múltiplas colunas)
+        analysis_cols = dashboard_df.apply(analyze_eja_vehicle, axis=1)
+        dashboard_df = pd.concat([dashboard_df, analysis_cols], axis=1)
+
+        # Separar registros problemáticos
+        empty_eja_df = dashboard_df[dashboard_df['eja_is_empty'] == True].copy()
+        valid_eja_df = dashboard_df[dashboard_df['eja_is_empty'] == False].copy()
+
+        print(f"DEBUG: {len(empty_eja_df)} registros com EJA vazio")
+        print(f"DEBUG: {len(valid_eja_df)} registros com EJA válido")
+
+        # Obter EJAs cadastrados
+        from layouts.eja_manager import get_eja_manager
+        eja_manager = get_eja_manager()
+        all_ejas = eja_manager.get_all_ejas()
+        ejas_cadastrados = set()
+
+        for eja in all_ejas:
+            eja_code = eja.get('eja_code')
+            if eja_code is not None:
+                ejas_cadastrados.add(str(eja_code).strip())
+
+        print(f"DEBUG: {len(ejas_cadastrados)} EJAs cadastrados no sistema")
+
+        # Preparar dados para relatório
+        missing_data = []
+
+        # ====== PROCESSAR EJAs VAZIOS (MOSTRAR VEHICLE) ======
+        if not empty_eja_df.empty:
+            print(f"DEBUG: Processando {len(empty_eja_df)} registros com EJA vazio")
+
+            # Verificar se a coluna HorasDecimais existe no dataframe filtrado
+            if 'HorasDecimais' not in empty_eja_df.columns:
+                print("ERRO: Coluna HorasDecimais não existe no dataframe filtrado")
+                return False, [], []
+
+            # Agrupar por Vehicle
+            try:
+                vehicle_groups = empty_eja_df.groupby('vehicle_clean')['HorasDecimais'].sum().reset_index()
+                vehicle_groups.columns = ['vehicle_clean', 'total_hours']
+
+                print(f"DEBUG: {len(vehicle_groups)} grupos de vehicles encontrados")
+
+                for _, row in vehicle_groups.iterrows():
+                    vehicle_name = row['vehicle_clean']
+                    total_hours = row['total_hours']
+
+                    # Contar eventos para este vehicle
+                    event_count = len(empty_eja_df[empty_eja_df['vehicle_clean'] == vehicle_name])
+
+                    # Obter amostra de vehicles originais
+                    original_vehicles = empty_eja_df[empty_eja_df['vehicle_clean'] == vehicle_name]['Vehicle'].unique()
+
+                    missing_data.append({
+                        'problem_type': 'eja_vazio',
+                        'identifier': vehicle_name,
+                        'display_title': f"Veículo: {vehicle_name}",
+                        'display_subtitle': "EJA não informado",
+                        'total_hours': total_hours,
+                        'total_hours_formatted': report_gen.format_datetime(total_hours),
+                        'event_count': event_count,
+                        'additional_info': f"Variações: {', '.join(original_vehicles[:2])}" if len(original_vehicles) > 1 else "",
+                        'color_class': 'border-left-danger',
+                        'icon': '🚗'
+                    })
+
+                    print(f"DEBUG: Vehicle {vehicle_name}: {event_count} eventos, {total_hours:.2f} horas")
+
+            except Exception as e:
+                print(f"ERRO ao agrupar vehicles: {str(e)}")
+                # Fallback: processar individualmente
+                unique_vehicles = empty_eja_df['vehicle_clean'].unique()
+                for vehicle_name in unique_vehicles:
+                    vehicle_data = empty_eja_df[empty_eja_df['vehicle_clean'] == vehicle_name]
+                    total_hours = vehicle_data['HorasDecimais'].sum()
+                    event_count = len(vehicle_data)
+
+                    missing_data.append({
+                        'problem_type': 'eja_vazio',
+                        'identifier': vehicle_name,
+                        'display_title': f"Veículo: {vehicle_name}",
+                        'display_subtitle': "EJA não informado",
+                        'total_hours': total_hours,
+                        'total_hours_formatted': report_gen.format_datetime(total_hours),
+                        'event_count': event_count,
+                        'additional_info': "",
+                        'color_class': 'border-left-danger',
+                        'icon': '🚗'
+                    })
+
+        # ====== PROCESSAR EJAs VÁLIDOS NÃO CADASTRADOS ======
+        if not valid_eja_df.empty:
+            print(f"DEBUG: Processando {len(valid_eja_df)} registros com EJA válido")
+
+            # Encontrar EJAs não cadastrados
+            ejas_validos = set(str(eja) for eja in valid_eja_df['eja_clean'].unique() if eja is not None)
+            ejas_nao_cadastrados = ejas_validos - ejas_cadastrados
+
+            print(f"DEBUG: {len(ejas_nao_cadastrados)} EJAs não cadastrados encontrados")
+
+            for eja_code in ejas_nao_cadastrados:
+                eja_data = valid_eja_df[valid_eja_df['eja_clean'] == eja_code]
+                total_hours = eja_data['HorasDecimais'].sum()
+                event_count = len(eja_data)
+
+                # Obter alguns vehicles que usam este EJA
+                sample_vehicles = eja_data['Vehicle'].dropna().unique()[:3]
+                vehicles_info = f"Ex: {', '.join(sample_vehicles)}" if len(sample_vehicles) > 0 else ""
+
+                missing_data.append({
+                    'problem_type': 'eja_nao_cadastrado',
+                    'identifier': eja_code,
+                    'display_title': f"EJA: {eja_code}",
+                    'display_subtitle': "Não cadastrado no sistema",
+                    'total_hours': total_hours,
+                    'total_hours_formatted': report_gen.format_datetime(total_hours),
+                    'event_count': event_count,
+                    'additional_info': vehicles_info,
+                    'color_class': 'border-left-warning',
+                    'icon': '⚠️'
+                })
+
+                print(f"DEBUG: EJA {eja_code}: {event_count} eventos, {total_hours:.2f} horas")
+
+        if not missing_data:
+            print("DEBUG: Nenhum problema encontrado")
+            return False, [], []
+
+        # Ordenar por impacto
+        missing_data.sort(key=lambda x: x['total_hours'], reverse=True)
+
+        # Calcular totais
+        total_missing_hours = sum(item['total_hours'] for item in missing_data)
+        total_events = sum(item['event_count'] for item in missing_data)
+
+        # Separar por tipo
+        eja_vazios = [item for item in missing_data if item['problem_type'] == 'eja_vazio']
+        eja_nao_cadastrados = [item for item in missing_data if item['problem_type'] == 'eja_nao_cadastrado']
+
+        print(f"DEBUG: {len(eja_vazios)} veículos com EJA vazio, {len(eja_nao_cadastrados)} EJAs não cadastrados")
+
+        # ====== CRIAR NOTIFICAÇÃO ======
+        notification_content = [
+            html.P([
+                "Foram encontrados eventos com problemas de EJA que precisam de atenção. ",
+                "Isso pode afetar a precisão dos relatórios."
+            ], className="mb-3"),
+
+            html.Hr(),
+
+            html.P([
+                html.Strong("Resumo:"),
+                html.Br(),
+                f"• {len(eja_vazios)} veículos com EJA não informado" if eja_vazios else "",
+                html.Br() if eja_vazios else None,
+                f"• {len(eja_nao_cadastrados)} EJAs não cadastrados" if eja_nao_cadastrados else "",
+                html.Br() if eja_nao_cadastrados else None,
+                f"• {total_events} eventos afetados",
+                html.Br(),
+                f"• {report_gen.format_datetime(total_missing_hours)} horas totais"
+            ], className="mb-3"),
+
+            html.Hr()
+        ]
+
+        # Seção de EJAs vazios
+        if eja_vazios:
+            notification_content.extend([
+                html.P([
+                    html.Span("🚗 ", style={"fontSize": "1.2em"}),
+                    html.Strong(f"Veículos sem EJA informado ({len(eja_vazios)}):")
+                ], className="mb-2 text-danger"),
+
+                html.Div([
+                    dbc.Card([
+                        dbc.CardBody([
+                            html.H6([
+                                html.Span(item['icon'], className="me-2"),
+                                item['display_title']
+                            ], className="card-title mb-1"),
+                            html.P(item['display_subtitle'], className="text-muted small mb-1"),
+                            html.P([
+                                f"Horas: {item['total_hours_formatted']} | ",
+                                f"Eventos: {item['event_count']}"
+                            ], className="card-text small mb-0"),
+                            html.P(item['additional_info'], className="card-text text-muted small mb-0") if item.get('additional_info') else None
+                        ], className="py-2")
+                    ], className=f"mb-2 {item['color_class']}")
+                    for item in eja_vazios[:8]
+                ], style={"maxHeight": "250px", "overflowY": "auto"}),
+
+                html.P(
+                    f"... e mais {len(eja_vazios) - 8} veículos sem EJA.",
+                    className="text-muted small"
+                ) if len(eja_vazios) > 8 else None
+            ])
+
+        # Seção de EJAs não cadastrados
+        if eja_nao_cadastrados:
+            if eja_vazios:
+                notification_content.append(html.Hr())
+
+            notification_content.extend([
+                html.P([
+                    html.Span("⚠️ ", style={"fontSize": "1.2em"}),
+                    html.Strong(f"EJAs não cadastrados ({len(eja_nao_cadastrados)}):")
+                ], className="mb-2 text-warning"),
+
+                html.Div([
+                    dbc.Card([
+                        dbc.CardBody([
+                            html.H6([
+                                html.Span(item['icon'], className="me-2"),
+                                item['display_title']
+                            ], className="card-title mb-1"),
+                            html.P(item['display_subtitle'], className="text-muted small mb-1"),
+                            html.P([
+                                f"Horas: {item['total_hours_formatted']} | ",
+                                f"Eventos: {item['event_count']}"
+                            ], className="card-text small mb-0"),
+                            html.P(item.get('additional_info', ''), className="card-text text-muted small mb-0") if item.get('additional_info') else None
+                        ], className="py-2")
+                    ], className=f"mb-2 {item['color_class']}")
+                    for item in eja_nao_cadastrados[:8]
+                ], style={"maxHeight": "250px", "overflowY": "auto"}),
+
+                html.P(
+                    f"... e mais {len(eja_nao_cadastrados) - 8} EJAs não cadastrados.",
+                    className="text-muted small"
+                ) if len(eja_nao_cadastrados) > 8 else None
+            ])
+
+        # Finalizar
+        notification_content.extend([
+            html.Hr(),
+
+            html.P([
+                html.Strong("Recomendações:"),
+                html.Br(),
+                "• Para veículos sem EJA: Verificar configuração no sistema de origem",
+                html.Br(),
+                "• Para EJAs não cadastrados: Acessar 'Gerenciar EJAs' para cadastrá-los"
+            ], className="mb-2"),
+
+            dbc.Button(
+                "Ir para Gerenciar EJAs",
+                id="go-to-eja-manager-btn",
+                color="warning",
+                size="sm",
+                className="mt-2"
+            )
+        ])
+
+        print(f"DEBUG: Notificação criada com {len(missing_data)} problemas")
+        return True, notification_content, missing_data
+
+    except Exception as e:
+        print(f"Erro ao verificar EJAs não cadastrados: {str(e)}")
+        import traceback
+        print(f"Traceback completo: {traceback.format_exc()}")
+        return False, [], []
+
+
+@app.callback(
+    [
+        Output('tabs', 'active_tab'),
+        Output("eja-not-found-notification", "is_open", allow_duplicate=True)
+    ],
+    Input("go-to-eja-manager-btn", "n_clicks"),
+    prevent_initial_call=True
+)
+def redirect_to_eja_manager(n_clicks):
+    """Redireciona para a aba de gerenciamento de EJAs"""
+    if n_clicks:
+        return 'tab-eja-manager', False
+    raise PreventUpdate
+
+
+@app.callback(
+    Output('dummy-div-edit', 'children', allow_duplicate=True),
+    Input('dashboard-data-store', 'data'),
+    prevent_initial_call=True
+)
+def diagnostic_eja_data(dashboard_data):
+    """Callback para diagnosticar problemas com dados de EJA"""
+    if not dashboard_data or 'status' in dashboard_data:
+        return ""
+
+    try:
+        # Extrair datas
+        start_date = dashboard_data.get('start_date')
+        end_date = dashboard_data.get('end_date')
+
+        if not start_date or not end_date:
+            return ""
+
+        # Carregar dados do banco
+        from data.database import get_db_connection
+        sql = get_db_connection()
+
+        if not sql:
+            return ""
+
+        # Formatar datas
+        start_date_formatted = f"{start_date} 00:00:00.000"
+        end_date_formatted = f"{end_date} 23:59:59.999"
+
+        # Obter dados
+        dashboard_df = sql.execute_stored_procedure_df("sp_VehicleAccessReport",
+                                                       [start_date_formatted, end_date_formatted])
+
+        if dashboard_df is None or dashboard_df.empty:
+            return ""
+
+        print("\n" + "=" * 50)
+        print("DIAGNÓSTICO DOS DADOS DE EJA")
+        print("=" * 50)
+
+        print(f"Total de registros: {len(dashboard_df)}")
+        print(f"Colunas disponíveis: {list(dashboard_df.columns)}")
+
+        if 'EJA' in dashboard_df.columns:
+            print(f"\n--- ANÁLISE DA COLUNA EJA ---")
+            print(f"Tipo de dados: {dashboard_df['EJA'].dtype}")
+            print(f"Valores únicos: {dashboard_df['EJA'].nunique()}")
+            print(f"Valores nulos: {dashboard_df['EJA'].isna().sum()}")
+
+            # Mostrar todos os valores únicos com seus tipos
+            print(f"\n--- VALORES ÚNICOS NA COLUNA EJA ---")
+            unique_values = dashboard_df['EJA'].unique()
+            for i, val in enumerate(unique_values):
+                val_type = type(val).__name__
+                val_repr = repr(val)
+                is_null = pd.isna(val)
+                print(f"{i+1:2d}: {val_repr:15} | Tipo: {val_type:10} | Null: {is_null}")
+
+            # Contar tipos de valores
+            print(f"\n--- CONTAGEM POR TIPO ---")
+            type_counts = dashboard_df['EJA'].apply(lambda x: type(x).__name__).value_counts()
+            for tipo, count in type_counts.items():
+                print(f"{tipo}: {count}")
+
+            # Mostrar amostra dos dados
+            print(f"\n--- AMOSTRA DOS DADOS (primeiros 10) ---")
+            sample_data = dashboard_df[['EJA']].head(10)
+            for idx, row in sample_data.iterrows():
+                eja_val = row['EJA']
+                print(f"Linha {idx}: EJA = {repr(eja_val)} (tipo: {type(eja_val).__name__})")
+
+            # Verificar valores problemáticos
+            print(f"\n--- VALORES PROBLEMÁTICOS ---")
+            problematic = dashboard_df[dashboard_df['EJA'].isna() | (dashboard_df['EJA'] == '')]
+            print(f"Registros com EJA nulo ou vazio: {len(problematic)}")
+
+            if len(problematic) > 0:
+                print("Primeiras 5 linhas problemáticas:")
+                print(problematic[['EJA']].head().to_string())
+
+        print("=" * 50)
+        print("FIM DO DIAGNÓSTICO")
+        print("=" * 50 + "\n")
+
+        return ""
+
+    except Exception as e:
+        print(f"Erro no diagnóstico: {str(e)}")
+        import traceback
+        print(traceback.format_exc())
+        return ""
 
 
 if __name__ == '__main__':

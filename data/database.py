@@ -97,12 +97,27 @@ class ReportGenerator:
 
             print(dashboard_copy['EJA'])
             # Filtrar registros do dashboard que têm EJA correspondente na classificação
-            dashboard_filtrado = dashboard_copy[dashboard_copy['EJA'].isin(eja_codes_da_classificacao)].copy()
+            # dashboard_filtrado = dashboard_copy[dashboard_copy['EJA'].isin(eja_codes_da_classificacao)].copy()
+            dashboard_copy['EJA_str'] = dashboard_copy['EJA'].astype(str)
+            dashboard_filtrado = dashboard_copy[dashboard_copy['EJA_str'].isin(eja_codes_da_classificacao)].copy()
             if len(dashboard_filtrado) == 0:
-                return {"error": f"Nenhum registro no dashboard corresponde à classificação '{classificacao}'"}
+                # Verificar se há EJAs dessa classificação no dashboard mas não cadastrados
+                all_ejas_in_dashboard = set(dashboard_copy['EJA_str'].unique())
+                registered_ejas = set(eja_codes_da_classificacao)
+
+                # EJAs não cadastrados que poderiam pertencer a esta classificação
+                unregistered_ejas = all_ejas_in_dashboard - registered_ejas
+
+                error_msg = f"Nenhum registro no dashboard corresponde à classificação '{classificacao}'"
+                if unregistered_ejas:
+                    error_msg += f". EJAs não cadastrados encontrados: {', '.join(sorted(unregistered_ejas))}"
+
+                return {"error": error_msg}
 
             # Agrupar por EJA e somar as horas
-            horas_por_eja = dashboard_filtrado.groupby('EJA')['HorasDecimais'].sum().reset_index()
+            # horas_por_eja = dashboard_filtrado.groupby('EJA')['HorasDecimais'].sum().reset_index()
+            horas_por_eja = dashboard_filtrado.groupby('EJA_str')['HorasDecimais'].sum().reset_index()
+            horas_por_eja = horas_por_eja.rename(columns={'EJA_str': 'EJA'})
 
             # Ordenar por horas (decrescente)
             horas_por_eja = horas_por_eja.sort_values('HorasDecimais', ascending=False)
