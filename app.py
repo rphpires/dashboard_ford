@@ -35,6 +35,15 @@ from data.database import ReportGenerator
 cache = diskcache.Cache("./cache")
 long_callback_manager = DiskcacheLongCallbackManager(cache)
 
+
+def init_weekly_processor():
+    # Verificar se é necessário processar dados
+    needs_processing = check_and_process_if_needed()
+    # Configurar agendamento semanal (executar imediatamente apenas se for necessário)
+    setup_scheduler(run_immediately=needs_processing)
+    trace("Inicialização do processador semanal concluída", color="green")
+
+
 # Inicializar a aplicação Dash com Bootstrap para melhor estilo
 app = dash.Dash(
     __name__,
@@ -2084,14 +2093,6 @@ app.index_string = '''
     </body>
 </html>
 '''
-
-
-def init_weekly_processor():
-    # Verificar se é necessário processar dados
-    needs_processing = check_and_process_if_needed()
-    # Configurar agendamento semanal (executar imediatamente apenas se for necessário)
-    setup_scheduler(run_immediately=needs_processing)
-    trace("Inicialização do processador semanal concluída", color="green")
 
 
 @app.callback(
