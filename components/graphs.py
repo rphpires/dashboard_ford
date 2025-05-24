@@ -402,8 +402,105 @@ def create_programs_graph(df, height=None):
     return fig
 
 
+# def create_other_skills_graph(df, height=None):
+#     """Cria o gráfico de outras equipes de habilidades com barras horizontais e estilo moderno"""
+#     # Usar altura padrão se não for fornecida
+#     if df is None or df.empty:
+#         # Criar um gráfico vazio com a mensagem
+#         fig = go.Figure()
+#         fig.add_annotation(
+#             text="Nenhum valor neste mês",
+#             xref="paper", yref="paper",
+#             x=0.5, y=0.5,
+#             showarrow=False,
+#             font=dict(size=16, color="#666666")
+#         )
+
+#         if height is None:
+#             try:
+#                 height = layout_config.get('chart_md_height', 180)
+#             except Exception:
+#                 height = 180
+
+#         fig.update_layout(
+#             height=height,
+#             autosize=True,
+#             margin={'l': 10, 'r': 10, 't': 10, 'b': 10},
+#             plot_bgcolor='rgba(0,0,0,0)',
+#             paper_bgcolor='rgba(0,0,0,0)'
+#         )
+#         return fig
+
+#     if height is None:
+#         height = layout_config.get('chart_sm_height', 180)
+
+#     # Ordenar os dados por horas (decrescente)
+#     df_sorted = df.sort_values('hours', ascending=False)
+
+#     # Criar figura com subplots
+#     fig = make_subplots(specs=[[{"secondary_y": True}]])
+
+#     # Definir paleta de cores
+#     colors_list = ['#1E88E5', '#42A5F5', '#64B5F6', '#90CAF9']
+
+#     # Calcular percentual
+#     total = df_sorted['hours'].sum()
+#     percentages = df_sorted['hours'] / total * 100
+
+#     # Adicionar barras
+#     fig.add_trace(
+#         go.Bar(
+#             y=df_sorted['team'],
+#             x=df_sorted['hours'],
+#             orientation='h',
+#             marker_color=colors_list[:len(df_sorted)],
+#             text=[f"{h} ({p:.1f}%)" for h, p in zip(df_sorted['hours'], percentages)],
+#             textposition='auto',
+#             textfont=dict(color='gray', size=9),  # Reduzido de 10px
+#             name='Horas',
+#             hovertemplate='<b>%{y}</b><br>Horas: %{x}<br>Percentual: %{text}<extra></extra>',
+#         )
+#     )
+
+#     # Atualizar layout com a altura personalizada
+#     fig.update_layout(
+#         height=height,
+#         autosize=True,
+#         margin={'l': 90, 'r': 15, 't': 5, 'b': 20},  # Margens reduzidas
+#         plot_bgcolor='rgba(0,0,0,0)',
+#         paper_bgcolor='rgba(0,0,0,0)',
+#         xaxis=dict(
+#             showgrid=True,
+#             gridcolor='rgba(224, 224, 224, 0.5)',
+#             zeroline=False,
+#             showline=True,
+#             linecolor='#E0E0E0',
+#             title=dict(text='Horas', standoff=5),
+#             title_font=dict(size=10, color="#666"),
+#             tickfont=dict(size=9),
+#         ),
+#         yaxis=dict(
+#             showgrid=False,
+#             zeroline=False,
+#             showline=True,
+#             linecolor='#E0E0E0',
+#             automargin=True,
+#             tickfont=dict(size=9),
+#         ),
+#         bargap=0.15,  # Reduzido de 0.2
+#         hoverlabel=dict(
+#             bgcolor="white",
+#             font_size=10,
+#             font_family="Segoe UI",
+#             bordercolor="#DDD"
+#         ),
+#         showlegend=False,
+#     )
+
+#     return fig
+
 def create_other_skills_graph(df, height=None):
-    """Cria o gráfico de outras equipes de habilidades com barras horizontais e estilo moderno"""
+    """Cria o gráfico de outras equipes de habilidades com barras horizontais e cores de texto dinâmicas"""
     # Usar altura padrão se não for fornecida
     if df is None or df.empty:
         # Criar um gráfico vazio com a mensagem
@@ -437,15 +534,42 @@ def create_other_skills_graph(df, height=None):
     # Ordenar os dados por horas (decrescente)
     df_sorted = df.sort_values('hours', ascending=False)
 
-    # Criar figura com subplots
-    fig = make_subplots(specs=[[{"secondary_y": True}]])
-
     # Definir paleta de cores
     colors_list = ['#1E88E5', '#42A5F5', '#64B5F6', '#90CAF9']
 
     # Calcular percentual
     total = df_sorted['hours'].sum()
     percentages = df_sorted['hours'] / total * 100
+
+    # Determinar valor máximo para calcular se o texto cabe dentro da barra
+    max_hours = df_sorted['hours'].max()
+
+    # Função para determinar a cor do texto baseada no tamanho da barra
+    def get_text_color_and_position(hours, max_val, threshold_percent=0.3):
+        """
+        Determina cor e posição do texto baseado no tamanho da barra
+        threshold_percent: percentual do valor máximo abaixo do qual considera barra pequena
+        """
+        if hours < (max_val * threshold_percent):
+            # Barra pequena: texto fora da barra (à direita) com cor escura
+            return '#555555', 'outside'
+        else:
+            # Barra grande: texto dentro da barra com cor clara
+            return 'white', 'inside'
+
+    # Calcular cores e posições para cada barra
+    text_colors = []
+    text_positions = []
+    text_labels = []
+
+    for hours, percentage in zip(df_sorted['hours'], percentages):
+        color, position = get_text_color_and_position(hours, max_hours)
+        text_colors.append(color)
+        text_positions.append(position)
+        text_labels.append(f"{hours} ({percentage:.1f}%)")
+
+    # Criar figura com subplots
+    fig = make_subplots(specs=[[{"secondary_y": True}]])
 
     # Adicionar barras
     fig.add_trace(
@@ -454,9 +578,12 @@ def create_other_skills_graph(df, height=None):
             x=df_sorted['hours'],
             orientation='h',
             marker_color=colors_list[:len(df_sorted)],
-            text=[f"{h} ({p:.1f}%)" for h, p in zip(df_sorted['hours'], percentages)],
-            textposition='auto',
-            textfont=dict(color='white', size=9),  # Reduzido de 10px
+            text=text_labels,
+            textposition=text_positions,  # Lista com posições individuais
+            textfont=dict(
+                color=text_colors,  # Lista com cores individuais
+                size=9
+            ),
             name='Horas',
             hovertemplate='<b>%{y}</b><br>Horas: %{x}<br>Percentual: %{text}<extra></extra>',
         )
@@ -466,7 +593,7 @@ def create_other_skills_graph(df, height=None):
     fig.update_layout(
         height=height,
         autosize=True,
-        margin={'l': 90, 'r': 15, 't': 5, 'b': 20},  # Margens reduzidas
+        margin={'l': 90, 'r': 50, 't': 5, 'b': 20},  # Aumentei margem direita para textos externos
         plot_bgcolor='rgba(0,0,0,0)',
         paper_bgcolor='rgba(0,0,0,0)',
         xaxis=dict(
@@ -487,7 +614,7 @@ def create_other_skills_graph(df, height=None):
             automargin=True,
             tickfont=dict(size=9),
         ),
-        bargap=0.15,  # Reduzido de 0.2
+        bargap=0.15,
         hoverlabel=dict(
             bgcolor="white",
             font_size=10,
