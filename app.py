@@ -591,70 +591,61 @@ def show_delete_confirmation(delete_clicks, cancel_click):
     trigger_full = ctx.triggered[0]['prop_id']
     trigger_id = trigger_full.split('.')[0]
 
-    trace(f"show_delete_confirmation: {trigger_full=}")
-
-    # Para o botão cancelar
-    if "cancel-delete-button" in trigger_full:
-        return False, "", ""
-
-    if delete_clicks and any(click for click in delete_clicks if click):
-        # Identificar qual botão foi clicado
-        triggered_id = json.loads(trigger_full.split(".")[0])
-        row_id = triggered_id["index"]
-
-        # Buscar informações do EJA
-        eja_manager = get_eja_manager()
-        eja = eja_manager.get_eja_by_id(row_id)
-
-        if eja:
-            # Obter código e título
-            eja_code = eja.get('EJA CODE', eja.get('eja_code', ''))
-            title = eja.get('TITLE', eja.get('title', ''))
-
-            # Criar mensagem de confirmação
-            message = f"Tem certeza que deseja excluir o EJA #{row_id} ({eja_code} - {title})?"
-            return True, message, row_id
-
-    # Log para depuração
+    # ✅ ADICIONAR DEBUG ESPECÍFICO
     print(f"DEBUG - show_delete_confirmation triggered by: {trigger_full}")
 
     # Para o botão cancelar
-    if trigger_id == "cancel-delete-button":
+    if "cancel-delete-button" in trigger_full:
+        print("DEBUG - Cancel delete button clicked")
         return False, "", ""
 
-    # Para botões de exclusão - verificação mais rigorosa
+    # ✅ VERIFICAÇÃO MAIS RIGOROSA: só processar se for realmente um botão de delete
     try:
-        # Verificar explicitamente se o ID corresponde ao padrão esperado
-        if '{"type":"delete-button"' in trigger_id:
-            try:
-                trigger_dict = json.loads(trigger_id)
-                if isinstance(trigger_dict, dict) and trigger_dict.get("type") == "delete-button":
-                    row_id = trigger_dict.get("index")
-                    if row_id:
-                        # Buscar informações do EJA
-                        eja_manager = get_eja_manager()
-                        eja = eja_manager.get_eja_by_id(row_id)
+        # Parse do JSON do trigger
+        trigger_dict = json.loads(trigger_id)
 
-                        if eja:
-                            # Obter código e título
-                            eja_code = eja.get('EJA CODE', eja.get('eja_code', ''))
-                            title = eja.get('TITLE', eja.get('title', ''))
-                            # Criar mensagem de confirmação
-                            message = f"Tem certeza que deseja excluir o EJA #{row_id} ({eja_code} - {title})?"
-                            return True, message, row_id
-            except json.JSONDecodeError as e:
-                print(f"DEBUG - JSONDecodeError: {str(e)} for trigger_id: {trigger_id}")
+        # Verificar se é especificamente um botão de delete
+        if (isinstance(trigger_dict, dict)
+            and trigger_dict.get("type") == "delete-button"
+                and trigger_dict.get("action") == "delete"):
+
+            # Verificar se realmente houve clique (não apenas inicialização)
+            if delete_clicks and any(click for click in delete_clicks if click and click > 0):
+                row_id = trigger_dict["index"]
+                print(f"DEBUG - Processing delete for EJA ID: {row_id}")
+
+                # Buscar informações do EJA
+                eja_manager = get_eja_manager()
+                eja = eja_manager.get_eja_by_id(row_id)
+
+                if eja:
+                    # Obter código e título
+                    eja_code = eja.get('EJA CODE', eja.get('eja_code', ''))
+                    title = eja.get('TITLE', eja.get('title', ''))
+
+                    # Criar mensagem de confirmação
+                    message = f"Tem certeza que deseja excluir o EJA #{row_id} ({eja_code} - {title})?"
+                    print(f"DEBUG - Delete confirmation created for: {eja_code}")
+                    return True, message, row_id
+            else:
+                print("DEBUG - No actual clicks detected, ignoring")
                 raise PreventUpdate
+        else:
+            print(f"DEBUG - Not a delete button: {trigger_dict}")
+            raise PreventUpdate
 
-        # Se chegou aqui, o trigger não é um botão de exclusão válido
-        print(f"DEBUG - Not a valid delete button: {trigger_id}")
+    except json.JSONDecodeError as e:
+        print(f"DEBUG - JSON decode error: {e}")
         raise PreventUpdate
     except Exception as e:
-        print(f"DEBUG - Erro ao processar clique: {type(e).__name__}: {str(e)}")
+        print(f"DEBUG - Other error in delete callback: {e}")
         raise PreventUpdate
 
+    # Se chegou aqui, não é um delete válido
+    print("DEBUG - Reached end of delete callback, no action taken")
+    raise PreventUpdate
 
-# Callback para abrir o modal de adição de EJA
+
 @app.callback(
     [
         Output("eja-form-modal", "is_open"),
@@ -668,7 +659,7 @@ def show_delete_confirmation(delete_clicks, cancel_click):
     [
         Input("add-eja-button", "n_clicks"),
         Input("cancel-eja-form-button", "n_clicks"),
-        Input({"type": "edit-button", "index": dash.ALL}, "n_clicks"),
+        Input({"type": "edit-button", "index": dash.ALL, "action": "edit"}, "n_clicks"),
     ],
     [
         State("eja-form-modal", "is_open"),
@@ -681,34 +672,92 @@ def toggle_eja_form_modal(add_clicks, cancel_clicks, edit_clicks, is_open):
     if not ctx.triggered:
         raise PreventUpdate
 
-    trigger_id = ctx.triggered[0]['prop_id'].split('.')[0]
+    trigger_full = ctx.triggered[0]['prop_id']
+    trigger_id = trigger_full.split('.')[0]
+
+    # ✅ DEBUG mais detalhado
+    print(f"DEBUG - toggle_eja_form_modal triggered by: {trigger_full}")
 
     # Adicionar novo EJA - abrir modal vazio
     if trigger_id == "add-eja-button":
+        print("DEBUG - Add button clicked")
         return True, "Adicionar Novo EJA", "add", "", "", "", ""
 
     # Cancelar - fechar modal
     if trigger_id == "cancel-eja-form-button":
+        print("DEBUG - Cancel button clicked")
         return False, "", "", "", "", "", ""
 
-    # Editar EJA existente
-    if isinstance(trigger_id, dict) and trigger_id.get("type") == "edit-button":
-        eja_id = trigger_id.get("index")
-        if eja_id:
-            # Obter os dados do EJA para edição
-            eja_manager = get_eja_manager()
-            eja = eja_manager.get_eja_by_id(eja_id)
+    # ✅ VERIFICAÇÃO MAIS RIGOROSA para botão de edição
+    try:
+        trigger_dict = json.loads(trigger_id)
 
-            if eja:
-                # Obter os valores para os campos do formulário
-                eja_code = eja.get('EJA CODE', eja.get('eja_code', ''))
-                title = eja.get('TITLE', eja.get('title', ''))
-                classification = eja.get('NEW CLASSIFICATION', eja.get('new_classification', ''))
+        # Verificar se é especificamente um botão de edit
+        if (isinstance(trigger_dict, dict)
+            and trigger_dict.get("type") == "edit-button"
+                and trigger_dict.get("action") == "edit"):
 
-                return True, f"Editar EJA #{eja_id}", "edit", eja_code, title, classification, eja_id
+            # Verificar se realmente houve clique
+            if edit_clicks and any(click for click in edit_clicks if click and click > 0):
+                eja_id = trigger_dict.get("index")
+                print(f"DEBUG - Processing edit for EJA ID: {eja_id}")
+
+                if eja_id:
+                    # Obter os dados do EJA para edição
+                    eja_manager = get_eja_manager()
+                    eja = eja_manager.get_eja_by_id(eja_id)
+
+                    if eja:
+                        # Obter os valores para os campos do formulário
+                        eja_code = eja.get('EJA CODE', eja.get('eja_code', ''))
+                        title = eja.get('TITLE', eja.get('title', ''))
+                        classification = eja.get('NEW CLASSIFICATION', eja.get('new_classification', ''))
+
+                        print(f"DEBUG - EJA encontrado para edição: {eja_code} - {title}")
+                        return True, f"Editar EJA #{eja_id}", "edit", eja_code, title, classification, eja_id
+                    else:
+                        print(f"DEBUG - EJA não encontrado no banco: {eja_id}")
+            else:
+                print("DEBUG - No actual edit clicks detected, ignoring")
+                raise PreventUpdate
+        else:
+            print(f"DEBUG - Not an edit button: {trigger_dict}")
+            raise PreventUpdate
+
+    except json.JSONDecodeError as e:
+        print(f"DEBUG - JSON decode error in edit callback: {e}")
+        raise PreventUpdate
+    except Exception as e:
+        print(f"DEBUG - Other error in edit callback: {e}")
+        raise PreventUpdate
 
     # Caso padrão - não altera o estado atual
-    return is_open, "", "", "", "", "", ""
+    print("DEBUG - Edit callback reached end, no changes")
+    raise PreventUpdate
+
+
+@app.callback(
+    Output("dummy-div-edit", "children"),
+    Input({"type": "edit-button", "index": dash.ALL, "action": "edit"}, "n_clicks"),
+    prevent_initial_call=True
+)
+def test_edit_button_callback(edit_clicks):
+    """Callback de teste para verificar se os botões de edição estão funcionando"""
+    print("=" * 50)
+    print("DEBUG - test_edit_button_callback CHAMADO!")
+    print(f"edit_clicks: {edit_clicks}")
+
+    ctx = dash.callback_context
+    if ctx.triggered:
+        trigger_info = ctx.triggered[0]
+        print(f"Trigger info: {trigger_info}")
+        print(f"Prop ID: {trigger_info['prop_id']}")
+        print(f"Value: {trigger_info['value']}")
+    else:
+        print("Nenhum trigger encontrado")
+
+    print("=" * 50)
+    return f"Edit button clicked at {dt.now()}"
 
 
 # Callback unificado para gerenciar todas as atualizações da tabela EJA
@@ -931,13 +980,14 @@ def save_eja_form(n_clicks, form_mode, edit_eja_id, eja_code, title, classificat
 
         # Verificar resultado
         if isinstance(result, dict) and result.get('error'):
-            return True, f"{error_prefix} {result['error']}", "Erro", "danger", True, no_update
+            return True, f"{error_prefix} {result['error']}", "Erro", "danger", False, no_update
 
         # Gerar timestamp para atualizar a tabela
         import time
         refresh_time = str(time.time())
 
         # Sucesso - fechar modal e mostrar mensagem
+        trace('## Sucesso, fechar modal.')
         return True, success_message, "Sucesso", "success", False, refresh_time
 
     except Exception as e:
@@ -1257,8 +1307,6 @@ def load_initial_metrics_data(tab_content, active_tab):
     # Criar tabela
     from layouts.tracks_usage_manager import create_tracks_table
     return create_tracks_table(all_tracks, page_current=0)
-
-# Callbacks para Usage Percentage
 
 
 @app.callback(
@@ -2282,9 +2330,6 @@ def analyze_eja_usage(n_clicks, month_value, classification_filter):
             'filter': classification_filter
         }
 
-        # Formatar total de horas para o header
-        total_hours_formatted = report_gen.format_datetime(total_hours)
-
         return (
             table,
             store_data,
@@ -2493,7 +2538,7 @@ def check_missing_ejas_with_vehicle_fixed(dashboard_data):
                         eja_is_empty = True
                     else:
                         eja_clean = eja_str
-                except:
+                except Exception:
                     eja_is_empty = True
 
             # Processar valor do Vehicle
@@ -2503,7 +2548,7 @@ def check_missing_ejas_with_vehicle_fixed(dashboard_data):
                     vehicle_str = str(vehicle_val).strip()
                     if vehicle_str and vehicle_str.lower() not in ['nan', 'none', 'null', '']:
                         vehicle_clean = vehicle_str
-                except:
+                except Exception:
                     pass
 
             return pd.Series({
@@ -2834,13 +2879,13 @@ def diagnostic_eja_data(dashboard_data):
         print(f"Colunas disponíveis: {list(dashboard_df.columns)}")
 
         if 'EJA' in dashboard_df.columns:
-            print(f"\n--- ANÁLISE DA COLUNA EJA ---")
+            print("\n--- ANÁLISE DA COLUNA EJA ---")
             print(f"Tipo de dados: {dashboard_df['EJA'].dtype}")
             print(f"Valores únicos: {dashboard_df['EJA'].nunique()}")
             print(f"Valores nulos: {dashboard_df['EJA'].isna().sum()}")
 
             # Mostrar todos os valores únicos com seus tipos
-            print(f"\n--- VALORES ÚNICOS NA COLUNA EJA ---")
+            print("\n--- VALORES ÚNICOS NA COLUNA EJA ---")
             unique_values = dashboard_df['EJA'].unique()
             for i, val in enumerate(unique_values):
                 val_type = type(val).__name__
@@ -2849,20 +2894,20 @@ def diagnostic_eja_data(dashboard_data):
                 print(f"{i+1:2d}: {val_repr:15} | Tipo: {val_type:10} | Null: {is_null}")
 
             # Contar tipos de valores
-            print(f"\n--- CONTAGEM POR TIPO ---")
+            print("\n--- CONTAGEM POR TIPO ---")
             type_counts = dashboard_df['EJA'].apply(lambda x: type(x).__name__).value_counts()
             for tipo, count in type_counts.items():
                 print(f"{tipo}: {count}")
 
             # Mostrar amostra dos dados
-            print(f"\n--- AMOSTRA DOS DADOS (primeiros 10) ---")
+            print("\n--- AMOSTRA DOS DADOS (primeiros 10) ---")
             sample_data = dashboard_df[['EJA']].head(10)
             for idx, row in sample_data.iterrows():
                 eja_val = row['EJA']
                 print(f"Linha {idx}: EJA = {repr(eja_val)} (tipo: {type(eja_val).__name__})")
 
             # Verificar valores problemáticos
-            print(f"\n--- VALORES PROBLEMÁTICOS ---")
+            print("\n--- VALORES PROBLEMÁTICOS ---")
             problematic = dashboard_df[dashboard_df['EJA'].isna() | (dashboard_df['EJA'] == '')]
             print(f"Registros com EJA nulo ou vazio: {len(problematic)}")
 
