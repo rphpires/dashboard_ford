@@ -26,6 +26,7 @@ from layouts.right_column import create_optimized_utilization_breakdown
 from layouts.eja_manager import create_eja_manager_layout, get_eja_manager, create_eja_table
 from layouts.tracks_usage_manager import create_tracks_usage_manager_layout
 from layouts.eja_analysis import create_eja_analysis_layout, create_eja_analysis_table
+from layouts.vehicle_analysis import create_vehicle_analysis_layout, create_vehicle_analysis_table
 
 from data.database import get_available_months, load_dashboard_data
 from data.weekly_processor import setup_scheduler, check_and_process_if_needed
@@ -44,6 +45,7 @@ def init_weekly_processor():
     trace("Inicialização do processador semanal concluída", color="green")
 
 
+check_and_process_if_needed(force=True)
 # Inicializar a aplicação Dash com Bootstrap para melhor estilo
 app = dash.Dash(
     __name__,
@@ -118,6 +120,7 @@ app.layout = html.Div([
                         dbc.Tab(label='Gerenciar EJAs', tab_id='tab-eja-manager'),
                         dbc.Tab(label='Gerenciar Métricas', tab_id='tab-metrics-manager'),
                         dbc.Tab(label='Análise de EJAs', tab_id='tab-eja-analysis'),
+                        dbc.Tab(label='Análise de Veículos e Empresas', tab_id='tab-vehicle-analysis'),
                     ],
                     active_tab='tab-dashboard',
                 ),
@@ -557,6 +560,8 @@ def render_tab_content(active_tab):
         return create_tracks_usage_manager_layout()
     elif active_tab == 'tab-eja-analysis':
         return create_eja_analysis_layout()
+    elif active_tab == 'tab-vehicle-analysis':
+        return create_vehicle_analysis_layout()
     return html.Div("Conteúdo não encontrado")
 
 
@@ -2562,8 +2567,8 @@ def check_missing_ejas_with_vehicle_fixed(dashboard_data):
         dashboard_df = pd.concat([dashboard_df, analysis_cols], axis=1)
 
         # Separar registros problemáticos
-        empty_eja_df = dashboard_df[dashboard_df['eja_is_empty'] == True].copy()
-        valid_eja_df = dashboard_df[dashboard_df['eja_is_empty'] == False].copy()
+        empty_eja_df = dashboard_df[dashboard_df['eja_is_empty'] is True].copy()
+        valid_eja_df = dashboard_df[dashboard_df['eja_is_empty'] is False].copy()
 
         print(f"DEBUG: {len(empty_eja_df)} registros com EJA vazio")
         print(f"DEBUG: {len(valid_eja_df)} registros com EJA válido")
@@ -2926,6 +2931,286 @@ def diagnostic_eja_data(dashboard_data):
         import traceback
         print(traceback.format_exc())
         return ""
+
+
+@app.callback(
+    [
+        Output("vehicle-analysis-month-selector", "options"),
+        Output("vehicle-analysis-month-selector", "value")
+    ],
+    [
+        Input("tabs", "active_tab"),
+        Input("vehicle-analysis-month-selector", "value")
+    ]
+)
+def populate_vehicle_analysis_filters(active_tab, dashboard_month_value):
+    """Popula os filtros quando a aba de análise de veículos é aberta"""
+    if active_tab != "tab-vehicle-analysis":
+        return [], None
+
+    # Obter períodos disponíveis
+    periods = get_available_months(20)
+    period_options = [{"label": p["display"], "value": p["value"]} for p in periods]
+
+    # Usar o valor do mês selecionado no dashboard se disponível
+    selected_month = dashboard_month_value if dashboard_month_value else None
+
+    return period_options, selected_month
+
+
+@app.callback(
+    Output("vehicle-analyze-button", "disabled"),
+    Input("vehicle-analysis-month-selector", "value")
+)
+def enable_vehicle_analyze_button(month_value):
+    """Habilita o botão de análise quando um mês é selecionado"""
+    return month_value is None or month_value == ""
+
+
+@app.callback(
+    [
+        Output("vehicle-analysis-table-container", "children"),
+        Output("vehicle-analysis-data-store", "data"),
+        Output("vehicle-analysis-status", "is_open"),
+        Output("vehicle-analysis-status", "children"),
+        Output("vehicle-analysis-status", "color")
+    ],
+    Input("vehicle-analyze-button", "n_clicks"),
+    [
+        State("vehicle-analysis-month-selector", "value"),
+        State("vehicle-search-term", "value")
+    ],
+    prevent_initial_call=True
+)
+def analyze_vehicle_usage(n_clicks, month_value, search_term):
+    """Analisa a utilização de veículos e empresas para o período selecionado"""
+    if not n_clicks or not month_value:
+        raise PreventUpdate
+
+    try:
+        # Extrair datas do período
+        start_date, end_date = month_value.split('|')
+
+        # Obter conexão com o banco
+        from data.database import get_db_connection
+        sql = get_db_connection()
+
+        if not sql:
+            return (
+                html.Div("Erro ao conectar ao banco de dados.", className="text-center text-danger my-4"),
+                {},
+                True,
+                "Erro ao conectar ao banco de dados",
+                "danger"
+            )
+
+        # Formatar datas para a stored procedure
+        start_date_formatted = f"{start_date} 00:00:00.000"
+        end_date_formatted = f"{end_date} 23:59:59.999"
+
+        # Obter dados do banco
+        dashboard_df = sql.execute_stored_procedure_df("sp_VehicleAccessReport",
+                                                       [start_date_formatted, end_date_formatted])
+
+        if dashboard_df is None or dashboard_df.empty:
+            return (
+                html.Div("Nenhum dado encontrado para o período selecionado.",
+                         className="text-center text-warning my-4"),
+                {},
+                True,
+                "Nenhum dado encontrado para o período",
+                "warning"
+            )
+
+        # Filtrar dados seguindo a lógica do script auxiliar
+        # Garantir que StayTime não seja nulo, vazio ou inválido
+        filtered_df = dashboard_df[
+            dashboard_df['StayTime'].notna()
+            & (dashboard_df['StayTime'] != '')
+            & dashboard_df['StayTime'].str.contains(':', na=False)
+        ].copy()
+
+        if filtered_df.empty:
+            return (
+                html.Div("Nenhum dado válido encontrado para o período selecionado.",
+                         className="text-center text-warning my-4"),
+                {},
+                True,
+                "Nenhum dado válido encontrado",
+                "warning"
+            )
+
+        # Função para converter StayTime HH:MM para horas decimais (replicando a lógica SQL)
+        def convert_staytime_to_decimal_hours(stay_time):
+            try:
+                if pd.isna(stay_time) or not isinstance(stay_time, str) or ':' not in stay_time:
+                    return 0.0
+
+                parts = stay_time.split(':')
+                if len(parts) != 2:
+                    return 0.0
+
+                hours = int(parts[0])
+                minutes = int(parts[1])
+
+                # Converter para minutos totais e depois para horas decimais
+                total_minutes = hours * 60 + minutes
+                return total_minutes / 60.0
+            except (ValueError, TypeError):
+                return 0.0
+
+        # Aplicar conversão
+        filtered_df['HorasDecimais'] = filtered_df['StayTime'].apply(convert_staytime_to_decimal_hours)
+
+        # Processar dados para análise
+        analysis_data = []
+
+        # Processar veículos (agrupando APENAS por Vehicle, como no script)
+        vehicle_data = filtered_df[
+            filtered_df['Vehicle'].notna()
+            & (filtered_df['Vehicle'] != '')
+        ].copy()
+
+        if not vehicle_data.empty:
+            # Agrupar apenas por Vehicle (sem VehicleDepartment)
+            vehicle_usage = vehicle_data.groupby('Vehicle').agg({
+                'HorasDecimais': 'sum',
+                'VehicleDepartment': 'first'  # Pegar o primeiro departamento encontrado
+            }).reset_index()
+
+            for _, row in vehicle_usage.iterrows():
+                vehicle_name = str(row['Vehicle'])
+                department = str(row['VehicleDepartment']) if pd.notna(row['VehicleDepartment']) else 'N/A'
+                hours = row['HorasDecimais']
+
+                # Aplicar filtro de busca se fornecido
+                if search_term and search_term.strip():
+                    if search_term.lower() not in vehicle_name.lower():
+                        continue
+
+                # Formatar horas no formato HH:MM (replicando a lógica SQL)
+                total_minutes = int(hours * 60)
+                hours_part = total_minutes // 60
+                minutes_part = total_minutes % 60
+                hours_formatted = f"{hours_part:02d}:{minutes_part:02d}"
+
+                analysis_data.append({
+                    'name': vehicle_name,
+                    'type': 'Veículo',
+                    'department': department,
+                    'hours_decimal': hours,
+                    'hours_formatted': hours_formatted
+                })
+
+        # Processar empresas (agrupando APENAS por VehicleCompany, como no script)
+        company_data = filtered_df[
+            filtered_df['VehicleCompany'].notna()
+            & (filtered_df['VehicleCompany'] != '')
+        ].copy()
+
+        if not company_data.empty:
+            # Agrupar apenas por VehicleCompany (sem VehicleDepartment)
+            company_usage = company_data.groupby('VehicleCompany').agg({
+                'HorasDecimais': 'sum',
+                'VehicleDepartment': 'first'  # Pegar o primeiro departamento encontrado
+            }).reset_index()
+
+            for _, row in company_usage.iterrows():
+                company_name = str(row['VehicleCompany'])
+                department = str(row['VehicleDepartment']) if pd.notna(row['VehicleDepartment']) else 'N/A'
+                hours = row['HorasDecimais']
+
+                # Aplicar filtro de busca se fornecido
+                if search_term and search_term.strip():
+                    if search_term.lower() not in company_name.lower():
+                        continue
+
+                # Formatar horas no formato HH:MM (replicando a lógica SQL)
+                total_minutes = int(hours * 60)
+                hours_part = total_minutes // 60
+                minutes_part = total_minutes % 60
+                hours_formatted = f"{hours_part:02d}:{minutes_part:02d}"
+
+                analysis_data.append({
+                    'name': company_name,
+                    'type': 'Empresa',
+                    'department': department,
+                    'hours_decimal': hours,
+                    'hours_formatted': hours_formatted
+                })
+
+        # Se não houver dados após o filtro
+        if not analysis_data:
+            message = "Nenhum veículo ou empresa encontrado"
+            if search_term and search_term.strip():
+                message += f" com o termo '{search_term}'"
+            message += " para o período selecionado."
+
+            return (
+                html.Div(message, className="text-center text-warning my-4"),
+                {},
+                True,
+                "Nenhum resultado encontrado",
+                "warning"
+            )
+
+        # Ordenar por horas decrescentes (como no script SQL)
+        analysis_data.sort(key=lambda x: x['hours_decimal'], reverse=True)
+
+        # Calcular percentuais
+        total_hours = sum(item['hours_decimal'] for item in analysis_data)
+        for item in analysis_data:
+            item['percentage'] = (item['hours_decimal'] / total_hours * 100) if total_hours > 0 else 0
+
+        # Criar tabela
+        table = create_vehicle_analysis_table(analysis_data, page_current=0)
+
+        # Armazenar dados para paginação
+        store_data = {
+            'analysis_data': analysis_data,
+            'period': month_value,
+            'search_term': search_term
+        }
+
+        return (
+            table,
+            store_data,
+            True,
+            f"Análise concluída: {len(analysis_data)} itens processados",
+            "success"
+        )
+
+    except Exception as e:
+        trace(f"Erro na análise de veículos e empresas: {str(e)}", color="red")
+        import traceback
+        trace(f"Traceback completo: {traceback.format_exc()}", color="red")
+        return (
+            html.Div(f"Erro ao processar análise: {str(e)}", className="text-center text-danger my-4"),
+            {},
+            True,
+            f"Erro ao processar análise: {str(e)}",
+            "danger"
+        )
+
+
+@app.callback(
+    Output("vehicle-analysis-table-container", "children", allow_duplicate=True),
+    Input("vehicle-analysis-pagination", "active_page"),
+    State("vehicle-analysis-data-store", "data"),
+    prevent_initial_call=True
+)
+def update_vehicle_analysis_pagination(active_page, store_data):
+    """Atualiza a tabela quando a página muda"""
+    if not active_page or not store_data or 'analysis_data' not in store_data:
+        raise PreventUpdate
+
+    # Ajustar página (UI é base 1, código é base 0)
+    page_current = active_page - 1
+
+    # Recriar tabela com a nova página
+    table = create_vehicle_analysis_table(store_data['analysis_data'], page_current=page_current)
+
+    return table
 
 
 if __name__ == '__main__':
