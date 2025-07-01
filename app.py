@@ -2566,9 +2566,12 @@ def check_missing_ejas_with_vehicle_fixed(dashboard_data):
         analysis_cols = dashboard_df.apply(analyze_eja_vehicle, axis=1)
         dashboard_df = pd.concat([dashboard_df, analysis_cols], axis=1)
 
-        # Separar registros problemáticos
-        empty_eja_df = dashboard_df[dashboard_df['eja_is_empty'] is True].copy()
-        valid_eja_df = dashboard_df[dashboard_df['eja_is_empty'] is False].copy()
+        # # Separar registros problemáticos
+        # empty_eja_df = dashboard_df[dashboard_df['eja_is_empty'] is True].copy()
+        # valid_eja_df = dashboard_df[dashboard_df['eja_is_empty'] is False].copy()
+
+        empty_eja_df = dashboard_df[dashboard_df['eja_is_empty']].copy()
+        valid_eja_df = dashboard_df[~dashboard_df['eja_is_empty']].copy()
 
         print(f"DEBUG: {len(empty_eja_df)} registros com EJA vazio")
         print(f"DEBUG: {len(valid_eja_df)} registros com EJA válido")
@@ -2824,6 +2827,7 @@ def check_missing_ejas_with_vehicle_fixed(dashboard_data):
         print(f"Traceback completo: {traceback.format_exc()}")
         return False, [], []
 
+# Substitua o callback no app.py por esta versão corrigida:
 
 @app.callback(
     [

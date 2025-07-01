@@ -304,35 +304,69 @@ def create_utilization_availability_column(dfs, ytd_utilization_percentage, ytd_
         utilization_graph = create_utilization_graph(utilization_df, height=None)
         availability_graph = create_availability_graph(availability_df, height=None)
 
-        # Extrair o valor numérico do total de horas
+        # ===== CORREÇÃO AQUI: Melhorar o cálculo do total de horas =====
+        # Extrair o valor numérico do total de horas com mais robustez
+        total_horas_decimal = 0
+
+        # Tentar diferentes formas de obter o total de horas
+        if 'total_hours' in dfs and dfs['total_hours']:
+            total_hours_value = dfs['total_hours']
+        elif isinstance(dfs, dict):
+            # Somar todas as categorias para obter o total
+            programas_horas = float(dfs['programs']['hours'].sum() if 'programs' in dfs and 'hours' in dfs['programs'].columns else 0)
+            outras_equipes_horas = float(dfs['other_skills']['hours'].sum() if 'other_skills' in dfs and 'hours' in dfs['other_skills'].columns else 0)
+            usuarios_internos_horas = float(dfs['internal_users']['hours'].sum() if 'internal_users' in dfs and 'hours' in dfs['internal_users'].columns else 0)
+            vendas_externas_horas = float(dfs['external_sales']['hours'].sum() if 'external_sales' in dfs and 'hours' in dfs['external_sales'].columns else 0)
+
+            total_horas_decimal = programas_horas + outras_equipes_horas + usuarios_internos_horas + vendas_externas_horas
+        else:
+            total_horas_decimal = 0
+
+        # Se ainda temos um valor string no formato "HH:MM", converter
         if isinstance(dfs.get('total_hours', ''), str) and ':' in dfs.get('total_hours', ''):
             try:
                 horas, minutos = map(int, dfs.get('total_hours', '').split(':'))
                 total_horas_decimal = horas + (minutos / 60.0)
             except Exception:
-                total_horas_decimal = 0
-        else:
-            try:
-                total_horas_decimal = float(dfs.get('total_hours', 0))
-            except Exception:
-                total_horas_decimal = 0
+                # Se falhar, usar a soma calculada acima
+                pass
 
-        # Calcular somas para cada categoria
-        programas_horas = float(dfs['programs']['hours'].sum() if 'hours' in dfs['programs'].columns else 0)
-        outras_equipes_horas = float(dfs['other_skills']['hours'].sum() if 'hours' in dfs['other_skills'].columns else 0)
-        usuarios_internos_horas = float(dfs['internal_users']['hours'].sum() if 'hours' in dfs['internal_users'].columns else 0)
-        vendas_externas_horas = float(dfs['external_sales']['hours'].sum() if 'hours' in dfs['external_sales'].columns else 0)
+        # ===== CALCULAR SOMAS PARA CADA CATEGORIA =====
+        programas_horas = float(dfs['programs']['hours'].sum() if 'programs' in dfs and 'hours' in dfs['programs'].columns else 0)
+        outras_equipes_horas = float(dfs['other_skills']['hours'].sum() if 'other_skills' in dfs and 'hours' in dfs['other_skills'].columns else 0)
+        usuarios_internos_horas = float(dfs['internal_users']['hours'].sum() if 'internal_users' in dfs and 'hours' in dfs['internal_users'].columns else 0)
+        vendas_externas_horas = float(dfs['external_sales']['hours'].sum() if 'external_sales' in dfs and 'hours' in dfs['external_sales'].columns else 0)
 
-        # Calcular percentuais com segurança
+        # ===== CORREÇÃO PRINCIPAL: Função segura e melhorada para calcular percentuais =====
         def safe_calculate_percentage(part, total):
-            if total > 0:
-                return f"{(part / total * 100):.1f}%"
-            return "0.0%"
+            """Calcula percentual de forma segura"""
+            try:
+                if total > 0 and part >= 0:
+                    percentage = (part / total) * 100
+                    return f"{percentage:.1f}%"
+                else:
+                    return "0.0%"
+            except (ZeroDivisionError, TypeError, ValueError):
+                return "0.0%"
 
+        # ===== USAR O TOTAL CORRETO PARA OS CÁLCULOS =====
+        # Se total_horas_decimal ainda for 0, usar a soma das categorias
+        if total_horas_decimal <= 0:
+            total_horas_decimal = programas_horas + outras_equipes_horas + usuarios_internos_horas + vendas_externas_horas
+
+        # Calcular percentuais usando a função corrigida
         programas_perc_fmt = safe_calculate_percentage(programas_horas, total_horas_decimal)
         outras_equipes_perc_fmt = safe_calculate_percentage(outras_equipes_horas, total_horas_decimal)
         usuarios_internos_perc_fmt = safe_calculate_percentage(usuarios_internos_horas, total_horas_decimal)
         vendas_externas_perc_fmt = safe_calculate_percentage(vendas_externas_horas, total_horas_decimal)
+
+        # ===== DEBUG: Adicionar logs para verificar os valores =====
+        print(f"DEBUG - Valores calculados:")
+        print(f"  Total horas decimal: {total_horas_decimal}")
+        print(f"  Programs: {programas_horas} hr -> {programas_perc_fmt}")
+        print(f"  Other Skills: {outras_equipes_horas} hr -> {outras_equipes_perc_fmt}")
+        print(f"  Internal Users: {usuarios_internos_horas} hr -> {usuarios_internos_perc_fmt}")
+        print(f"  External Sales: {vendas_externas_horas} hr -> {vendas_externas_perc_fmt}")
 
     except Exception as e:
         trace(f"Erro ao calcular percentuais: {e}", color="red")

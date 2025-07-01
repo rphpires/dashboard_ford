@@ -21,6 +21,7 @@ cache/
 cache-directory/
 *.db-shm
 *.db-wal
+cache/cache.db
 
 # Backups e outros arquivos temporários
 backup/

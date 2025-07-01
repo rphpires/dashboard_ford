@@ -45,14 +45,14 @@ def create_metric_header(title, value, percentage, font_size='11px'):
                     'fontSize': font_size
                 },
                 children=[
-                    html.Span(value),
-                    html.Span(
-                        f" ({percentage})",
-                        style={
-                            'marginLeft': '5px',
-                            'color': '#546E7A'
-                        }
-                    )
+                    html.Span(f"{value} Hr"),
+                    # html.Span(
+                    #     f" ({percentage})",
+                    #     style={
+                    #         'marginLeft': '5px',
+                    #         'color': '#546E7A'
+                    #     }
+                    # )
                 ]
             )
         ]

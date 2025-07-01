@@ -92,34 +92,186 @@ def create_areas_section(areas_df, total_hours):
         ], margin_bottom='4px')
 
 
+# def create_customers_section(customers_df, total_hours_ytd):
+#     try:
+#         print("Criando gráfico de clientes...")
+#         customers_graph, df_sorted = create_customers_stacked_graph(customers_df, height=None)
+#         print("Gráfico de clientes criado!")
+
+#         # Calcular o total real para clientes
+#         total_hours = str(df_sorted["hours_int"].sum())
+#         clients_total = f"{str(total_hours)} hr"
+
+#         return create_section_container([
+#             create_section_header('Clients Utilization (Last 12 Months)', clients_total),
+#             html.Div(
+#                 className='panel-content',
+#                 children=[
+#                     create_graph_section('ytd-customers-graph', customers_graph)
+#                 ]
+#             )
+#         ], margin_bottom='0px')
+
+#     except Exception as e:
+#         print(f"Erro ao criar seção de clientes: {e}")
+#         return create_section_container([
+#             create_section_header('Clients Utilization', clients_total),
+#             html.Div(className='panel-content', children=[
+#                 html.Div("Erro ao carregar dados", className="error-message")
+#             ])
+#         ], margin_bottom='0px')
+
 def create_customers_section(customers_df, total_hours_ytd):
+    """
+    Cria a seção de clientes com tratamento robusto de erros
+    """
+    # Inicializar valores padrão
+    clients_total = "0 hr"
+    customers_graph = None
+
     try:
         print("Criando gráfico de clientes...")
-        customers_graph, df_sorted = create_customers_stacked_graph(customers_df, height=None)
+
+        # Tentar criar o gráfico de clientes
+        try:
+            # Verificar se a função retorna 1 ou 2 valores
+            result = create_customers_stacked_graph(customers_df, height=None)
+
+            # Se retornar apenas o gráfico
+            if not isinstance(result, tuple):
+                customers_graph = result
+                df_sorted = customers_df  # Usar o DataFrame original
+            else:
+                # Se retornar tupla, desempacotar
+                if len(result) == 2:
+                    customers_graph, df_sorted = result
+                else:
+                    customers_graph = result[0]
+                    df_sorted = customers_df
+
+        except Exception as graph_error:
+            print(f"Erro específico ao criar gráfico de clientes: {graph_error}")
+            # Criar um gráfico vazio em caso de erro
+            import plotly.graph_objects as go
+            customers_graph = go.Figure()
+            customers_graph.add_annotation(
+                text="Erro ao carregar dados de clientes",
+                xref="paper", yref="paper",
+                x=0.5, y=0.5,
+                showarrow=False,
+                font=dict(size=16, color="#666666")
+            )
+            customers_graph.update_layout(
+                height=180,
+                autosize=True,
+                margin={'l': 10, 'r': 10, 't': 10, 'b': 10},
+                plot_bgcolor='rgba(0,0,0,0)',
+                paper_bgcolor='rgba(0,0,0,0)'
+            )
+            df_sorted = pd.DataFrame()
+
         print("Gráfico de clientes criado!")
 
         # Calcular o total real para clientes
-        total_hours = str(df_sorted["hours_int"].sum())
-        clients_total = f"{str(total_hours)} hr"
+        try:
+            if isinstance(df_sorted, pd.DataFrame) and not df_sorted.empty:
+                # Tentar diferentes nomes de colunas
+                hours_column = None
+                for col_name in ['hours_int', 'hours', 'Hours', 'HOURS']:
+                    if col_name in df_sorted.columns:
+                        hours_column = col_name
+                        break
 
-        return create_section_container([
-            create_section_header('Clients Utilization (Last 12 Months)', clients_total),
-            html.Div(
-                className='panel-content',
-                children=[
-                    create_graph_section('ytd-customers-graph', customers_graph)
-                ]
-            )
-        ], margin_bottom='0px')
+                if hours_column:
+                    total_hours = int(df_sorted[hours_column].sum())
+                    clients_total = f"{total_hours} hr"
+                else:
+                    print(f"Aviso: Nenhuma coluna de horas encontrada. Colunas disponíveis: {list(df_sorted.columns)}")
+                    clients_total = "0 hr"
+            elif isinstance(customers_df, pd.DataFrame) and not customers_df.empty:
+                # Fallback: tentar usar o DataFrame original
+                hours_column = None
+                for col_name in ['hours_int', 'hours', 'Hours', 'HOURS']:
+                    if col_name in customers_df.columns:
+                        hours_column = col_name
+                        break
+
+                if hours_column:
+                    total_hours = int(customers_df[hours_column].sum())
+                    clients_total = f"{total_hours} hr"
+                else:
+                    print(f"Aviso: Nenhuma coluna de horas encontrada no DataFrame original. Colunas: {list(customers_df.columns)}")
+                    clients_total = "0 hr"
+            else:
+                print("Aviso: DataFrame de clientes está vazio")
+                clients_total = "0 hr"
+
+        except Exception as calc_error:
+            print(f"Erro ao calcular total de horas de clientes: {calc_error}")
+            clients_total = "0 hr"
 
     except Exception as e:
-        print(f"Erro ao criar seção de clientes: {e}")
-        return create_section_container([
-            create_section_header('Clients Utilization', clients_total),
-            html.Div(className='panel-content', children=[
-                html.Div("Erro ao carregar dados", className="error-message")
-            ])
-        ], margin_bottom='0px')
+        print(f"Erro geral ao criar seção de clientes: {e}")
+        import traceback
+        print(traceback.format_exc())
+
+        # Criar gráfico vazio em caso de erro geral
+        import plotly.graph_objects as go
+        customers_graph = go.Figure()
+        customers_graph.add_annotation(
+            text="Erro ao carregar dados",
+            xref="paper", yref="paper",
+            x=0.5, y=0.5,
+            showarrow=False,
+            font=dict(size=16, color="#666666")
+        )
+        customers_graph.update_layout(
+            height=180,
+            autosize=True,
+            margin={'l': 10, 'r': 10, 't': 10, 'b': 10},
+            plot_bgcolor='rgba(0,0,0,0)',
+            paper_bgcolor='rgba(0,0,0,0)'
+        )
+        clients_total = "0 hr"
+
+    return create_section_container([
+        create_section_header('Clients Utilization (Last 12 Months)', clients_total),
+        html.Div(
+            className='panel-content',
+            children=[
+                create_graph_section('ytd-customers-graph', customers_graph)
+            ]
+        )
+    ], margin_bottom='0px')
+
+
+def safe_process_customers_data(dfs):
+    """
+    Processa dados de clientes de forma segura
+    """
+    try:
+        if 'customers_ytd' in dfs and isinstance(dfs['customers_ytd'], pd.DataFrame):
+            return dfs['customers_ytd']
+        elif isinstance(dfs, dict):
+            # Tentar encontrar dados de clientes em outras chaves
+            for key in ['customers', 'clients', 'customer_data']:
+                if key in dfs and isinstance(dfs[key], pd.DataFrame):
+                    return dfs[key]
+
+        # Se não encontrar, retornar DataFrame vazio com estrutura básica
+        return pd.DataFrame({
+            'client': ['No Data'],
+            'hours': [0],
+            'hours_int': [0]
+        })
+
+    except Exception as e:
+        print(f"Erro ao processar dados de clientes: {e}")
+        return pd.DataFrame({
+            'client': ['Error'],
+            'hours': [0],
+            'hours_int': [0]
+        })
 
 
 def create_tracks_graph_safe(tracks_data, height=None, max_items=None):
@@ -193,7 +345,9 @@ def create_tracks_areas_column(dfs, total_hours, total_hours_ytd):
         # Processar os diferentes tipos de dados
         tracks_dict = process_tracks_data(dfs)
         areas_df = process_areas_data(dfs)
-        customers_df = process_customers_data(dfs)
+
+        # Usar a nova função segura para processar clientes
+        customers_df = safe_process_customers_data(dfs)
 
         # Validar e ajustar as variáveis total_hours e total_hours_ytd
         if total_hours is None or not isinstance(total_hours, str):
