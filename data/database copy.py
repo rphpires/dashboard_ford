@@ -9,8 +9,6 @@ import numpy as np
 import pandas as pd
 from datetime import datetime as dt, timedelta
 from dateutil import relativedelta
-from data.simplified_processor import get_simplified_processor, get_clients_historical_processor
-
 
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
@@ -403,57 +401,70 @@ def process_real_data_for_dashboard(dashboard_df, report_gen, programs_data, oth
 
 def load_dashboard_data(start_date=None, end_date=None):
     try:
-        sql = get_db_connection()
+        # Tenta carregar dados reais com as datas especificadas
+        result = load_real_data(start_date, end_date)
 
-        if not sql:
-            trace("Erro ao conectar ao banco de dados", color="red")
-            return create_empty_data_structure()
+        # Verificar se o resultado tem 4 itens
+        if isinstance(result, tuple) and len(result) == 4:
+            dfs, tracks_data, areas_data_df, periodo_info = result
 
-        # Formatar datas para a stored procedure
-        start_date_formatted = f"{start_date} 00:00:00.000"
-        end_date_formatted = f"{end_date} 23:59:59.999"
+            # Verificar se há dados reais ou se são apenas estruturas vazias
+            has_real_data = False
 
-        # Obter dados da SP
-        dashboard_df = sql.execute_stored_procedure_df("sp_VehicleAccessReport",
-                                                       [start_date_formatted, end_date_formatted])
+            # Verificar totais de horas para determinar se há dados reais
+            if 'total_hours' in periodo_info and periodo_info['total_hours']:
+                hours_str = periodo_info['total_hours']
 
-        if dashboard_df is None or dashboard_df.empty:
-            trace("Nenhum dado retornado pela SP", color="yellow")
-            return create_empty_data_structure()
+                # Se for formato HH:MM, converter para decimal
+                if ':' in hours_str:
+                    hours, minutes = map(int, hours_str.split(':'))
+                    total_hours = hours + (minutes / 60.0)
+                else:
+                    try:
+                        total_hours = float(hours_str)
+                    except (ValueError, TypeError):
+                        total_hours = 0
 
-        # Usar o processador simplificado
-        processor = get_simplified_processor(dashboard_df)
-        dfs, tracks_data, areas_data_df, periodo_info = processor.get_all_dashboard_data()
+                has_real_data = total_hours > 0
 
-        # Adicionar dados de clientes históricos (12 meses)
-        try:
-            clients_processor = get_clients_historical_processor()
-            clients_data = clients_processor.get_last_12_months_data()
-            dfs['customers_ytd'] = clients_data
-        except Exception as e:
-            trace(f"Usando dados vazios para clientes: {e}", color="yellow")
-            dfs['customers_ytd'] = pd.DataFrame(columns=['classification', 'hours'])
+            if not has_real_data:
+                # Manter a estrutura, mas limpar os dados
+                empty_dfs, _, _, _ = create_empty_data_structure()
 
-        # Adicionar informações do período
-        try:
-            display_date = datetime.strptime(start_date, '%Y-%m-%d')
-            periodo_info.update({
-                'display_month': display_date.strftime('%B').upper(),
-                'display_day': display_date.strftime('%d')
-            })
-        except Exception:
-            periodo_info.update({
-                'display_month': 'UNKNOWN',
-                'display_day': '01'
-            })
+                # Preservar a estrutura, mas zerar os valores
+                for key in empty_dfs:
+                    if key in dfs and hasattr(dfs[key], 'copy'):
+                        # Para DataFrames, manter colunas mas zerar valores numéricos
+                        df = dfs[key].copy()
+                        for col in df.columns:
+                            if pd.api.types.is_numeric_dtype(df[col]):
+                                df[col] = 0
+                        dfs[key] = df
 
-        trace(f"Processamento simplificado concluído. Total: {periodo_info.get('total_hours', '0:00')}")
+                # Atualizar período info para indicar zero horas
+                periodo_info['total_hours'] = '0:00'
+                periodo_info['total_hours_ytd'] = '0:00'
+                periodo_info['ytd_utilization_percentage'] = '0%'
+                periodo_info['ytd_availability_percentage'] = '0%'
 
-        return dfs, tracks_data, areas_data_df, periodo_info
+                # Para tracks e áreas
+                if isinstance(tracks_data, pd.DataFrame) and not tracks_data.empty:
+                    tracks_data['hours'] = 0
+                    tracks_data['percentage'] = '0%'
+
+                if isinstance(areas_data_df, pd.DataFrame) and not areas_data_df.empty:
+                    areas_data_df['hours'] = 0
+
+            return dfs, tracks_data, areas_data_df, periodo_info
+        else:
+            print(f"Erro: load_real_data retornou {len(result) if isinstance(result, tuple) else type(result)} valores em vez de 4")
+            # Criar estrutura vazia com dados zerados
+            return None
 
     except Exception as e:
-        trace(f"Erro no carregamento simplificado: {e}", color="red")
-        return create_empty_data_structure()
+        print(f"Erro ao carregar dados reais: {e}")
+        # Em caso de falha, usar estrutura vazia
+        return None
 
 
 def create_empty_data_structure():
@@ -537,28 +548,67 @@ def process_areas_data(raw_data):
 
 
 def process_clients_data(start_date, end_date):
-    """Versão simplificada para clientes - usa SQLite apenas para histórico"""
     try:
-        from data.simplified_processor import get_clients_historical_processor
+        # Importar bibliotecas necessárias
+        import pandas as pd
+        from data.local_db_handler import get_db_handler
 
-        clients_processor = get_clients_historical_processor()
-        historical_data = clients_processor.get_last_12_months_data()
+        # Obter o handler do banco de dados local
+        db_handler = get_db_handler()
 
-        if historical_data.empty:
-            # Retornar estrutura padrão
-            return pd.DataFrame({
+        # Obter dados de utilização de clientes do banco SQLite
+        clients_df = db_handler.get_client_usage_data()
+
+        if clients_df.empty:
+            # Se não houver dados, retornar DataFrame vazio com estrutura esperada
+            empty_df = pd.DataFrame({
                 'classification': ['PROGRAMS', 'OTHER SKILL TEAMS', 'INTERNAL USERS', 'EXTERNAL SALES'],
                 'hours': [0, 0, 0, 0]
             })
+            return empty_df
 
-        return historical_data
+        # Agrupar por classificação e somar as horas
+        classification_hours = clients_df.groupby('classification')['total_hours'].sum().reset_index()
+
+        # Renomear colunas para o formato esperado pelo gráfico
+        classification_hours = classification_hours.rename(columns={
+            'total_hours': 'hours'
+        })
+
+        # Ordenar por horas em ordem decrescente
+        classification_hours = classification_hours.sort_values('hours', ascending=False)
+
+        # Garantir que todas as classificações principais estejam presentes
+        main_classifications = ['PROGRAMS', 'OTHER SKILL TEAMS', 'INTERNAL USERS', 'EXTERNAL SALES']
+        for classification in main_classifications:
+            if classification not in classification_hours['classification'].values:
+                # Adicionar classificação ausente com valor zero
+                classification_hours = pd.concat([
+                    classification_hours,
+                    pd.DataFrame([{'classification': classification, 'hours': 0}])
+                ])
+
+        # Se não houver dados, garantir pelo menos as classificações padrão
+        if classification_hours.empty:
+            for classification in main_classifications:
+                classification_hours = pd.concat([
+                    classification_hours,
+                    pd.DataFrame([{'classification': classification, 'hours': 0}])
+                ])
+
+        # Reordenar após adicionar as classificações faltantes
+        classification_hours = classification_hours.sort_values('hours', ascending=False)
+
+        return classification_hours
 
     except Exception as e:
-        trace(f"Erro ao processar dados de clientes: {e}", color="red")
-        return pd.DataFrame({
+        print(f"Erro ao processar dados de clientes: {str(e)}")
+        # Em caso de erro, retornar DataFrame com estrutura esperada, mas valores zero
+        empty_df = pd.DataFrame({
             'classification': ['PROGRAMS', 'OTHER SKILL TEAMS', 'INTERNAL USERS', 'EXTERNAL SALES'],
             'hours': [0, 0, 0, 0]
         })
+        return empty_df
 
 
 def load_dashboard_data_simplified(start_date=None, end_date=None):

@@ -6,65 +6,6 @@ from data.eja_manager import get_eja_manager
 from utils.tracer import *
 
 
-# def create_eja_table(ejas, page_current=0, page_size=10):
-#     """
-#     Cria uma tabela de EJAs com botões de ação de edição e exclusão com IDs melhorados
-#     """
-#     # Calcular índices para paginação
-#     start_idx = page_current * page_size
-#     end_idx = start_idx + page_size
-
-#     paged_ejas = ejas[start_idx:end_idx] if ejas else []
-
-#     # Se não houver EJAs, mostrar mensagem
-#     if not paged_ejas:
-#         return html.Div("Nenhum EJA encontrado.", className="text-center my-4")
-
-#     # Cabeçalhos da tabela
-#     headers = ["ID", "EJA CODE", "TITLE", "NEW CLASSIFICATION", "AÇÕES"]
-
-#     # Criar linha de cabeçalho
-#     header_row = html.Tr([html.Th(h) for h in headers])
-
-#     # Criar linhas de dados
-#     data_rows = []
-#     for i, eja in enumerate(paged_ejas):
-#         # ID da linha - importante para garantir unicidade
-#         row_id = eja.get('id', str(i))
-
-#         # Criar botões de ação com IDs que incluem prefixos para evitar conflitos
-#         actions = html.Td([
-#             # Botão de edição - com ID exclusivo
-#             dbc.Button(
-#                 html.I(className="fas fa-edit"),
-#                 # id={"type": "edit-button", "index": row_id, "action": "edit"},
-#                 id={"type": "edit-button", "index": row_id},
-#                 color="primary",
-#                 size="sm",
-#                 className="me-1",  # Atualizado para Bootstrap 5
-#                 title="Editar"
-#             ),
-#             # Botão de exclusão - com ID exclusivo
-#             dbc.Button(
-#                 html.I(className="fas fa-trash-alt"),
-#                 # id={"type": "delete-button", "index": row_id, "action": "delete"},
-#                 id={"type": "delete-button", "index": row_id},
-#                 color="danger",
-#                 size="sm",
-#                 title="Excluir"
-#             )
-#         ])
-
-#         # Criar linha da tabela
-#         row = html.Tr([
-#             html.Td(row_id),
-#             html.Td(eja.get('EJA CODE', eja.get('eja_code', ''))),
-#             html.Td(eja.get('TITLE', eja.get('title', ''))),
-#             html.Td(eja.get('NEW CLASSIFICATION', eja.get('new_classification', ''))),
-#             actions
-#         ])
-
-#         data_rows.append(row)
 
 def create_eja_table(ejas, page_current=0, page_size=10):
     """
@@ -84,7 +25,7 @@ def create_eja_table(ejas, page_current=0, page_size=10):
         return html.Div("Nenhum EJA encontrado.", className="text-center my-4")
 
     # Cabeçalhos da tabela
-    headers = ["ID", "EJA CODE", "TITLE", "NEW CLASSIFICATION", "AÇÕES"]
+    headers = ["ID", "EJA CODE", "Title", "New Classification", "Classification", "Ações"]
 
     # Criar linha de cabeçalho
     header_row = html.Tr([html.Th(h) for h in headers])
@@ -130,6 +71,7 @@ def create_eja_table(ejas, page_current=0, page_size=10):
             html.Td(eja.get('EJA CODE', eja.get('eja_code', ''))),
             html.Td(eja.get('TITLE', eja.get('title', ''))),
             html.Td(eja.get('NEW CLASSIFICATION', eja.get('new_classification', ''))),
+            html.Td(eja.get('CLASSIFICATION', eja.get('classification', ''))),
             actions
         ])
 
