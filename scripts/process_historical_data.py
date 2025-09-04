@@ -191,14 +191,17 @@ def verify_table_exists():
             db_handler.cursor.execute('''
             CREATE TABLE IF NOT EXISTS clients_usage (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                week_number INTEGER NOT NULL,      -- Número da semana no ano (1-53)
-                year INTEGER NOT NULL,             -- Ano
-                start_date TEXT NOT NULL,          -- Data inicial da semana (YYYY-MM-DD)
-                end_date TEXT NOT NULL,            -- Data final da semana (YYYY-MM-DD)
-                client_name TEXT NOT NULL,         -- Nome do cliente
-                classification TEXT NOT NULL,      -- Classificação (PROGRAMS, OTHER SKILL TEAMS, etc.)
-                hours REAL NOT NULL,               -- Horas consumidas (valor decimal)
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                week_number INTEGER NOT NULL,
+                year INTEGER NOT NULL,
+                start_date TEXT NOT NULL,
+                end_date TEXT NOT NULL,
+                client_name TEXT NOT NULL,
+                classification TEXT NOT NULL,
+                hours REAL NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                entry_time TEXT NOT NULL,
+                exit_time TEXT NOT NULL,
+                UNIQUE (client_name, entry_time, exit_time) ON CONFLICT IGNORE
             )
             ''')
 

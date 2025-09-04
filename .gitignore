@@ -34,3 +34,6 @@ backup/
 # Comentado porque queremos montar este diretório como volume
 exports/
 test/
+
+
+*.db
