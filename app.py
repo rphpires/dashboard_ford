@@ -29,7 +29,7 @@ from layouts.eja_analysis import create_eja_analysis_layout, create_eja_analysis
 from layouts.vehicle_analysis import create_vehicle_analysis_layout, create_vehicle_analysis_table
 
 from data.database import get_available_months, load_dashboard_data
-from data.weekly_processor import setup_scheduler, check_and_process_if_needed
+from data.weekly_processor import setup_scheduler
 from data.database import ReportGenerator
 
 
@@ -38,14 +38,9 @@ long_callback_manager = DiskcacheLongCallbackManager(cache)
 
 
 def init_weekly_processor():
-    # Verificar se é necessário processar dados
-    needs_processing = check_and_process_if_needed()
-    # Configurar agendamento semanal (executar imediatamente apenas se for necessário)
-    setup_scheduler(run_immediately=needs_processing)
+    setup_scheduler()
     trace("Inicialização do processador semanal concluída", color="green")
 
-
-check_and_process_if_needed(force=True)
 # Inicializar a aplicação Dash com Bootstrap para melhor estilo
 app = dash.Dash(
     __name__,

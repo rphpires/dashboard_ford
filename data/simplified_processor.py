@@ -23,11 +23,27 @@ class SimplifiedDataProcessor:
         self._load_eja_cache()
 
     def _load_eja_cache(self):
-        """Carrega EJAs em cache para lookup rápido"""
+        """Carrega EJAs em cache para lookup rápido - CORRIGIDO"""
         try:
             all_ejas = self.eja_manager.get_all_ejas()
-            self._eja_cache = {str(eja['eja_code']): eja for eja in all_ejas}
+
+            # CORREÇÃO: Garantir que as chaves sejam strings consistentes
+            self._eja_cache = {}
+            for eja in all_ejas:
+                eja_code = str(eja['eja_code']).strip()  # Sempre string, sem espaços
+                self._eja_cache[eja_code] = eja
+
             trace(f"Cache de EJAs carregado: {len(self._eja_cache)} registros")
+
+            # DEBUG: Verificar se os EJAs problemáticos estão no cache
+            expected_ejas = ['832', '35', '36', '23', '6', '8', '12', '1']
+            print(f"Verificando EJAs críticos no cache:")
+            for eja in expected_ejas:
+                if eja in self._eja_cache:
+                    print(f"  ✅ EJA {eja}: {self._eja_cache[eja]['title']}")
+                else:
+                    print(f"  ❌ EJA {eja}: NÃO ENCONTRADO no cache")
+
         except Exception as e:
             trace(f"Erro ao carregar cache de EJAs: {e}", color="red")
             self._eja_cache = {}
@@ -94,15 +110,14 @@ class SimplifiedDataProcessor:
 
     def _get_classification_data(self, classification, top_n=7):
         """
-        Método unificado para obter dados por classificação
-        Substitui o gerar_relatorio_eja complexo
+        Versão corrigida que garante consistência de tipos entre EJA e cache
         """
         filtered_df = self._filter_valid_data()
 
         if filtered_df.empty:
             return pd.DataFrame(columns=['title', 'hours'])
 
-        # Obter EJAs desta classificação
+        # Obter EJAs desta classificação do cache
         eja_codes = [
             code for code, eja in self._eja_cache.items()
             if eja.get('new_classification') == classification
@@ -112,14 +127,33 @@ class SimplifiedDataProcessor:
             trace(f"Nenhum EJA encontrado para classificação: {classification}")
             return pd.DataFrame(columns=['title', 'hours'])
 
+        # CORREÇÃO: Garantir que ambos estejam no mesmo tipo
+        # Converter tanto os dados quanto o cache para string para comparação
+        filtered_df['EJA_str'] = filtered_df['EJA'].astype(str).str.strip()
+        eja_codes_str = [str(code).strip() for code in eja_codes]
+
+        # DEBUG para PROGRAMS
+        if classification == "PROGRAMS":
+            print(f"\n=== DEBUG CORREÇÃO DE TIPOS ===")
+            print(f"EJAs no cache (originais): {eja_codes[:5]}...")
+            print(f"EJAs no cache (como string): {eja_codes_str[:5]}...")
+            print(f"EJAs nos dados (únicos): {sorted(filtered_df['EJA_str'].unique())[:10]}...")
+            print(f"Intersecção encontrada: {set(eja_codes_str) & set(filtered_df['EJA_str'].unique())}")
+
         # Filtrar dados por EJAs desta classificação
-        filtered_df['EJA_str'] = filtered_df['EJA'].astype(str)
-        classification_df = filtered_df[filtered_df['EJA_str'].isin(eja_codes)]
+        classification_df = filtered_df[filtered_df['EJA_str'].isin(eja_codes_str)]
+
+        if classification == "PROGRAMS":
+            print(f"Registros encontrados após correção: {len(classification_df)}")
+            if not classification_df.empty:
+                total_hours = classification_df['HorasDecimais'].sum()
+                print(f"Total de horas: {total_hours}")
+            print("=== FIM DEBUG CORREÇÃO ===\n")
 
         if classification_df.empty:
             return pd.DataFrame(columns=['title', 'hours'])
 
-        # Agrupar por EJA e somar horas
+        # Resto do código permanece igual...
         grouped = classification_df.groupby('EJA_str')['HorasDecimais'].sum().reset_index()
         grouped = grouped.sort_values('HorasDecimais', ascending=False).head(top_n)
 
@@ -141,7 +175,7 @@ class SimplifiedDataProcessor:
 
             result_data.append({
                 key_name: eja_info.get('title', f'EJA {eja_code}'),
-                'hours': int(row['HorasDecimais'])  # Converter para inteiro como no original
+                'hours': int(row['HorasDecimais'])
             })
 
         return pd.DataFrame(result_data)
@@ -271,7 +305,7 @@ class ClientsHistoricalProcessor:
     def get_last_12_months_data(self):
         """
         Obtém dados dos últimos 12 meses do SQLite
-        Se não houver dados suficientes, sugere processamento
+        CORREÇÃO: Aplica conversão de minutos para horas como na query original
         """
         try:
             # Verificar quantas semanas temos no SQLite
@@ -286,15 +320,18 @@ class ClientsHistoricalProcessor:
                 trace(f"Dados insuficientes no histórico: {weeks_count} semanas. Mínimo recomendado: 40")
                 return pd.DataFrame(columns=['classification', 'hours'])
 
-            # Obter dados agregados por classificação
+            # CORREÇÃO: Usar a mesma query da imagem - converter minutos para horas
             self.db_handler.cursor.execute("""
                 SELECT
-                    classification,
-                    SUM(hours) as total_hours
-                FROM clients_usage
-                WHERE datetime(start_date) >= datetime('now', '-12 months')
-                GROUP BY classification
-                ORDER BY total_hours DESC
+                    e.new_classification as classification,
+                    ROUND(SUM(c.hours) / 60.0, 2) as total_horas
+                FROM clients_usage c
+                INNER JOIN eja e ON c.classification = e.eja_code
+                WHERE e.new_classification IS NOT NULL 
+                AND e.new_classification != ''
+                AND datetime(c.start_date) >= datetime('now', '-12 months')
+                GROUP BY e.new_classification
+                ORDER BY total_horas DESC
             """)
 
             rows = self.db_handler.cursor.fetchall()
@@ -303,10 +340,17 @@ class ClientsHistoricalProcessor:
                 return pd.DataFrame(columns=['classification', 'hours'])
 
             # Converter para DataFrame no formato esperado
-            df = pd.DataFrame([dict(row) for row in rows])
-            df = df.rename(columns={'total_hours': 'hours'})
-            df['hours'] = df['hours'].astype(int)
+            result_data = []
+            for row in rows:
+                classification = row[0]  # e.new_classification
+                total_horas = row[1]     # ROUND(SUM(c.hours) / 60.0, 2)
 
+                result_data.append({
+                    'classification': classification,
+                    'hours': int(total_horas)  # Agora está em horas, não minutos
+                })
+
+            df = pd.DataFrame(result_data)
             return df
 
         except Exception as e:

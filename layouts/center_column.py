@@ -92,35 +92,6 @@ def create_areas_section(areas_df, total_hours):
         ], margin_bottom='4px')
 
 
-# def create_customers_section(customers_df, total_hours_ytd):
-#     try:
-#         print("Criando gráfico de clientes...")
-#         customers_graph, df_sorted = create_customers_stacked_graph(customers_df, height=None)
-#         print("Gráfico de clientes criado!")
-
-#         # Calcular o total real para clientes
-#         total_hours = str(df_sorted["hours_int"].sum())
-#         clients_total = f"{str(total_hours)} hr"
-
-#         return create_section_container([
-#             create_section_header('Clients Utilization (Last 12 Months)', clients_total),
-#             html.Div(
-#                 className='panel-content',
-#                 children=[
-#                     create_graph_section('ytd-customers-graph', customers_graph)
-#                 ]
-#             )
-#         ], margin_bottom='0px')
-
-#     except Exception as e:
-#         print(f"Erro ao criar seção de clientes: {e}")
-#         return create_section_container([
-#             create_section_header('Clients Utilization', clients_total),
-#             html.Div(className='panel-content', children=[
-#                 html.Div("Erro ao carregar dados", className="error-message")
-#             ])
-#         ], margin_bottom='0px')
-
 def create_customers_section(customers_df, total_hours_ytd):
     """
     Cria a seção de clientes com tratamento robusto de erros
@@ -172,46 +143,20 @@ def create_customers_section(customers_df, total_hours_ytd):
 
         print("Gráfico de clientes criado!")
 
-        # Calcular o total real para clientes
         try:
-            if isinstance(df_sorted, pd.DataFrame) and not df_sorted.empty:
-                # Tentar diferentes nomes de colunas
-                hours_column = None
-                for col_name in ['hours_int', 'hours', 'Hours', 'HOURS']:
-                    if col_name in df_sorted.columns:
-                        hours_column = col_name
-                        break
-
-                if hours_column:
-                    total_hours = int(df_sorted[hours_column].sum())
-                    clients_total = f"{total_hours} hr"
-                else:
-                    print(f"Aviso: Nenhuma coluna de horas encontrada. Colunas disponíveis: {list(df_sorted.columns)}")
-                    clients_total = "0 hr"
-            elif isinstance(customers_df, pd.DataFrame) and not customers_df.empty:
-                # Fallback: tentar usar o DataFrame original
-                hours_column = None
-                for col_name in ['hours_int', 'hours', 'Hours', 'HOURS']:
-                    if col_name in customers_df.columns:
-                        hours_column = col_name
-                        break
-
-                if hours_column:
-                    total_hours = int(customers_df[hours_column].sum())
-                    clients_total = f"{total_hours} hr"
-                else:
-                    print(f"Aviso: Nenhuma coluna de horas encontrada no DataFrame original. Colunas: {list(customers_df.columns)}")
-                    clients_total = "0 hr"
+            # Calcular total correto dos dados processados
+            if isinstance(customers_df, pd.DataFrame) and not customers_df.empty and 'hours' in customers_df.columns:
+                correct_total = int(customers_df['hours'].sum())
+                clients_total = f"{correct_total} HR"
+                print(f"CORRECAO: Total correto calculado: {correct_total}")
             else:
-                print("Aviso: DataFrame de clientes está vazio")
-                clients_total = "0 hr"
-
-        except Exception as calc_error:
-            print(f"Erro ao calcular total de horas de clientes: {calc_error}")
-            clients_total = "0 hr"
+                clients_total = "0 HR"
+        except Exception as e:
+            print(f"Erro ao calcular total correto: {e}")
+            clients_total = "0 HR"
 
     except Exception as e:
-        print(f"Erro geral ao criar seção de clientes: {e}")
+        trace(f"Erro geral ao criar seção de clientes: {e}")
         import traceback
         print(traceback.format_exc())
 
@@ -247,31 +192,84 @@ def create_customers_section(customers_df, total_hours_ytd):
 
 def safe_process_customers_data(dfs):
     """
-    Processa dados de clientes de forma segura
+    Processa dados de clientes históricos - retorna DataFrame
     """
-    try:
-        if 'customers_ytd' in dfs and isinstance(dfs['customers_ytd'], pd.DataFrame):
-            return dfs['customers_ytd']
-        elif isinstance(dfs, dict):
-            # Tentar encontrar dados de clientes em outras chaves
-            for key in ['customers', 'clients', 'customer_data']:
-                if key in dfs and isinstance(dfs[key], pd.DataFrame):
-                    return dfs[key]
+    print("=== DEBUG: safe_process_customers_data iniciada ===")
 
-        # Se não encontrar, retornar DataFrame vazio com estrutura básica
-        return pd.DataFrame({
-            'client': ['No Data'],
-            'hours': [0],
-            'hours_int': [0]
-        })
+    try:
+        from data.local_db_handler import get_db_handler
+        db_handler = get_db_handler()
+
+        # Query EXATA que funciona no banco
+        query = """
+            SELECT 
+                e.new_classification as classification,
+                COUNT(*) as registros,
+                SUM(c.hours) as total_minutos,
+                ROUND(SUM(c.hours) / 60.0, 2) as total_horas
+            FROM clients_usage c
+            INNER JOIN eja e ON c.classification = e.eja_code
+            WHERE e.new_classification IS NOT NULL
+              AND e.new_classification != ''
+            GROUP BY e.new_classification
+            ORDER BY total_minutos DESC
+        """
+
+        print("Executando query exata do banco...")
+        cursor = db_handler.conn.cursor()
+        cursor.execute(query)
+        rows = cursor.fetchall()
+
+        print(f"Query retornou {len(rows)} resultados:")
+
+        if not rows:
+            print("Nenhum resultado retornado")
+            import pandas as pd
+            return pd.DataFrame(columns=['classification', 'hours'])
+
+        # Criar dados exatamente como na query
+        result_data = []
+        for row in rows:
+            classification = row[0]
+            registros = row[1]
+            total_minutos = row[2]
+            total_horas = row[3]
+
+            print(f"  {classification}: {registros} registros, {total_minutos} min, {total_horas} horas")
+
+            result_data.append({
+                'classification': classification,
+                'hours': int(total_horas),  # Usar as horas já convertidas da query
+                'hours_int': int(total_horas)  # Para compatibilidade
+            })
+
+        import pandas as pd
+        df_result = pd.DataFrame(result_data)
+
+        print(f"DataFrame criado com {len(df_result)} registros")
+        print(f"Colunas: {list(df_result.columns)}")
+        print("Dados finais:")
+        for _, row in df_result.iterrows():
+            print(f"  {row['classification']}: {row['hours']} horas")
+
+        print("=" * 40)
+        return df_result
 
     except Exception as e:
-        print(f"Erro ao processar dados de clientes: {e}")
-        return pd.DataFrame({
-            'client': ['Error'],
-            'hours': [0],
-            'hours_int': [0]
-        })
+        print(f"Erro ao processar dados de clientes: {str(e)}")
+        import pandas as pd
+        return pd.DataFrame(columns=['classification', 'hours'])
+
+
+def create_empty_customers_data():
+    """Cria dados vazios para clientes quando não há dados disponíveis"""
+    print("🔧 Criando dados vazios para clientes...")
+    return [
+        {'classification': 'Programs', 'hours': 0},
+        {'classification': 'Other Skills', 'hours': 0},
+        {'classification': 'Internal Users', 'hours': 0},
+        {'classification': 'External Sales', 'hours': 0}
+    ]
 
 
 def create_tracks_graph_safe(tracks_data, height=None, max_items=None):

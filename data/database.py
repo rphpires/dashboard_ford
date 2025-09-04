@@ -402,6 +402,9 @@ def process_real_data_for_dashboard(dashboard_df, report_gen, programs_data, oth
 
 
 def load_dashboard_data(start_date=None, end_date=None):
+    """
+    Versão corrigida que garante que os dados de clientes sejam carregados
+    """
     try:
         sql = get_db_connection()
 
@@ -422,20 +425,70 @@ def load_dashboard_data(start_date=None, end_date=None):
             return create_empty_data_structure()
 
         # Usar o processador simplificado
+        from data.simplified_processor import get_simplified_processor
         processor = get_simplified_processor(dashboard_df)
         dfs, tracks_data, areas_data_df, periodo_info = processor.get_all_dashboard_data()
 
-        # Adicionar dados de clientes históricos (12 meses)
+        print("=== DEBUG: Iniciando carregamento de dados historicos ===")
         try:
-            clients_processor = get_clients_historical_processor()
-            clients_data = clients_processor.get_last_12_months_data()
-            dfs['customers_ytd'] = clients_data
+            from data.local_db_handler import get_db_handler
+            print("Handler do banco local obtido com sucesso")
+            
+            db_handler = get_db_handler()
+            
+            query = """
+                SELECT 
+                    e.new_classification as classification,
+                    SUM(c.hours) as total_minutes
+                FROM clients_usage c
+                INNER JOIN eja e ON c.classification = e.eja_code
+                WHERE e.new_classification IS NOT NULL 
+                AND e.new_classification != ''
+                GROUP BY e.new_classification
+                ORDER BY total_minutes DESC
+            """
+            
+            print("Executando query no banco local...")
+            cursor = db_handler.conn.cursor()
+            cursor.execute(query)
+            rows = cursor.fetchall()
+            
+            print(f"Query executada. Retornou {len(rows)} linhas")
+            
+            if rows:
+                clients_data = []
+                for row in rows:
+                    classification = row[0]
+                    total_minutes = row[1]
+                    hours = total_minutes / 60.0
+                    
+                    print(f"  Processando: {classification} = {hours:.1f} horas")
+                    
+                    clients_data.append({
+                        'classification': classification,
+                        'hours': hours
+                    })
+                
+                import pandas as pd
+                dfs['customers_ytd'] = pd.DataFrame(clients_data)
+                print(f"DataFrame customers_ytd criado com {len(dfs['customers_ytd'])} registros")
+                print("Dados historicos carregados com sucesso")
+            else:
+                print("AVISO: Nenhuma linha retornada pela query")
+                dfs['customers_ytd'] = pd.DataFrame(columns=['classification', 'hours'])
+
         except Exception as e:
-            trace(f"Usando dados vazios para clientes: {e}", color="yellow")
+            print(f"ERRO ao carregar dados historicos: {str(e)}")
+            import traceback
+            print(f"Traceback: {traceback.format_exc()}")
+            import pandas as pd
             dfs['customers_ytd'] = pd.DataFrame(columns=['classification', 'hours'])
+
+        print("=== DEBUG: Fim do carregamento de dados historicos ===")
 
         # Adicionar informações do período
         try:
+            from datetime import datetime
             display_date = datetime.strptime(start_date, '%Y-%m-%d')
             periodo_info.update({
                 'display_month': display_date.strftime('%B').upper(),
@@ -447,12 +500,10 @@ def load_dashboard_data(start_date=None, end_date=None):
                 'display_day': '01'
             })
 
-        trace(f"Processamento simplificado concluído. Total: {periodo_info.get('total_hours', '0:00')}")
-
         return dfs, tracks_data, areas_data_df, periodo_info
 
     except Exception as e:
-        trace(f"Erro no carregamento simplificado: {e}", color="red")
+        trace(f"Erro no carregamento: {e}", color="red")
         return create_empty_data_structure()
 
 
@@ -656,37 +707,6 @@ def process_clients_data_simplified(start_date=None, end_date=None):
             'classification': ['PROGRAMS', 'OTHER SKILL TEAMS', 'INTERNAL USERS', 'EXTERNAL SALES'],
             'hours': [0, 0, 0, 0]
         })
-
-
-# Modificação na função principal de carregamento
-def load_dashboard_data(start_date=None, end_date=None):
-    """
-    Função principal modificada para usar processamento simplificado
-    Mantém compatibilidade com o código existente
-    """
-    try:
-        # Usar a versão simplificada
-        result = load_dashboard_data_simplified(start_date, end_date)
-
-        if result is None or len(result) != 4:
-            trace("Resultado inválido do processamento simplificado", color="red")
-            return create_empty_data_structure()
-
-        dfs, tracks_data, areas_data_df, periodo_info = result
-
-        # Adicionar dados de clientes históricos
-        try:
-            clients_data = process_clients_data_simplified(start_date, end_date)
-            dfs['customers_ytd'] = clients_data
-        except Exception as e:
-            trace(f"Erro ao adicionar dados de clientes: {e}", color="yellow")
-            dfs['customers_ytd'] = pd.DataFrame(columns=['classification', 'hours'])
-
-        return dfs, tracks_data, areas_data_df, periodo_info
-
-    except Exception as e:
-        trace(f"Erro no carregamento principal: {e}", color="red")
-        return create_empty_data_structure()
 
 
 # Manter a classe ReportGenerator para compatibilidade, mas simplificada

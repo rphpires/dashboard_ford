@@ -108,7 +108,7 @@ def create_utilization_graph(df, height=None):
         x=1,
         y=avg_util,
         xref="paper",
-        text=f"Average: {avg_util:.1f}%",
+        text=f"{avg_util:.1f}%",
         showarrow=False,
         xanchor="right",
         yanchor="bottom",
@@ -1271,18 +1271,23 @@ def create_areas_graph(areas_df, height=None, bottom_margin=None):
         return fig
 
 
-def create_customers_stacked_graph(df, height=None, use_cached_data=True):
-    has_data = False
-
-    if isinstance(df, dict) and len(df) > 0:
-        has_data = True
-    elif isinstance(df, pd.DataFrame) and not df.empty:
-        has_data = True
+def create_customers_stacked_graph(df, height=None, use_cached_data=None):
+    """
+    Versão simplificada que sempre usa o DataFrame fornecido
+    Remove a lógica de cache desnecessária
+    """
+    # Verificar se há dados válidos
+    has_data = (
+        isinstance(df, pd.DataFrame)
+        and not df.empty
+        and 'classification' in df.columns
+        and 'hours' in df.columns
+        and df['hours'].sum() > 0
+    )
 
     if not has_data:
-        print("Criando gráfico vazio pois tracks_dict é inválido ou vazio")
+        print("Criando gráfico vazio pois não há dados válidos")
         fig = go.Figure()
-
         fig.add_annotation(
             text="Nenhum valor neste mês",
             xref="paper", yref="paper",
@@ -1290,6 +1295,9 @@ def create_customers_stacked_graph(df, height=None, use_cached_data=True):
             showarrow=False,
             font=dict(size=14)
         )
+
+        if height is None:
+            height = layout_config.get('chart_md_height', 180)
 
         fig.update_layout(
             height=height,
@@ -1303,50 +1311,8 @@ def create_customers_stacked_graph(df, height=None, use_cached_data=True):
     if height is None:
         height = layout_config.get('chart_md_height', 180)
 
-    try:
-        # Tentar carregar dados da tabela auxiliar se solicitado
-        if use_cached_data:
-            from data.local_db_handler import get_db_handler
-            db_handler = get_db_handler()
-
-            # Recuperar dados de utilização de clientes das últimas 12 semanas
-            cached_df = db_handler.get_client_usage_data(weeks=52)
-
-            # Se tiver dados no cache, usar eles
-            if not cached_df.empty:
-                # Agrupar por cliente e calcular total
-                grouped_df = cached_df.groupby('classification').agg({
-                    'total_hours': 'sum'
-                }).reset_index()
-
-                # Renomear colunas para compatibilidade
-                grouped_df.rename(columns={
-                    'classification': 'customer_type',
-                    'total_hours': 'hours'
-                }, inplace=True)
-
-                # Calcular porcentagem
-                total = grouped_df['hours'].sum()
-                grouped_df['percentage'] = grouped_df['hours'].apply(
-                    lambda x: f"{(x/total*100):.1f}%" if total > 0 else "0.0%"
-                )
-
-                # Ordenar por horas (decrescente)
-                df_sorted = grouped_df.sort_values('hours', ascending=False)
-
-                # Log para depuração
-                print(f"Usando dados em cache para o gráfico de clientes ({len(df_sorted)} registros)")
-            else:
-                # Fallback para o DataFrame original
-                df_sorted = df.sort_values('hours', ascending=False)
-                print("Usando dados originais para o gráfico de clientes (cache vazio)")
-        else:
-            # Usar o DataFrame original
-            df_sorted = df.sort_values('hours', ascending=False)
-    except Exception as e:
-        # Em caso de erro, fallback para o DataFrame original
-        print(f"Erro ao usar dados em cache: {str(e)}")
-        df_sorted = df.sort_values('hours', ascending=False)
+    # Ordenar por horas (decrescente)
+    df_sorted = df.sort_values('hours', ascending=False)
 
     # Função para converter horas decimais para formato HH:MM para tooltips
     def format_hours(hours):
@@ -1360,64 +1326,74 @@ def create_customers_stacked_graph(df, height=None, use_cached_data=True):
     # Criar coluna com valores inteiros para exibir no gráfico
     df_sorted['hours_int'] = df_sorted['hours'].apply(lambda x: int(x))
 
+    # Calcular percentuais
+    total = df_sorted['hours'].sum()
+    df_sorted['percentage'] = df_sorted['hours'].apply(
+        lambda x: f"{(x/total*100):.1f}%" if total > 0 else "0.0%"
+    )
+
     # Criar figura
     fig = go.Figure()
 
     # Paleta de cores
     colors_list = ['#FF6D00', '#FF9100', '#FFAB00', '#FFD600', '#AEEA00', '#64DD17', '#00C853', '#00BFA5']
 
-    # Adicionar primeira categoria como barra principal
+    # Renomear a coluna para compatibilidade com o gráfico
+    if 'classification' in df_sorted.columns:
+        df_sorted = df_sorted.rename(columns={'classification': 'customer_type'})
+
+    # Adicionar barras
     fig.add_trace(go.Bar(
         y=df_sorted['customer_type'],
         x=df_sorted['hours'],
-        text=[f"{h} hr" for h in df_sorted['hours_int']],  # Texto exibido nas barras como valores inteiros
+        text=[f"{h} hr" for h in df_sorted['hours_int']],
         textposition='auto',
-        textfont=dict(size=9),  # Tamanho reduzido
+        textfont=dict(size=9),
         orientation='h',
         marker=dict(color=colors_list[:len(df_sorted)]),
         name='Total',
         hovertemplate='<b>%{y}</b><br>Horas: %{customdata[0]}<br>Percentual: %{customdata[1]}<extra></extra>',
-        customdata=df_sorted[['hours_formatted', 'percentage']].values,  # Dados personalizados para tooltip
+        customdata=df_sorted[['hours_formatted', 'percentage']].values,
     ))
 
-    # Vamos colocar os percentuais como anotações em vez de um trace de scatter
+    # Adicionar anotações com percentuais
     for i, (customer_type, percentage) in enumerate(zip(df_sorted['customer_type'], df_sorted['percentage'])):
         fig.add_annotation(
             x=max(df_sorted['hours']) * 1.05,
             y=customer_type,
             text=percentage,
             showarrow=False,
-            font=dict(size=11, color="#333"),  # Tamanho reduzido
+            font=dict(size=11, color="#333"),
             xanchor="left",
             yanchor="middle",
             bgcolor="#fff",
             bordercolor=colors_list[i % len(colors_list)],
             borderwidth=2,
-            borderpad=3,  # Reduzido de 4
-            xshift=20  # Reduzido de 25
+            borderpad=3,
+            xshift=20
         )
 
-        # Adicionar círculos coloridos como marcadores (tamanho reduzido)
+        # Adicionar círculos coloridos como marcadores
         fig.add_annotation(
             x=max(df_sorted['hours']) * 1.03,
             y=customer_type,
             text="●",
             showarrow=False,
-            font=dict(size=20, color=colors_list[i % len(colors_list)]),  # Tamanho reduzido
+            font=dict(size=20, color=colors_list[i % len(colors_list)]),
             xanchor="left",
             yanchor="middle",
-            xshift=4  # Reduzido de 5
+            xshift=4
         )
 
-    # Atualizar layout para ser mais moderno
+    # Layout
     fig.update_layout(
         height=height,
         autosize=True,
-        margin={'l': 5, 'r': 35, 't': 5, 'b': 5},  # Margens reduzidas
+        margin={'l': 5, 'r': 35, 't': 5, 'b': 5},
         plot_bgcolor='rgba(0,0,0,0)',
         paper_bgcolor='rgba(0,0,0,0)',
         barmode='stack',
-        bargap=0.25,  # Reduzido de 0.3
+        bargap=0.25,
         xaxis=dict(
             showgrid=True,
             gridcolor='rgba(224, 224, 224, 0.5)',
@@ -1425,7 +1401,7 @@ def create_customers_stacked_graph(df, height=None, use_cached_data=True):
             showline=True,
             linecolor='#E0E0E0',
             domain=[0, 1],
-            tickfont=dict(size=8),  # Tamanho reduzido
+            tickfont=dict(size=8),
         ),
         yaxis=dict(
             showgrid=False,
@@ -1433,7 +1409,7 @@ def create_customers_stacked_graph(df, height=None, use_cached_data=True):
             showline=True,
             linecolor='#E0E0E0',
             automargin=True,
-            tickfont=dict(size=8),  # Tamanho reduzido
+            tickfont=dict(size=8),
         ),
         hoverlabel=dict(
             bgcolor="white",
@@ -1447,8 +1423,8 @@ def create_customers_stacked_graph(df, height=None, use_cached_data=True):
             y=1.02,
             xanchor="right",
             x=1,
-            font=dict(size=8)  # Tamanho reduzido
+            font=dict(size=8)
         )
     )
 
-    return fig, df_sorted
+    return fig

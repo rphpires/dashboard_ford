@@ -2,7 +2,7 @@ import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-
+import time
 from utils.tracer import trace, report_exception
 from data.db_connection import get_db_connection
 from data.local_db_handler import get_db_handler
@@ -284,6 +284,28 @@ def process_weekly_data(start_date=None, end_date=None):
         report_exception(e)
         trace(f"Erro ao processar dados: {str(e)}", color="red")
         return {"error": str(e)}
+
+
+def setup_scheduler():
+    """
+    Configura o agendador para ser executado dentro de outra aplicação.
+    Args:
+        run_immediately (bool): Se True, executa o processamento imediatamente
+    Returns:
+        schedule.Job: O job agendado
+    """
+    import schedule
+    import threading
+
+    # # Agendar para todas as segundas-feiras às 00:15
+    # schedule.every().day.at("00:15").do(process_weekly_data, [])
+    # trace("Agendamento configurado: Processamento de dados de cliente todos os dias às 00:15", color="green")
+
+    # # Iniciar thread para verificar agendamentos pendentes
+    # def run_scheduler():
+    #     while True:
+    #         schedule.run_pending()
+    #         time.sleep(60) # Verifica a cada minuto
 
 
 def run_weekly_processing():
